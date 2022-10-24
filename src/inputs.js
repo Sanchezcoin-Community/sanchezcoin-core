@@ -12,3 +12,11 @@ class TxInput {
         this.txId = txId;
     }
 }
+
+class NFTInput {
+    constructor(txId, outputHight, nftItemId) {
+        this.outputHight = outputHight;
+        this.nftItemId = nftItemId;
+        this.txId = txId;
+    }
+}
