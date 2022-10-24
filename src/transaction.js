@@ -5,3 +5,7 @@ class CoinbaseTransaction {
         this.inputs = inputs;
     }
 }
+
+
+// Exportiert die Klassen
+module.exports = { CoinbaseTransaction:CoinbaseTransaction }

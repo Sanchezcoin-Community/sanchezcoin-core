@@ -10,3 +10,7 @@ class MessageOutput {
 
     }
 }
+
+
+// Exportiert die Klassen
+module.exports = { UnspentOutput:UnspentOutput, MessageOutput:MessageOutput }

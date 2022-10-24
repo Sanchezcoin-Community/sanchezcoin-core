@@ -8,3 +8,7 @@ class Coin {
 
 // 179.769.313,486 Mortys
 // 1 Morty = 100.000.000 Jerrys
+
+
+// Exportiert die Klasse
+module.exports = { Coin:Coin }
