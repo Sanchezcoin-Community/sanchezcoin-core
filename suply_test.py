@@ -1,5 +1,5 @@
-start_block_reward = 130000
-reward_interval = 672
+start_block_reward = 120
+reward_interval = 749035
 periods = 1
 
 def max_money():
@@ -14,6 +14,7 @@ def max_money():
 
 # 179.769.313,486 Mortys
 mx = max_money()
-newer_method_string = "{:.8f}".format(mx / 100000000)
-print(newer_method_string, "Mortys =", int(mx), 'Jerrys')
+newer_method_string = "{:.3f}".format(mx / 100000000)
+print(newer_method_string, 'Mortys')
+print("179769313.486 Mortys")
 print('Total Halvening Periods =', periods)
