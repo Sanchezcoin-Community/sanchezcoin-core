@@ -82,7 +82,7 @@ class FinallyBlock {
         this.prv_block_hash = prv_block_hash;
         this.transactions = transactions;
         this.block_hight = block_hight;
-    }
+    };
 };
 
 
@@ -92,4 +92,4 @@ module.exports = {
     CandidatePoSBlock:CandidatePoSBlock,
     CandidatePoABlock:CandidatePoABlock,
     FinallyBlock:FinallyBlock 
-}
+};
