@@ -16,4 +16,3 @@ def max_money():
 mx = max_money()
 newer_method_string = "{:.2f}".format(mx / 100000000)
 print(newer_method_string, 'Mortys')
-print('Total Halvening Periods =', periods)
