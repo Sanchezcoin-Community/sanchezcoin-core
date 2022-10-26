@@ -1,9 +1,13 @@
+var bigInt = require("big-integer");
+const { SHA3 } = require('sha3');
+
+
+// Stellt einnen Coin dar
 class Coin {
-    constructor(decimal, total, max, halv_at_block, start_block_reward) {
-        this.start_block_reward = start_block_reward;
-        this.halv_at_block = halv_at_block;
+    constructor(decimal, max, halv_at_block, start_block_reward) {
+        this.current_reward = start_block_reward * (bigInt(1) * (bigInt(10)**bigInt(decimal)));
+        this.halv_at_block = BigInt(`0x${halv_at_block}`);
         this.decimal = decimal;
-        this.total = total;
         this.max = max;
     };
 
@@ -12,9 +16,9 @@ class Coin {
 
     };
 
-    // Gibt die Hähe der Aktuellen Blockbelonung an
-    block_reward(hight) {
-
+    // Set Reward Hight
+    halveReward() {
+        this.current_reward = Math.floor(this.current_reward / 2)
     };
 
     // Gibt die Anzahl aller Coins aus
@@ -24,7 +28,7 @@ class Coin {
 }
 
 
-// 179.768.400,00 Mortys
+// 1 177,119,999.98782301 Mortys
 // 1 Morty = 100.000.000 Jerrys
 
 

@@ -1,0 +1,5 @@
+class ProofOfWorkConsensus {
+    constructor() {
+        
+    }
+}

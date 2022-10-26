@@ -1,95 +1,123 @@
+const { CoinbaseInput, UnspentOutput } = require('./utxos')
+const { CoinbaseTransaction } = require('./transaction');
+const { computeMerkleRoot } = require('./merkle');
+const { sha256dBTC } = require('./hash_algo');
+const bigInt = require("big-integer");
+const { Coin } = require('./coin');
+const crypto = require('crypto');
+
+
+
 // Wird verwendet um einen neuen Proof of Work Block zu erstellen
 class CandidatePoWBlock {
-    constructor(prv_block_hash, block_hight, transactions, coinbase_reciver_address, coinbase_amount, hash_algo) {
-        this.coinbase_reciver_address = coinbase_reciver_address;
-        this.coinbase_amount = coinbase_amount;
+    constructor(prv_block_hash, transactions_ids, target_bits, hash_algo, timestamp) {
+        this.transactions_ids = transactions_ids;
         this.prv_block_hash = prv_block_hash;
-        this.transactions = transactions;
-        this.block_hight = block_hight;
+        this.target_bits = target_bits;
+        this.timestamp = timestamp;
         this.hash_algo = hash_algo;
-        this.nonce = 0;
+        this.nonce = 274148111;
     };
 
     // Dreht die Nonce um eins nach oben
-    nonceAddOne() {
+    nonceAdd() {
+        if(this.nonce +1 >= 2147483647) return false;
         this.nonce += 1;
+        return true;
+    };
+
+    // Berechnet den MerkleRoot des Blocks
+    computeMerkleRoot() {
+        // Die Transaktions IDS werden Reverst
+        const reversed = [];
+        for(const otem of this.transactions_ids) reversed.push(otem)
+        const a = computeMerkleRoot(this.hash_algo, reversed.reverse());
+        return a;
     };
 
     // Gibt das Blocktemplate aus
-    block_template() {
+    blockTemplate() {
+        // Der neue Block wird erstellt
+        const block_version = "01000000";
+        const prev_block = Buffer.from(this.prv_block_hash, 'hex').reverse().toString('hex');
+        const timestamp = Buffer.from(this.timestamp.toString(16).padStart(8, 0), 'hex').reverse().toString('hex');
+        const merkle_root = Buffer.from(this.computeMerkleRoot(), 'hex').reverse().toString('hex');
+        const bits = Buffer.from(this.target_bits, 'hex').reverse().toString('hex');
 
+        // Die Daten des Block Templates werden zurückgegeebn
+        return `${block_version}${prev_block}${merkle_root}${timestamp}${bits}`;
+    };
+
+    // Gibt den Vollständigen Blockheader aus
+    blockHeader() {
+        // Block Template Header
+        const blockTemplate_header = this.blockTemplate();
+
+        // Wandelt die Nonce um
+        const nonce = Buffer.from(this.nonce.toString(16).padStart(8, 0), 'hex').reverse().toString('hex');
+
+        // Gibt den Vollständig String zurück
+        return `${blockTemplate_header}${nonce}`;
+    };
+
+    // Gibt den Vollständigen Hash des Blocks aus
+    blockHash() {
+        const final = crypto.createHash('sha256').update(this.getCandidateBlockHash()).digest('hex');
+        return `0x${final}`;
     };
 
     // Gibt den Aktuellen Blockckhash aus
-    get_candidate_block_hash() {
-
-    };
-};
-
-
-// Wird verwendet um einen neuen Proof Of Stake Block zu erstellen
-class CandidatePoSBlock {
-    constructor(prv_block_hash, block_hight, transactions, coinbase_reciver_address, coinbase_amount, pos_algo) {
-        this.coinbase_reciver_address = coinbase_reciver_address;
-        this.coinbase_amount = coinbase_amount;
-        this.prv_block_hash = prv_block_hash;
-        this.transactions = transactions;
-        this.block_hight = block_hight;
-        this.pos_algo = pos_algo;
-        this.nonce = 0;
-    };
-
-    // Gibt das Blocktemplate aus
-    block_template() {
-
-    };
-
-    // Gibt den Aktuellen Blockckhash aus
-    get_candidate_block_hash() {
-
-    };
-};
-
-
-// Wird verwendet um einen neuen Proof of Authority Bock zu erstellen
-class CandidatePoABlock {
-    constructor(prv_block_hash, block_hight, transactions, coinbase_reciver_address, coinbase_amount, poa_algo) {
-        this.coinbase_reciver_address = coinbase_reciver_address;
-        this.coinbase_amount = coinbase_amount;
-        this.prv_block_hash = prv_block_hash;
-        this.transactions = transactions;
-        this.block_hight = block_hight;
-        this.pos_algo = pos_algo;
-        this.nonce = 0;
-    };
-
-    // Gibt das Blocktemplate aus
-    block_template() {
-
-    };
-
-    // Gibt den Aktuellen Blockckhash aus
-    get_candidate_block_hash() {
-
+    getCandidateBlockHash() {
+        return this.hash_algo.compute(Buffer.from(this.blockHeader(), 'hex'))
     };
 };
 
 
 // Fertiger Block
 class FinallyBlock {
-    constructor(prv_block_hash, block_hight, transactions, consensus_proof) {
+    constructor(prv_block_hash, block_hight, transactions_ids, consensus_proof) {
         this.consensus_proof = consensus_proof;
         this.prv_block_hash = prv_block_hash;
-        this.transactions = transactions;
+        this.transactions_ids = transactions_ids;
         this.block_hight = block_hight;
     };
 };
 
 
+// Wird verwendet um einen Genesis Mining Block zu erstellen
+function buildGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
+    // Der Betrag für den Aktuellen Block wird abgerufen
+    let current_reward = coin.current_reward;
+
+    // Die Genesis Transaktion für den Empfänger wird erstellt
+    let new_input = new CoinbaseInput();
+    let new_output = new UnspentOutput(reciver_address, current_reward);
+    let genesis_coinbase_tx = new CoinbaseTransaction(0, [new_input], [new_output]);
+
+    // Der Block wird gebaut
+    let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], "1b04864c", hash_algo, 1666748793);
+
+    // Der Mining vorgang um den Block abzubauen wird gestartet
+    while(true) {
+        if(bigInt(new_block.getCandidateBlockHash(), 16) < bigInt(target, 16)) break
+        if(new_block.nonceAdd() === false) { console.log('BREAK_NO_BLOCK_FOUND'); break; }
+    }
+
+    // Der Fertige Block wird zurückgegeben
+    return new_block;
+};
+
+
+
+// Der Genesisblock wird erzeugt
+const test_coin = new Coin(8, BigInt('17711999998782300'), 110700, 800);
+const test = buildGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000000ffff0000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
+console.log(test.getCandidateBlockHash())
+
+
+
 // Exportiert die Klassen
 module.exports = {
     CandidatePoWBlock:CandidatePoWBlock,
-    CandidatePoSBlock:CandidatePoSBlock,
-    CandidatePoABlock:CandidatePoABlock,
     FinallyBlock:FinallyBlock 
 };

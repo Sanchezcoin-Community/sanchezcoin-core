@@ -1,2 +1,0 @@
-const { Chainparms } = require('./chainparms');
-
