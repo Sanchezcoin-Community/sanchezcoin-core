@@ -2,9 +2,18 @@ const { Mempool } = require('./mempool');
 
 
 class Blockchain {
-    constructor(genesis_block, target, hash_algo, coin, options) {
-        this.mempool = new Mempool()
+    constructor(genesis_block, coin, chainparms) {
+        // Es wird geprüft ob es sich um einen gültigen Genesisblock handelt
+        if(genesis_block.prv_block_hash !== '0000000000000000000000000000000000000000000000000000000000000000') {
+            console.log('INVLAID_GENESIS_BLOCK');
+            return;
+        }
+
+        // Speichert die Daten ab
         this.genesis_block = genesis_block;
+        this.chainparms = chainparms;
+        this.mempool = new Mempool();
+        this.coin = coin;
         this.blocks = [];
         this.db = null;
     };

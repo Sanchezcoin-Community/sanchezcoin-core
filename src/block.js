@@ -82,7 +82,7 @@ class CandidatePoWBlock {
 
 
 // Fertiger Block
-class FinallyBlock {
+class PoWBlock {
     constructor(prv_block_hash, transactions, target_bits, hash_algo, timestamp, nonce) {
         this.prv_block_hash = prv_block_hash;
         this.transactions = transactions;
@@ -184,7 +184,7 @@ module.exports = {
     mineGenesisPoWBlock:mineGenesisPoWBlock,
     CandidatePoWBlock:CandidatePoWBlock,
     targetToBits:targetToBits,
-    FinallyBlock:FinallyBlock 
+    PoWBlock:PoWBlock 
 };
 
 
