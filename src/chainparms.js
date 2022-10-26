@@ -1,7 +1,7 @@
+const { CandidatePoWBlock, FinallyBlock } = require('./block');
 const { CoinbaseInput, UnspentOutput } = require('./utxos')
 const { CoinbaseTransaction } = require('./transaction');
-const { ProofOfWorkBlockchain } = require('./chain');
-const { CandidatePoWBlock } = require('./block');
+const { Blockchain } = require('./chain');
 const { sha256dBTC } = require('./hash_algo');
 const { Coin } = require('./coin');
 
@@ -20,8 +20,11 @@ function generateGenesisMainnetBlock(bits, timestamp, nonce, hash_algo, reciver,
     // Der Block wird gebaut
     let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], bits, hash_algo, timestamp, nonce);
 
+    // Das Finale Blockobjekt wird erstellt
+    let final_block = new FinallyBlock(new_block.prv_block_hash, [genesis_coinbase_tx], bits, hash_algo, timestamp, nonce);
+
     // Der neue Block wird zurückgegeben
-    return new_block;
+    return final_block;
 };
 
 // Erstellt die Rickchain # Hauptnetzwerk
@@ -44,13 +47,14 @@ function RickcoinMainnet(callback) {
     };
 
     // Das Chain Objekt wird erstellt
-    let chain_object = new ProofOfWorkBlockchain(genesis_block, target, hash_algo, rickcoin, chain_config_inner, "");
+    let chain_object = new Blockchain(genesis_block, target, hash_algo, rickcoin, chain_config_inner);
 
-    // Es wird versucht die Lokale Blockchain zu laden
-    (async() => chain_object.loadBlockchainDatabase((error, result) => {
-
-    }))();
+    // Das Chain Objekt wird zurückgegeben
+    callback(null, chain_object);
 }
 
 
-RickcoinMainnet();
+// Exportiert die einzelenen Funktionen
+module.exports = {
+    mainnet:RickcoinMainnet
+}

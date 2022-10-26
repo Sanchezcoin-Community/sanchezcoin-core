@@ -64,12 +64,6 @@ class CandidatePoWBlock {
         return `${blockTemplate_header}${nonce}`;
     };
 
-    // Gibt den Vollständigen Hash des Blocks aus
-    blockHash() {
-        const final = crypto.createHash('sha256').update(this.getCandidateBlockHash()).digest('hex');
-        return `0x${final}`;
-    };
-
     // Gibt den Aktuellen Blockckhash aus
     getCandidateBlockHash() {
         return this.hash_algo.compute(Buffer.from(this.blockHeader(), 'hex'))
@@ -79,13 +73,55 @@ class CandidatePoWBlock {
 
 // Fertiger Block
 class FinallyBlock {
-    constructor(prv_block_hash, block_hight, transactions_ids, consensus_proof) {
-        this.consensus_proof = consensus_proof;
+    constructor(prv_block_hash, transactions, target_bits, hash_algo, timestamp, nonce) {
         this.prv_block_hash = prv_block_hash;
-        this.transactions_ids = transactions_ids;
-        this.block_hight = block_hight;
+        this.transactions = transactions;
+        this.target_bits = target_bits;
+        this.timestamp = timestamp;
+        this.hash_algo = hash_algo;
+        this.nonce = nonce;
+    };
+
+    // Berechnet den MerkleRoot des Blocks
+    computeMerkleRoot() {
+        // Die Transaktions IDS werden Reverst
+        const reversed = [];
+        for(const otem of this.transactions) reversed.push(otem.computeHash());
+        const a = computeMerkleRoot(this.hash_algo, reversed.reverse());
+        return a;
+    };
+
+    // Gibt den Vollständigen Blockheader aus
+    blockHeader() {
+        // Der neue Block wird erstellt
+        const block_version = "01000000";
+        const prev_block = Buffer.from(this.prv_block_hash, 'hex').reverse().toString('hex');
+        const timestamp = Buffer.from(this.timestamp.toString(16).padStart(8, 0), 'hex').reverse().toString('hex');
+        const merkle_root = Buffer.from(this.computeMerkleRoot(), 'hex').reverse().toString('hex');
+        const bits = Buffer.from(this.target_bits, 'hex').reverse().toString('hex');
+
+        // Block Template Header
+        const blockTemplate_header = `${block_version}${prev_block}${merkle_root}${timestamp}${bits}`;
+
+        // Wandelt die Nonce um
+        const nonce = Buffer.from(this.nonce.toString(16).padStart(8, 0), 'hex').reverse().toString('hex');
+
+        // Gibt den Vollständig String zurück
+        return `${blockTemplate_header}${nonce}`;
+    };
+
+    // Gibt den Hash des Arbeitsnachweises aus
+    workProofHash() {
+        return this.hash_algo.compute(Buffer.from(this.blockHeader(), 'hex'))
+    };
+
+    // Gibt den Vollständigen Hash des Blocks aus
+    blockHash() {
+        const final = crypto.createHash('sha256').update(this.workProofHash()).digest('hex');
+        return `0x${final}`;
     };
 };
+
 
 
 // Wird verwendet um einen Genesis Mining Block zu erstellen
