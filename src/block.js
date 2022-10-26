@@ -89,7 +89,7 @@ class FinallyBlock {
 
 
 // Wird verwendet um einen Genesis Mining Block zu erstellen
-function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo, callback) {
+function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     // Der Betrag für den Aktuellen Block wird abgerufen
     let current_reward = coin.current_reward;
 
@@ -113,14 +113,16 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo, callback)
         // Die Nonce des Blocks wird angepasst
         new_block.setNonce(found_nonce);
 
-        console.log(new_block.getCandidateBlockHash())
+        // Die Gefundenen Daten werden angezeigt
+        console.log('Block proof:',new_block.getCandidateBlockHash());
+        console.log('Block nonce:', found_nonce);
     });
 };
 
 
 // Der Genesisblock wird erzeugt
-const test_coin = new Coin(8, BigInt('17711999998782300'), 110700, 800);
-const test = mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000ffff0000000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
+//const test_coin = new Coin(8, BigInt('17711999998782300'), 110700, 800);
+//const test = mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000ffff0000000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
 //console.log(test.getCandidateBlockHash())
 
 
