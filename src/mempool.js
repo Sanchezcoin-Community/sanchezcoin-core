@@ -13,3 +13,7 @@ class Mempool {
 
     };
 }
+
+
+
+module.exports = { Mempool:Mempool };

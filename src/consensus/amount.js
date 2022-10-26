@@ -1,0 +1,1 @@
+const { Coin } = require('../chain');

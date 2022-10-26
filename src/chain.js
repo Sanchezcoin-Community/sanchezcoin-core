@@ -1,5 +1,9 @@
+const { Mempool } = require('./mempool');
+
+
 class Blockchain {
     constructor(genesis_block, target, hash_algo, coin, options) {
+        this.mempool = new Mempool()
         this.genesis_block = genesis_block;
         this.blocks = [];
         this.db = null;
@@ -10,13 +14,20 @@ class Blockchain {
 
     };
 
+    // Gibt einen Spiziellen Block aus
+    getBlock(hight) {
+        if(hight === 0) { return this.genesis_block; }
+    };
+
     // Gibt den Hash des Ersten Blocks aus
     hashOfFirstBlock() {
-        // Es wird geprüft ob die Blockchain Benutzbar ist
-        if(this.useable() !== true) return "0000000000000000000000000000000000000000000000000000000000000000";
-
         // Der Hash des Genesisblock wird zurückgegeben
         return this.genesis_block.blockHash();
+    };
+
+    // Gibt die Mining Vorlage für den Aktuellen Block aus
+    getBlockTemplate(reciverPublicKeyHash) {
+
     };
 
     // Wird verwendet um die Blockchain Datenbank zu laden

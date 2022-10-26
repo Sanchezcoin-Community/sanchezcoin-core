@@ -39,7 +39,7 @@ function RickcoinMainnet(callback) {
     let target = "00000ffff0000000000000000000000000000000000000000000000000000000";
 
     // Der Genesis Block wird gebaut
-    let genesis_block = generateGenesisMainnetBlock("1b04864c", 1666748793, 1431881882, hash_algo, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", rickcoin);
+    let genesis_block = generateGenesisMainnetBlock("3bffff", 1666748793, 716813601, hash_algo, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", rickcoin);
 
     // Gibt die Statischen Einstellungen, Forks, etc an
     const chain_config_inner = {
@@ -51,7 +51,7 @@ function RickcoinMainnet(callback) {
 
     // Das Chain Objekt wird zurückgegeben
     callback(null, chain_object);
-}
+};
 
 
 // Exportiert die einzelenen Funktionen

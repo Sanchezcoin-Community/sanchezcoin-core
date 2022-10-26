@@ -12,6 +12,7 @@ mainnet((error, blockchain) => {
 
     // Die Blockchain wird geladen
     console.log('Loading blk0.dat');
+    console.log(blockchain.getBlock(0).workProofHash(), blockchain.getBlock(0).targetBits(), blockchain.getBlock(0).blockHeader())
     blockchain.loadBlockchainDatabase("", (state) => {
 
     });

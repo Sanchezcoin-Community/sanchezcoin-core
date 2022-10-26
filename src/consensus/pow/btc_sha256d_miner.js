@@ -20,11 +20,15 @@ module.exports = (data, callback) => {
             const reval_hash = sha256dBTC.compute(Buffer.from(merged_data, 'hex'));
 
             // Es wird geprüft ob es ein gültiger Wer ist
-            if(bigInt(reval_hash, 16) < bigInt(data.target, 16)) { found = true; callback(null, cnonce); return; }
+            if(bigInt(reval_hash, 16) < bigInt(data.target, 16)) {
+                found = true; callback(null, cnonce); return; 
+            }
 
             // Die Nonce wird hochgezählt
             cnonce += 1;
         }
     }
-    catch(e) { callback(e); }
+    catch(e) {
+        console.log(e);
+    }
 }

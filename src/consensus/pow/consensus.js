@@ -5,7 +5,7 @@ const workerFarm = require('worker-farm');
 // Proof of Work Consensus Object
 class ProofOfWorkConsensus {
     constructor(threads, miner_algo) {
-        this.workers = workerFarm(require.resolve('./miner'));
+        this.workers = workerFarm(require.resolve('./btc_sha256d_miner.js'));
         this.miner_algo = miner_algo;
         this.threads = threads;
     }
