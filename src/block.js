@@ -102,7 +102,7 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], "1b04864c", hash_algo, 1666748793);
 
     var pow = require('./consensus/pow/consensus');
-    const multi_thread_miner = new pow(1);
+    const multi_thread_miner = new pow(2);
     multi_thread_miner.startMine(target, new_block.blockTemplate(), (error, found_nonce) => {
 
     });

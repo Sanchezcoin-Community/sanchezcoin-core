@@ -21,7 +21,8 @@ class ProofOfWorkConsensus {
         for (let i = 0; i < this.threads; i++) {
             // Der Worker wird gestartet
             let pushData = { start:start, end:end, block:block, target:target, i:i };
-            this.workers(pushData, function (err, outp) {
+            this.workers(pushData, (err, outp) => {
+                workerFarm.end(this.workers);
                 console.log(err, outp);
             });
 
