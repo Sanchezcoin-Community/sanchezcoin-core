@@ -21,6 +21,8 @@ function RickcoinMainnet() {
     // Speichert die Start Schwiergkeit ab
     let target = "00000000ffff0000000000000000000000000000000000000000000000000000";
 
+    // Der Genesis Block wird gebaut
+
 
 }
 
