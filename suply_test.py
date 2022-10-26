@@ -18,6 +18,3 @@ mx = max_money()
 newer_method_string = "{:.8f}".format(mx / 100000000)
 print(newer_method_string, 'Mortys')
 print(mx)
-
-
-print(int('00000000ffff0000000000000000000000000000000000000000000000000000', 16))
