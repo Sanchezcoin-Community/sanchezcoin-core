@@ -2,7 +2,6 @@ const { CoinbaseInput, UnspentOutput } = require('./utxos')
 const { CoinbaseTransaction } = require('./transaction');
 const { computeMerkleRoot } = require('./merkle');
 const { sha256dBTC } = require('./hash_algo');
-const bigInt = require("big-integer");
 const { Coin } = require('./coin');
 const crypto = require('crypto');
 
@@ -10,13 +9,18 @@ const crypto = require('crypto');
 
 // Wird verwendet um einen neuen Proof of Work Block zu erstellen
 class CandidatePoWBlock {
-    constructor(prv_block_hash, transactions_ids, target_bits, hash_algo, timestamp) {
+    constructor(prv_block_hash, transactions_ids, target_bits, hash_algo, timestamp, nonce=0) {
         this.transactions_ids = transactions_ids;
         this.prv_block_hash = prv_block_hash;
         this.target_bits = target_bits;
         this.timestamp = timestamp;
         this.hash_algo = hash_algo;
-        this.nonce = 274148111;
+        this.nonce = nonce;
+    };
+
+    // Setzt die Aktuelle Nonce
+    setNonce(cnonce) {
+        this.nonce = cnonce;
     };
 
     // Dreht die Nonce um eins nach oben
@@ -97,23 +101,21 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     // Der Block wird gebaut
     let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], "1b04864c", hash_algo, 1666748793);
 
-    // Der Mining vorgang um den Block abzubauen wird gestartet
-    while(true) {
-        if(bigInt(new_block.getCandidateBlockHash(), 16) < bigInt(target, 16)) break
-        if(new_block.nonceAdd() === false) { console.log('BREAK_NO_BLOCK_FOUND'); break; }
-    }
+    var pow = require('./consensus/pow/consensus');
+    const multi_thread_miner = new pow(1);
+    multi_thread_miner.startMine(target, new_block.blockTemplate(), (error, found_nonce) => {
+
+    });
 
     // Der Fertige Block wird zurückgegeben
     return new_block;
 };
 
 
-
 // Der Genesisblock wird erzeugt
 const test_coin = new Coin(8, BigInt('17711999998782300'), 110700, 800);
 const test = mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000000ffff0000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
-console.log(test.getCandidateBlockHash())
-
+//console.log(test.getCandidateBlockHash())
 
 
 // Exportiert die Klassen
