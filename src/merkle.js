@@ -1,5 +1,3 @@
-const { sha256dBTC } = require("./hash_algo");
-
 // Erstellt einen Merkle Root
 const computeMerkleRoot = (hashAlgo, txids) => {
     // Speichert die Ergebnisse ab

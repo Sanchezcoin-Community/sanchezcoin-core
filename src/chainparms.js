@@ -45,6 +45,11 @@ function RickcoinMainnet(callback) {
 
     // Das Chain Objekt wird erstellt
     let chain_object = new ProofOfWorkBlockchain(genesis_block, target, hash_algo, rickcoin, chain_config_inner, "");
+
+    // Es wird versucht die Lokale Blockchain zu laden
+    (async() => chain_object.loadBlockchainDatabase((error, result) => {
+
+    }))();
 }
 
 
