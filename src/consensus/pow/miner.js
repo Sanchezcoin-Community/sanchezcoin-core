@@ -22,8 +22,7 @@ module.exports = (data, callback) => {
 
             // Es wird geprüft ob es ein gültiger Wer ist
             if(bigInt(reval_hash, 16) < bigInt(data.target, 16)) {
-                callback(null, 'FOUND');
-                console.log('FOUND');
+                callback(null, cnonce);
                 return;
             }
 

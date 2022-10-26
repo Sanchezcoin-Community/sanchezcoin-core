@@ -11,7 +11,7 @@ class ProofOfWorkConsensus {
     }
 
     // Startet den Mining vorgang
-    startMine(target, block, callback) {
+    startMine(target, block_header, callback) {
         // Die Ranges werden ermittelt
         let max_value = 2147483647 - 1;
         let totaled = Math.floor(max_value/ this.threads);
@@ -20,10 +20,12 @@ class ProofOfWorkConsensus {
         // Die Miner Threads werden gestartet
         for (let i = 0; i < this.threads; i++) {
             // Der Worker wird gestartet
-            let pushData = { start:start, end:end, block:block, target:target, i:i };
+            let pushData = { start:start, end:end, block_header:block_header, target:target, i:i };
             this.workers(pushData, (err, outp) => {
-                workerFarm.end(this.workers);
-                console.log(err, outp);
+                console.log(outp)
+                workerFarm.end(this.workers, () => {
+                    callback(null, nonce)
+                });
             });
 
             // Die Werte werden nach oben gezählt

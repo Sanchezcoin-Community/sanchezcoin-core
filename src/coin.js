@@ -4,7 +4,7 @@ const { SHA3 } = require('sha3');
 
 // Stellt einnen Coin dar
 class Coin {
-    constructor(decimal, max, halv_at_block, start_block_reward) {
+    constructor(decimal, max, halv_at_block, start_block_reward, genesis_suply=null) {
         this.current_reward = start_block_reward * (bigInt(1) * (bigInt(10)**bigInt(decimal)));
         this.halv_at_block = BigInt(`0x${halv_at_block}`);
         this.decimal = decimal;

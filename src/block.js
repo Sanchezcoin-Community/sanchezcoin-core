@@ -102,9 +102,9 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], "1b04864c", hash_algo, 1666748793);
 
     var pow = require('./consensus/pow/consensus');
-    const multi_thread_miner = new pow(2);
+    const multi_thread_miner = new pow(3);
     multi_thread_miner.startMine(target, new_block.blockTemplate(), (error, found_nonce) => {
-
+        console.log(found_nonce);
     });
 
     // Der Fertige Block wird zurückgegeben
@@ -114,7 +114,7 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
 
 // Der Genesisblock wird erzeugt
 const test_coin = new Coin(8, BigInt('17711999998782300'), 110700, 800);
-const test = mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000000ffff0000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
+const test = mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '000fffff00000000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
 //console.log(test.getCandidateBlockHash())
 
 
