@@ -7,13 +7,37 @@ const crypto = require('crypto');
 
 
 
+// Wandelt ein 32 Bit Integer in Bytes um
+const toBytesInt32 = (num) => {
+    const arr = new ArrayBuffer(4);
+    const view = new DataView(arr);
+    view.setUint32(0, num, false);
+    return Buffer.from(arr);
+}
+
+
 // Wird verwendet um die Difficulty (das Target) in eine kleine Bit reihenfolge umzuwandeln
 function targetToBits(target) {
-    const dhexed = target.replace(/^0+/, '');
-    const len_hex = dhexed.length.toString(16).padStart(1, 0)
-    const total = `${len_hex}${dhexed.toString('hex')}`.split('').reverse().join('');
-    const total2 = total.replace(/^0+/, '').split('').reverse().join('');
-    return `${total2}`;
+    // Die Anzahl der Nullen am Ende wird Ermittelt
+    let endZeros = 0;
+    for(const otem of Buffer.from(target, 'hex').reverse()) {
+        if(otem == 0) endZeros +=1; else break;
+    }
+
+    // Die 0 am Anfang werden Entfernt
+    let clear_target = target.replace(/^0+/, '').split('').reverse().join('').replace(/^0+/, '').split('').reverse().join('').padStart(6, 0);
+
+    // Das Target Bit wird vorbereitet
+    let byted_target = Buffer.from(clear_target, 'hex');
+
+    // Die Gesamtlänge des Targets wird ermittelt
+    let target_len = byted_target.length + endZeros;
+    let target_len_bytes = new Buffer.allocUnsafe(1);
+    target_len_bytes.writeUInt8(target_len, 0);
+
+    // Die Daten werden zurückgegeben
+    let temp = Buffer.from([...target_len_bytes, ...byted_target]).toString('hex');
+    return temp; 
 };
 
 
@@ -53,13 +77,18 @@ class CandidatePoWBlock {
     blockTemplate() {
         // Der neue Block wird erstellt
         const block_version = "01000000";
-        const prev_block = Buffer.from(this.prv_block_hash, 'hex').reverse().toString('hex');
-        const timestamp = Buffer.from(this.timestamp.toString(16).padStart(8, 0), 'hex').reverse().toString('hex');
-        const merkle_root = Buffer.from(this.computeMerkleRoot(), 'hex').reverse().toString('hex');
-        const bits = Buffer.from(this.target_bits, 'hex').reverse().toString('hex');
+
+        // Der Previous Block wird umgewandelt
+        let prev_block = Buffer.from(this.prv_block_hash, 'hex').reverse().toString('hex');
+
+        // Die Zeit wird umgewandelt
+        let timestamp = toBytesInt32(this.timestamp).reverse().toString('hex');
+
+        // Der Merkelroot wird vorbereitet
+        let merkle_root = Buffer.from(this.computeMerkleRoot(), 'hex').reverse().toString('hex');
 
         // Die Daten des Block Templates werden zurückgegeebn
-        return `${block_version}${prev_block}${merkle_root}${timestamp}${bits}`;
+        return `${block_version}${prev_block}${merkle_root}${timestamp}${this.target_bits}`;
     };
 
     // Gibt den Vollständigen Blockheader aus
@@ -76,7 +105,15 @@ class CandidatePoWBlock {
 
     // Gibt den Aktuellen Blockckhash aus
     getCandidateBlockHash() {
-        return this.hash_algo.compute(Buffer.from(this.blockHeader(), 'hex'))
+        let hash = this.hash_algo.compute(Buffer.from(this.blockHeader(), 'hex'));
+        return hash;
+    };
+
+    // Gibt den Vollständigen Hash des Blocks aus
+    blockHash(withZeroX=true) {
+        const final = crypto.createHash('sha256').update(this.getCandidateBlockHash()).digest('hex');
+        if(withZeroX === true) return `0x${final}`;
+        else return `${final}`;
     };
 };
 
@@ -110,13 +147,18 @@ class PoWBlock {
     blockHeader() {
         // Der neue Block wird erstellt
         const block_version = "01000000";
-        const prev_block = Buffer.from(this.prv_block_hash, 'hex').reverse().toString('hex');
-        const timestamp = Buffer.from(this.timestamp.toString(16).padStart(8, 0), 'hex').reverse().toString('hex');
-        const merkle_root = Buffer.from(this.computeMerkleRoot(), 'hex').reverse().toString('hex');
-        const bits = Buffer.from(this.target_bits, 'hex').reverse().toString('hex');
+
+        // Der Previous Block wird umgewandelt
+        let prev_block = Buffer.from(this.prv_block_hash, 'hex').reverse().toString('hex');
+
+        // Die Zeit wird umgewandelt
+        let timestamp = toBytesInt32(this.timestamp).reverse().toString('hex');
+
+        // Der Merkelroot wird vorbereitet
+        let merkle_root = Buffer.from(this.computeMerkleRoot(), 'hex').reverse().toString('hex');
 
         // Block Template Header
-        const blockTemplate_header = `${block_version}${prev_block}${merkle_root}${timestamp}${bits}`;
+        let blockTemplate_header = `${block_version}${prev_block}${merkle_root}${timestamp}${this.target_bits}`;
 
         // Wandelt die Nonce um
         const nonce = Buffer.from(this.nonce.toString(16).padStart(8, 0), 'hex').reverse().toString('hex');
@@ -131,9 +173,10 @@ class PoWBlock {
     };
 
     // Gibt den Vollständigen Hash des Blocks aus
-    blockHash() {
+    blockHash(withZeroX=true) {
         const final = crypto.createHash('sha256').update(this.workProofHash()).digest('hex');
-        return `0x${final}`;
+        if(withZeroX === true) return `0x${final}`;
+        else return `${final}`;
     };
 };
 
@@ -152,7 +195,7 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     const target_bits = targetToBits(target);
 
     // Der Block wird gebaut
-    let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], target_bits, hash_algo, 1666748793);
+    let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], target_bits, hash_algo, Date.now());
 
     var pow = require('./consensus/pow/consensus');
     const multi_thread_miner = new pow(3);
@@ -167,17 +210,19 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
         new_block.setNonce(found_nonce);
 
         // Die Gefundenen Daten werden angezeigt
-        console.log('Block proof:',new_block.getCandidateBlockHash());
-        console.log('Block nonce:', found_nonce);
-        console.log('Block target bits:', new_block.target_bits);
+        console.log('Block timestamp        :', new_block.timestamp);
+        console.log('Block proof            :', new_block.getCandidateBlockHash());
+        console.log('Block nonce            :', found_nonce);
+        console.log('Block target bits      :', new_block.target_bits);
+        console.log('Block tempalte         :', new_block.blockTemplate());
+        console.log('Block header           :', new_block.blockHeader());
     });
 };
 
 
 // Der Genesisblock wird erzeugt
-//const test_coin = new Coin(8, BigInt('17711999998782300'), 110700, 800);
-//const test = mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000ffff0000000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
-
+const test_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
+//mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000ffff0000000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
 
 // Exportiert die Klassen
 module.exports = {
@@ -186,9 +231,3 @@ module.exports = {
     targetToBits:targetToBits,
     PoWBlock:PoWBlock 
 };
-
-
-const atra = targetToBits("00000000000000000696f4000000000000000000000000000000000000000000");
-console.log(`0x${atra}`)
-console.log('0x180696f4')
-console.log('0x3bffff')

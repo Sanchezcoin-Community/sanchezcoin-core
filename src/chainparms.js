@@ -41,13 +41,9 @@ function RickcoinMainnet(callback) {
     let transaction_header = "";
     let block_header = "";
 
-    // Speichert die Parameter für Adressen ab
-    let ed25519_hash_pkey = "rckha";
-    let ed25519_pkey = "rckpa";
-
-    // Gibt die Statischen Einstellungen, Forks, etc an
+    // Gibt die Statischen Parameter, Forks, etc an
     const chainparms = {
-        // Speichert allgemeine Einstellungen ab
+        // Speichert allgemeine Parameter ab
         "$":{
             target:start_pow_target,
             diff_adjust:diff_adjust,
@@ -58,11 +54,17 @@ function RickcoinMainnet(callback) {
             tx_header:transaction_header,
             halvening_period:halvening_period,
             candidate_block_type:CandidatePoWBlock,
+            mt_miner:require('./consensus/pow/consensus'),
         },
     };
 
     // Der Genesis Block wird gebaut
-    let genesis_block = generateGenesisMainnetBlock("3bffff", 1666748793, 716813601, hash_algo, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", rickcoin);
+    let genesis_block = generateGenesisMainnetBlock("1e00ffff", 1666840060139, 716128880, hash_algo, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", rickcoin);
+
+    // Es wird geprüft ob es sich den Zulässigen Block handelt
+    if(genesis_block.blockHash() !== '0x61d8f67f6d561df970d11d00e8380717302a3256f02e3bde76ff8ca7de6cf43a') {
+        console.log('INVALID_GENESIS_BLOCK');
+    }
 
     // Das Chain Objekt wird start_target
     let chain_object = new Blockchain(genesis_block, rickcoin, chainparms);
