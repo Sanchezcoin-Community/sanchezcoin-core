@@ -1,15 +1,13 @@
 const { Worker } = require('worker_threads');
-const workerFarm = require('worker-farm');
-
 
 
 // Proof of Work Consensus Object
 class ProofOfWorkConsensus {
     constructor(threads, miner_algo) {
-        this.workers = workerFarm(require.resolve('./btc_sha256d_miner.js'));
         this.miner_algo = miner_algo;
         this.running_workers = [];
         this.threads = threads;
+        this.has_proc = false;
     }
 
     // Signalisiert allen Workern dass sie die Arbeit einstellen können
@@ -27,9 +25,9 @@ class ProofOfWorkConsensus {
         // Die Miner Threads werden gestartet
         for (let i = 0; i < this.threads; i++) {
             // Der Worker wird gestartet
-            let pushData = { start:start, end:end, block_header:block_header, target:target, i:i};
+            let pushData = { start:start, end:end, i:i};
 
-            const worker = new Worker('./src/consensus/pow/test_miner.js', { workerData:pushData });
+            const worker = new Worker('./src/consensus/pow/btc_sha256d_miner.js', { workerData:pushData });
             worker.on('message', (resolve) => {
                 if(typeof resolve === 'string') {
                     if(resolve === 'STARTED') {
@@ -45,8 +43,6 @@ class ProofOfWorkConsensus {
                             // Den Arbeitern wird Signalisiert dass sie die Arbeit einstellen können
                             this.clearCurrentProcess();
                             found = true;
-
-                            console.log(resolve)
                         }
                     }
                 }
@@ -57,6 +53,10 @@ class ProofOfWorkConsensus {
 
             // Der Worker wird Registriert
             this.running_workers.push(worker);
+
+            if(this.has_proc === false) {
+                this.has_proc = true;
+            }
 
             // Die Werte werden nach oben gezählt
             start += totaled;

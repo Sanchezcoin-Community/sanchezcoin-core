@@ -2,6 +2,7 @@ const { CoinbaseInput, UnspentOutput } = require('./utxos')
 const { CoinbaseTransaction } = require('./transaction');
 const { targetToBits, PoWBlock } = require('./block');
 const { Mempool } = require('./mempool');
+const bigInt = require("big-integer");
 
 
 class Blockchain {
@@ -35,7 +36,7 @@ class Blockchain {
 
     // Fügt der Kette einen neuen Block hinzu
     addNewBlock(...block) {
-
+        console.log(block)
     };
 
     // Gibt einen Spiziellen Block aus
@@ -97,11 +98,25 @@ class Blockchain {
             // Die Nonce des Blocks wird angepasst
             current_template_block.setNonce(found_nonce);
 
+            // Es wird geprüft ob der Block die Aktuelle Diff erfüllt
+            if(bigInt(current_template_block.getCandidateBlockHash(), 16) > bigInt(this.current_target, 16)) {
+                console.log('INVALID_BLOCK_NOT_ACCEPTED');
+                return; 
+            }
+
             // Die Gefundenen Daten werden angezeigt
             console.log(current_template_block.blockHash(), `0x${current_template_block.target_bits}`, current_template_block.blockHeader());
 
             // Das Finale Blockobjekt wird erstellt
-            let final_block = new PoWBlock(current_template_block.prv_block_hash, c_template.txns, c_template.target_bits, c_template.hash_algo, c_template.timestamp, found_nonce);
+            let final_block = new PoWBlock(current_template_block.prv_block_hash, c_template.txns, current_template_block.target_bits, current_template_block.hash_algo, current_template_block.timestamp, found_nonce);
+
+            // Es wird geprüft ob es sich um einen gültigen Block handelt
+            if(final_block.blockHash() !== current_template_block.blockHash()) {
+                console.log('INVALID_BLOCK_WAS_DROPPED');
+            }
+
+            // Der Block wird der Kette Hinzugefügt
+            this.addNewBlock(final_block);
         });
     };
 

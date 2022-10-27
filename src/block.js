@@ -224,6 +224,7 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
 const test_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
 //mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000ffff0000000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
 
+
 // Exportiert die Klassen
 module.exports = {
     mineGenesisPoWBlock:mineGenesisPoWBlock,
