@@ -38,20 +38,19 @@ class Blockchain {
     };
 
     // Fügt der Kette neue Blöcke hinzu
-    addBlocks(...block) {
-        (async() => {
-            // Es wird geprüft ob die Nonce des Blocks korrekt ist, wenn ja wird der Block abgespeichert
-            for await(const block_obj of block){
-                // Es wird geprüft ob die Schwierigkeit erfüllt wurde
-                if((bigInt(block_obj.workProofHash(), 16) < bigInt(this.current_target, 16)) !== true) {
-                    console.log('INVALID_BLOCK_NOT_ACCEPTED');
-                    continue; 
-                }
-
-                // Der Block wird der Datenabnk hinzugefügt
-                await this.blockchain_db.addBlock(block_obj);
+    async addBlocks(...block) {
+        // Es wird geprüft ob die Nonce des Blocks korrekt ist, wenn ja wird der Block abgespeichert
+        for await(const block_obj of block){
+            // Es wird geprüft ob die Schwierigkeit erfüllt wurde
+            if((bigInt(block_obj.workProofHash(), 16) < bigInt(this.current_target, 16)) !== true) {
+                console.log('INVALID_BLOCK_NOT_ACCEPTED');
+                continue; 
             }
-        })();
+
+            // Der Block wird der Datenabnk hinzugefügt
+            this.blocks.push(block_obj);
+            await this.blockchain_db.addBlock(block_obj);
+        }
     };
 
     // Gibt einen Spiziellen Block aus
@@ -60,10 +59,12 @@ class Blockchain {
     };
 
     // Gibt den Letzten Block aus
-    getLastBlock() {
+    getLastBlock(callback) {
         // Es wird geprüft ob der in der Aktuellen Blockliste ein Block vorhanden ist
-        if(this.blocks.length > 0) return this.blocks.at(-1);
-        else return this.genesis_block;
+        let resolved = null;
+        if(this.blocks.length === 0) resolved = this.genesis_block;
+        else resolved = this.blocks.at(-1);
+        return resolved;
     };
 
     // Gibt den Hash des Ersten Blocks aus
@@ -141,21 +142,21 @@ class Blockchain {
                 current_round += 1;
 
                 // Der Block wird der Kette Hinzugefügt
-                this.addBlocks(final_block);
-
-                // Der nächste Block wird abgeabut
-                if(total !== null) {
-                    if(total != current_round) {
-                        ___mine();
+                this.addBlocks(final_block).then(() => {
+                    // Der nächste Block wird abgeabut
+                    if(total !== null) {
+                        if(total != current_round) {
+                            ___mine();
+                        }
+                        else {
+                            if(callback !== null) callback(null, final_block);
+                        }
                     }
                     else {
+                        ___mine();
                         if(callback !== null) callback(null, final_block);
                     }
-                }
-                else {
-                    ___mine();
-                    if(callback !== null) callback(null, final_block);
-                }
+                });
             });
         };
 

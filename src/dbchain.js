@@ -4,7 +4,6 @@ const fs = require('fs');
 
 
 
-
 class BlockcahinDatabase {
     constructor(genesis_block) {
         // Speichert den Genesisblock ab
@@ -13,6 +12,11 @@ class BlockcahinDatabase {
         // Speichert die Aktuelle Datenbank ab
         this.block_db = null;
         this.tx_db = null;
+    };
+
+    // Gibt an ob das UTXO bereits ausgegeben wurde
+    async getUnspentUtxo(txid, utxo_hight) {
+
     };
 
     // Lädt die Datenbank
@@ -87,7 +91,7 @@ class BlockcahinDatabase {
                     // Es wird geprüft ob der Eintrag vorhanden ist
                     if(tables.map((value) => value.name).includes('blocks') !== true) {
                         // Die Tabelle wird erstellt
-                        block_db.run('CREATE TABLE "blocks" ("block_id" INTEGER UNIQUE, "prev_hash"	BLOB, "type" TEXT, "block_hash" BLOB, "header" BLOB, "transactions" BLOB, PRIMARY KEY("block_id" AUTOINCREMENT));', (error) => {
+                        block_db.run('CREATE TABLE "blocks" ("block_id" INTEGER UNIQUE, "prev_hash"	BLOB, "type" TEXT, "block_hash" BLOB, "pre_header" BLOB, "transactions" BLOB, PRIMARY KEY("block_id" AUTOINCREMENT));', (error) => {
                             // Es wird geprüft ob der Block korrekt ist
                             if(error) {
                                 console.log(error);
@@ -174,7 +178,20 @@ class BlockcahinDatabase {
         // Der Vorgang wird Asyncrone ausgeführt
         (async() => {
             for await(const otem of blockData) {
-                db.run("INSERT INTO Foo (name) VALUES ('bar')");
+                // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
+                let total_inner = [Buffer.from(otem.prv_block_hash, 'hex'), 'sha256d_pow', Buffer.from(otem.blockHash(false), 'hex'), otem.preBlockHeader(), otem.preTransactions()];
+
+                // Es wird geprüft ob der Previous Block in der Datenbank vorhanden ist
+
+                // Die Transaktionen des Blocks werden geprüft, es wird geprüft ob die UTXO's beretis ausgegeben wurden, außerdem wird geprüft
+
+                // Die Daten werden in die Datenbank geschrieben
+                await new Promise((resolveOuter) => {
+                    this.block_db.run('INSERT INTO blocks(prev_hash, type, block_hash, pre_header, transactions) VALUES(?, ?, ?, ?, ?)', total_inner, (err) => {
+                        if(err) { return console.log(err.message); }
+                        resolveOuter();
+                    });
+                });
             };
         })();
     };

@@ -4,6 +4,7 @@ const { computeMerkleRoot } = require('./merkle');
 const { sha256dBTC } = require('./hash_algo');
 const { Coin } = require('./coin');
 const crypto = require('crypto');
+const cbor = require('cbor');
 
 
 
@@ -182,6 +183,25 @@ class PoWBlock {
         const final = crypto.createHash('sha256').update(this.workProofHash()).digest('hex');
         if(withZeroX === true) return `0x${final}`;
         else return `${final}`;
+    };
+
+    // Gibt die Transaktionen für die Datenbank aus
+    preTransactions() {
+        return cbor.encode([]);
+    };
+
+    // Gibt die Header Daten für die Datenbank aus
+    preBlockHeader() {
+        // Das Objekt wird gebaut
+        let build_obj = {
+            0:this.timestamp,
+            1:this.target_bits,
+            2:this.nonce,
+            3:Buffer.from(this.computeMerkleRoot(), 'hex')
+        };
+
+        // Gibt das erstellt Objekt zurück
+        return cbor.encode(build_obj);
     };
 };
 

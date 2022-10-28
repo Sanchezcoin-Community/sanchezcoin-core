@@ -10,6 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "big-integer": "^1.6.51",
+    "cbor": "^8.1.0",
     "level": "^8.0.0",
     "libsodium-wrappers": "^0.7.10",
     "sha3": "^2.1.4",
