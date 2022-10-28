@@ -8,11 +8,16 @@ class ProofOfWorkConsensus {
         this.running_workers = [];
         this.threads = threads;
         this.has_proc = false;
-    }
+    };
 
     // Signalisiert allen Workern dass sie die Arbeit einstellen können
     clearCurrentProcess() {
         for(const oft of this.running_workers) { oft.postMessage('CLEAR'); }
+    };
+
+    // Signalisiert den Miner Threads dass sie mit einer neuen Arbeit beginnen sollen
+    signalNewBlock(target, block_header) {
+        for(const worker of this.running_workers) { worker.postMessage({ cmd:'start', block_header:block_header, target:target }); }
     };
 
     // Startet den Mining vorgang

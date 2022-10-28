@@ -13,7 +13,7 @@ const toBytesInt32 = (num) => {
     const view = new DataView(arr);
     view.setUint32(0, num, false);
     return Buffer.from(arr);
-}
+};
 
 
 // Wird verwendet um die Difficulty (das Target) in eine kleine Bit reihenfolge umzuwandeln
@@ -170,6 +170,11 @@ class PoWBlock {
     // Gibt den Hash des Arbeitsnachweises aus
     workProofHash() {
         return this.hash_algo.compute(Buffer.from(this.blockHeader(), 'hex'))
+    };
+
+    // Gibt die Anzahl neu Geschaffenen Coins aus
+    coinbaseCreatedCoins() {
+        return this.transactions[0];
     };
 
     // Gibt den Vollständigen Hash des Blocks aus
