@@ -186,17 +186,22 @@ class PoWBlock {
     };
 
     // Gibt die Transaktionen für die Datenbank aus
-    preTransactions() {
-        return cbor.encode([]);
+    txDbElement() {
+        // Die Transaktionen werden abgearbeitet
+        let prepared_txns = [];
+        for(const otem of this.transactions) prepared_txns.push(otem.toDbElement())
+
+        // Die Daten werden zurückgegeben
+        return cbor.encode(prepared_txns);
     };
 
     // Gibt die Header Daten für die Datenbank aus
-    preBlockHeader() {
+    txDbHeaderElement() {
         // Das Objekt wird gebaut
         let build_obj = {
-            0:this.timestamp,
-            1:this.target_bits,
-            2:this.nonce,
+            0:Buffer.from(this.timestamp.toString(16), 'hex'),
+            1:Buffer.from(this.target_bits, 'hex'),
+            2:Buffer.from(this.nonce.toString(16), 'hex'),
             3:Buffer.from(this.computeMerkleRoot(), 'hex')
         };
 

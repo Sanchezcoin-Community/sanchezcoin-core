@@ -19,7 +19,7 @@ class Blockchain {
         this.main_parms = chainparms['$'];
 
         // Speichert die Parameter ab welche zum Betrieb des Peers benötigt werden
-        this.blockchain_db = new BlockcahinDatabase();
+        this.blockchain_db = new BlockcahinDatabase(genesis_block);
         this.genesis_block = genesis_block;
         this.chainparms = chainparms;
         this.mempool = new Mempool();
