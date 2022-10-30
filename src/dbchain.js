@@ -99,7 +99,7 @@ class BlockcahinDatabase {
                 // Es wird geprüft ob es sich um eien PoW Block handelt
                 if(fBlock.type === 'sha256d_pow') {
                     // Es wird versucht den Block zu Rekonstruieren
-
+                    const reconstructed_by_block_hash = PoWBlock.loadFromDbElements();
                 }
                 else {
                     console.log('UNKOWN_BLOCK_CONSENSUS_POW');
