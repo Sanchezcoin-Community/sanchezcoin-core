@@ -121,6 +121,10 @@ class CandidatePoWBlock {
 
 // Fertiger Block
 class PoWBlock {
+    static loadFromDbElements(prevBlockHash, hash_algo, txElements, blockElements) {
+
+    };
+
     constructor(prv_block_hash, transactions, target_bits, hash_algo, timestamp, nonce) {
         this.prv_block_hash = prv_block_hash;
         this.transactions = transactions;

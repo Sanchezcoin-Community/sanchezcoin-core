@@ -3,3 +3,5 @@
 suply_test.py
 node_modules/
 database/
+src/swiftyh/target/
+src/swiftyh.js

@@ -1,7 +1,9 @@
 const sqlite3 = require('sqlite3').verbose();
+const { PoWBlock } = require('./block');
 const crypto = require('crypto');
 const cbor = require('cbor');
 const fs = require('fs');
+
 
 
 
@@ -73,8 +75,38 @@ class BlockcahinDatabase {
     };
 
     // Wird verwendet um den Aktuellen Block aus der Datenbank abzurufen
-    async loadCurrentBlockFromDbByChainstate() {
+    async loadBlockFromDatabaseByBlockHash(blockHash) {
+        // Es wird geprüft ob es sich bei dem Block um den Aktuellen Block handelt
+        if(blockHash === this.current_block.blockHash(false)) {
+            return true;
+        }
+        else {
+            // Es wird eine Anfrage an die Datenbank gestellt um den Block abzurufen
+            this.block_db.all(`SELECT prev_hash, type, block_hash, pre_header, transactions from blocks WHERE block_hash =  '0x${blockHash}' LIMIT 1`, (err, row) => {
+                // Es wird geprüft ob genau 1 Eintrag zugegeben wurde
+                if(row.length !== 1) {
+                    console.log('Invalid system');
+                    return;
+                }
 
+                // Es wird geprüft ob der Blockhash mit dem gesuchten Hash übereinstimmt
+                const fBlock = row[0];
+                if(fBlock.block_hash !== `0x${blockHash}`) {
+                    console.log('Invalid block response from database');
+                    return;
+                }
+
+                // Es wird geprüft ob es sich um eien PoW Block handelt
+                if(fBlock.type === 'sha256d_pow') {
+                    // Es wird versucht den Block zu Rekonstruieren
+
+                }
+                else {
+                    console.log('UNKOWN_BLOCK_CONSENSUS_POW');
+                    return;
+                }
+            });
+        }
     };
 
     // Lädt die Datenbank
@@ -190,7 +222,6 @@ class BlockcahinDatabase {
         let nblock_result = await new Promise((resolveOuter) => {
             // Wird ausgeführt wenn der Vorgang final fertigestellt wurde
             const ___totalf_finally = (newBlockCh) => {
-                console.log('Blockchain loaded');
                 this.block_db = block_db;
                 this.tx_db = tx_db;
                 resolveOuter(newBlockCh);
@@ -333,26 +364,26 @@ class BlockcahinDatabase {
             return;
         }
 
-        // Es wird geprüft ob eine neue Blockchain erstellt wurde
+        // Es wird geprüft ob eine neue Blockchain erstellt wurde, wenn nicht wird der Aktuelle Block geladen
         if(nblock_result === false) {
             // Der Aktuelle Block wird aus der Datenbank abgerufen
-            if((await this.loadCurrentBlockFromDbByChainstate()) !== true) {
+            if((await this.loadBlockFromDatabaseByBlockHash(chain_state.current_block.toString('hex'))) !== true) {
                 // Es ist ein Fehler aufgetreten
                 console.log('ERROR');
                 return;
             }
-
-            console.log('LOAD_BLOCK_FROM_DB')
         }
 
         // Gibt die Daten zurück
-        return;
+        console.log('Blockchain data loaded....')
+        return true;
     };
 
     // Wird verwendet um einen neuen Block hinzuzufügen
     async addBlock(...blockData) {
         // Der Vorgang wird Asyncrone ausgeführt
         (async() => {
+            // Die Blockdaten werden verabeitet
             for await(const otem of blockData) {
                 // Es wird geprüft ob es sich um einen bekannten Block handelt, wenn ja wird dieser Übersprungen
                 let is_not_knwon_block_db = await this.isCorrectBlockHash(otem.blockHash(false));
@@ -363,7 +394,7 @@ class BlockcahinDatabase {
                 }
 
                 // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
-                let total_inner = [Buffer.from(otem.prv_block_hash, 'hex'), 'sha256d_pow', Buffer.from(otem.blockHash(false), 'hex'), otem.txDbHeaderElement(), otem.txDbElement()];
+                let total_inner = [Buffer.from(otem.prv_block_hash, 'hex'), 'sha256d_pow', otem.blockHash(true), otem.txDbHeaderElement(), otem.txDbElement()];
 
                 // Es wird geprüft ob der Previous Block in der Datenbank vorhanden ist
                 let is_knwon_block_db = await this.isCorrectBlockHash(otem.prv_block_hash);
@@ -380,7 +411,13 @@ class BlockcahinDatabase {
                         resolveOuter();
                     });
                 });
+
+                // Der Aktuelle Block wird geupdated
+                this.current_block = otem;
             };
+
+            // Die Chainstate wird geupdated
+            await this.updateChainState();
         })();
     };
 }
