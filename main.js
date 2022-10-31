@@ -19,6 +19,6 @@ mainnet((error, blockchain) => {
         console.log(reconstrived_block.blockHash(), reconstrived_block.targetBits(), reconstrived_block.blockHeader())
 
         // Das Mining wird gestartet
-        blockchain.startMiner('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 4, 5, (error) => { });
+        blockchain.startMiner('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 2, 10, (error) => { });
     });
 });

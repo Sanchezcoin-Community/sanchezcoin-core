@@ -3,7 +3,8 @@ const { SHA3 } = require('sha3');
 
 
 
-// Wird für eine Vollständig neue Transaktion verwendet
+// Stellt eine Coinbase Transaktion dar
+// diese Transaktion wird verwendet um die Gebühren sowie den Reward an den Block ersteller zu übergeben
 class CoinbaseTransaction {
     constructor(blockHight, inputs, outputs) {
         this.blockHight = blockHight;

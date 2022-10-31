@@ -6,7 +6,8 @@ const fs = require('fs');
 
 
 
-
+// Stellt die Blockchain Datenabnk dar
+// dieses Objekt ist die eigentliche Blockchain, alle Blöcke, Transaktionen sowie Daten im Mempool werden von diesem Objekt verwaltet
 class BlockcahinDatabase {
     constructor(genesis_block, main_parms) {
         // Speichert die Main Parms ab
@@ -138,9 +139,14 @@ class BlockcahinDatabase {
 
     // Wird verwendet um zu überprüfen ob der Block bereits hinzugefügt wurde
     async #isAlwaysInDatabase(blockHash) {
-        try{ await this.#loadBlockFromDatabase(otem.prv_block_hash); }
+        try{ await this.#loadBlockFromDatabase(blockHash); }
         catch(e) { return false; }
         return true;
+    };
+
+    // Gibt alle Blöcke aus, für die es mehrere Nachfolger gibt
+    async getPreviousOrphanBlocks() {
+        return [];
     };
 
     // Wird verwendet um den Aktuellen Block aus der Datenbank abzurufen
