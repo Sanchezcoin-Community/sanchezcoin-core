@@ -19,7 +19,7 @@ class Blockchain {
         this.main_parms = chainparms['$'];
 
         // Speichert die Parameter ab welche zum Betrieb des Peers benötigt werden
-        this.blockchain_db = new BlockcahinDatabase(genesis_block);
+        this.blockchain_db = new BlockcahinDatabase(genesis_block, chainparms['$']);
         this.genesis_block = genesis_block;
         this.chainparms = chainparms;
         this.mempool = new Mempool();
@@ -59,35 +59,30 @@ class Blockchain {
     };
 
     // Gibt den Letzten Block aus
-    getLastBlock(callback) {
-        // Es wird geprüft ob der in der Aktuellen Blockliste ein Block vorhanden ist
-        let resolved = null;
-        if(this.blocks.length === 0) resolved = this.genesis_block;
-        else resolved = this.blocks.at(-1);
-        return resolved;
+    getLastBlock() {
+        return this.blockchain_db.getCurrentBlock();
     };
 
     // Gibt den Hash des Ersten Blocks aus
     hashOfFirstBlock() {
-        // Der Hash des Genesisblock wird zurückgegeben
         return this.genesis_block.blockHash();
     };
 
     // Gibt die Mining Vorlage für den Aktuellen Block aus
     getBlockTemplate(reciverPublicKeyHash) {
+        // Der Letzte Block sowie die Blockhöhe werden abgerufen
+        let current_block_and_hight = this.blockchain_db.getCurrentBlockAndHight();
+
         // Die Genesis Transaktion für den Empfänger wird erstellt
         let new_input = new CoinbaseInput();
         let new_output = new UnspentOutput(reciverPublicKeyHash, this.coin.current_reward);
-        let genesis_coinbase_tx = new CoinbaseTransaction(0, [new_input], [new_output]);
+        let genesis_coinbase_tx = new CoinbaseTransaction(current_block_and_hight.hight + 1, [new_input], [new_output]);
 
         // Aus dem Target werden die Target Bits abgeleitet
         let target_bits = targetToBits(this.current_target);
 
-        // Der letzte Block wird abgerufen
-        let last_block = this.getLastBlock();
-
         // Es wird ein neuer Candidate Block erstellt
-        let new_candidate_block = new this.new_candidate_block(last_block.blockHash(false), [genesis_coinbase_tx.computeHash()], target_bits, this.main_parms.pow_hash_algo, Date.now());
+        let new_candidate_block = new this.new_candidate_block(current_block_and_hight.block.blockHash(false), [genesis_coinbase_tx.computeHash()], target_bits, this.main_parms.pow_hash_algo, Date.now());
 
         // Der Block wird zurückgegeben
         return { cblock:new_candidate_block, txns:[genesis_coinbase_tx] };
@@ -168,8 +163,16 @@ class Blockchain {
     loadBlockchainDatabase(file_path, callback) {
         // Die Datenbank wird geladen
         this.blockchain_db.loadDatabase().then((result) => {
+            // Der Block wird in die Liste der Aktuellen Blöcke aufgenommen
+            this.blocks.push(this.blockchain_db.current_block);
+
+            // Der Vorgang wurde erfolgreich durchgeführt
             callback(result);
-        });
+        })
+        .catch((c) => {
+            console.log(c);
+            callback(c);
+        })
     };
 
     // Gibt die Aktuelle Blocköhe an

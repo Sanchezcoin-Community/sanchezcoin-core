@@ -8,12 +8,18 @@ const fs = require('fs');
 
 
 class BlockcahinDatabase {
-    constructor(genesis_block) {
+    constructor(genesis_block, main_parms) {
+        // Speichert die Main Parms ab
+        this.main_parms = main_parms;
+
         // Speichert den Genesisblock ab
         this.genesis_block = genesis_block;
 
         // Speichert den Aktuellen Block ab
         this.current_block = genesis_block;
+
+        // Speichert die Aktuelle Block Höhe ab
+        this.current_block_hight = 0;
 
         // Speichert die letzten 4 Blöcke ab
         this.last_item_blocks = [];
@@ -26,12 +32,6 @@ class BlockcahinDatabase {
     // Gibt an ob das UTXO bereits ausgegeben wurde
     async getUnspentUtxo(txid, utxo_hight) {
 
-    };
-
-    // Gibt an, ob der Previous Hash in der Datenbank bekannt ist
-    async isCorrectBlockHash(block_id) {
-        // Es wird geprüft ob es sich bei dem Hash um den Genesisblock handelt
-        return true;
     };
 
     // wird verwendet um die Chainstate auf den Aktuellen Stnad zu updaten
@@ -74,6 +74,75 @@ class BlockcahinDatabase {
         return state;
     };
 
+    // Wird verwendet um die Höhe der Blockchain anhand der PreviousBlockID zu ermitteln
+    async #currentBlockHight() {
+        // Es wird eine Anfrage an die Datenbank gestellt um die Aktuelle Blockhöhe zu ermitteln
+        let current_block_hight = await new Promise((resolved, reject) => {
+            // Es wird eine Anfrage an die Datenbank gestellt um den Block abzurufen
+            this.block_db.get(`SELECT COUNT(DISTINCT prev_hash) as total_blocks FROM blocks;`, (err, row) => {
+                resolved(row.total_blocks);
+            });
+        });
+
+        // Die Anzahl der Gesamtwerte wird zurückgegeben
+        return current_block_hight;
+    };
+
+    // Wird verwendet um einen Eintrag aus der Datenbank zu laden
+    async #loadBlockFromDatabase(blockHash) {
+        // Es wird geprüft ob es sich um den Genesisblock handelt
+        if(this.genesis_block.blockHash(false) === blockHash) return this.genesis_block;
+
+        // Der Block wird abgerufen
+        let result = new Promise((resolved, reject) => {
+            // Es wird eine Anfrage an die Datenbank gestellt um den Block abzurufen
+            this.block_db.all(`SELECT prev_hash, type, block_hash, pre_header, transactions from blocks WHERE block_hash = '${blockHash}' LIMIT 1`, (err, row) => {
+                // Es wird geprüft ob genau 1 Eintrag zugegeben wurde
+                if(row.length !== 1) {
+                    reject('Invalid system');
+                    return;
+                }
+
+                // Es wird geprüft ob der Blockhash mit dem gesuchten Hash übereinstimmt
+                const fBlock = row[0];
+                if(fBlock.block_hash !== `${blockHash}`) {
+                    reject('Invalid block response from database');
+                    return;
+                }
+
+                // Es wird geprüft ob es sich um eien PoW Block handelt
+                if(fBlock.type === 'sha256d_pow') {
+                    // Es wird versucht den Block zu Rekonstruieren
+                    const reconstructed_by_block_hash = PoWBlock.loadFromDbElements(fBlock.prev_hash, this.main_parms.pow_hash_algo, fBlock.transactions, fBlock.pre_header);
+
+                    // Der Hash des Blocks wird mit dem Hash des Gesuchten Blocks verglichen
+                    if(blockHash !== reconstructed_by_block_hash.blockHash(false)) {
+                        reject('INVALID_BLOCK_RETRIVED');
+                        return false;
+                    }
+
+                    // Der Block wird zurückgegeben
+                    resolved(reconstructed_by_block_hash);
+                    return;
+                }
+                else {
+                    reject('UNKOWN_BLOCK_CONSENSUS_POW');
+                    return;
+                }
+            });
+        });
+
+        // Die Daten werden zurückgegeben
+        return result;
+    };
+
+    // Wird verwendet um zu überprüfen ob der Block bereits hinzugefügt wurde
+    async #isAlwaysInDatabase(blockHash) {
+        try{ await this.#loadBlockFromDatabase(otem.prv_block_hash); }
+        catch(e) { return false; }
+        return true;
+    };
+
     // Wird verwendet um den Aktuellen Block aus der Datenbank abzurufen
     async loadBlockFromDatabaseByBlockHash(blockHash) {
         // Es wird geprüft ob es sich bei dem Block um den Aktuellen Block handelt
@@ -81,31 +150,14 @@ class BlockcahinDatabase {
             return true;
         }
         else {
-            // Es wird eine Anfrage an die Datenbank gestellt um den Block abzurufen
-            this.block_db.all(`SELECT prev_hash, type, block_hash, pre_header, transactions from blocks WHERE block_hash =  '0x${blockHash}' LIMIT 1`, (err, row) => {
-                // Es wird geprüft ob genau 1 Eintrag zugegeben wurde
-                if(row.length !== 1) {
-                    console.log('Invalid system');
-                    return;
-                }
+            // Der Block wird aus der Datenbank geladen
+            let loaded_from_db = await this.#loadBlockFromDatabase(blockHash);
 
-                // Es wird geprüft ob der Blockhash mit dem gesuchten Hash übereinstimmt
-                const fBlock = row[0];
-                if(fBlock.block_hash !== `0x${blockHash}`) {
-                    console.log('Invalid block response from database');
-                    return;
-                }
+            // Der Block wird abgespeichert
+            this.current_block = loaded_from_db;
 
-                // Es wird geprüft ob es sich um eien PoW Block handelt
-                if(fBlock.type === 'sha256d_pow') {
-                    // Es wird versucht den Block zu Rekonstruieren
-                    const reconstructed_by_block_hash = PoWBlock.loadFromDbElements();
-                }
-                else {
-                    console.log('UNKOWN_BLOCK_CONSENSUS_POW');
-                    return;
-                }
-            });
+            // Der Vorgang wurde erfolgreich fertigestellt
+            return true;
         }
     };
 
@@ -369,56 +421,87 @@ class BlockcahinDatabase {
             // Der Aktuelle Block wird aus der Datenbank abgerufen
             if((await this.loadBlockFromDatabaseByBlockHash(chain_state.current_block.toString('hex'))) !== true) {
                 // Es ist ein Fehler aufgetreten
-                console.log('ERROR');
+                console.log('ERROR_BY_LOADING_DATABASE');
                 return;
+            }
+
+            // Es wird geprüft ob der Hash des Aktuellen Blocks mit dem Block aus der Chainstate übereinstimmt
+            if(chain_state.current_block.toString('hex') !== this.current_block.blockHash(false)) {
+                console.log('INVALID_CHAIN_STATE_LOADED');
+                return false;
             }
         }
 
+        // Die Aktuelle Blockhöhe wird abgerufen und abgespeichert
+        this.current_block_hight = await this.#currentBlockHight();
+
+        // Es wird geprüft ob die Blöckhöhe übereinstimmt
+        if(this.current_block_hight !== this.current_block.coinbaseBlockHight()) {
+            console.log('ERROR_INVALID_DATABASE');
+            return;
+        }
+
         // Gibt die Daten zurück
-        console.log('Blockchain data loaded....')
+        console.log('Blockchain loaded:', this.current_block.blockHash(true), this.current_block_hight);
         return true;
     };
 
     // Wird verwendet um einen neuen Block hinzuzufügen
     async addBlock(...blockData) {
-        // Der Vorgang wird Asyncrone ausgeführt
-        (async() => {
-            // Die Blockdaten werden verabeitet
-            for await(const otem of blockData) {
-                // Es wird geprüft ob es sich um einen bekannten Block handelt, wenn ja wird dieser Übersprungen
-                let is_not_knwon_block_db = await this.isCorrectBlockHash(otem.blockHash(false));
-                if(is_not_knwon_block_db !== false) {
-                    // Es handelt sich nicht um einen bekannten Previos Block, der Block wird verworfen
-                    //console.log('IGNORE_BLOCK_ALWAYS_WRITED');
-                    //continue;
-                }
+        // Die Blockdaten werden verabeitet
+        for await(const otem of blockData) {
+            // Es wird geprüft ob der Block bereits in der Datenbank vorhanden ist
+            let is_invaited = await this.#isAlwaysInDatabase(otem.blockHash(false));
+            if(is_invaited === true) { console.log('IGNORE_BLOCK_IS_ALWAYS_IN_DATABASE'); return; }
 
-                // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
-                let total_inner = [Buffer.from(otem.prv_block_hash, 'hex'), 'sha256d_pow', otem.blockHash(true), otem.txDbHeaderElement(), otem.txDbElement()];
+            // Es wird versucht den PreviosBlock abzurufen
+            try{ var responded_block = await this.#loadBlockFromDatabase(otem.prv_block_hash); }
+            catch(e) { console.log('IGNORE_BLOCK_UNKOWN_PREVIOUS_BLOCK', e); continue; }
 
-                // Es wird geprüft ob der Previous Block in der Datenbank vorhanden ist
-                let is_knwon_block_db = await this.isCorrectBlockHash(otem.prv_block_hash);
-                if(is_knwon_block_db !== true) {
-                    // Es handelt sich nicht um einen bekannten Previos Block, der Block wird verworfen
-                    console.log('UNKOWN_PREVIOS_BLOCK');
-                    continue;
-                }
+            // Es wird geprüft ob der Block welcher Hinzugefügt werden soll eine Blocknummer größer als der Aktuelle Block ist
+            if(responded_block.coinbaseBlockHight() + 1 !== otem.coinbaseBlockHight()) {
+                console.log('INVALID_BLOCK_HIGHT', responded_block.coinbaseBlockHight(), otem.coinbaseBlockHight());
+                return;
+            }
 
-                // Die Daten werden in die Datenbank geschrieben
-                await new Promise((resolveOuter) => {
-                    this.block_db.run('INSERT INTO blocks(prev_hash, type, block_hash, pre_header, transactions) VALUES(?, ?, ?, ?, ?)', total_inner, (err) => {
-                        if(err) { return console.log(err.message); }
-                        resolveOuter();
-                    });
+            // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
+            let total_inner = [otem.prv_block_hash, 'sha256d_pow', otem.blockHash(false), otem.txDbHeaderElement(), otem.txDbElement()];
+
+            // Die Daten werden in die Datenbank geschrieben
+            await new Promise((resolveOuter, reject) => {
+                this.block_db.run('INSERT INTO blocks(prev_hash, type, block_hash, pre_header, transactions) VALUES(?, ?, ?, ?, ?)', total_inner, (err) => {
+                    if(err) { reject(err.message); return; }
+                    resolveOuter();
                 });
+            });
 
-                // Der Aktuelle Block wird geupdated
+            // Die Aktuelle Blockhöhe sowie der Aktuelle Block werden Aktualisiert, sofern der Block neue als der letzet Block ist
+            if(this.current_block.coinbaseBlockHight() +1 === otem.coinbaseBlockHight()) {
+                this.current_block_hight = otem.coinbaseBlockHight();
                 this.current_block = otem;
-            };
+            }
+        };
 
-            // Die Chainstate wird geupdated
-            await this.updateChainState();
-        })();
+        // Die Chainstate wird geupdated
+        await this.updateChainState();
+    };
+
+    // Gibt den Aktuellen Block aus
+    getCurrentBlock() {
+        return this.current_block;
+    };
+
+    // Gibt die Aktuelle Blockhöhe aus
+    getCurrentBlockHight() {
+        return this.current_block_hight;
+    };
+
+    // Gibt den Aktuellen Block sowie die Block Höhe aus
+    getCurrentBlockAndHight() {
+        return {
+            block:this.current_block,
+            hight:this.current_block_hight
+        }
     };
 }
 

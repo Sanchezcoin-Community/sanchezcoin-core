@@ -1,0 +1,1 @@
+SELECT COUNT(DISTINCT prev_hash) as total_blocks FROM blocks;

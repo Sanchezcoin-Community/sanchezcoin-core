@@ -12,10 +12,13 @@ mainnet((error, blockchain) => {
 
     // Die Blockchain wird geladen
     blockchain.loadBlockchainDatabase("", (state) => {
+        // Der Aktuelle Block wird abgerufen
+        let reconstrived_block = blockchain.getLastBlock();
+
         // Gibt den Hash des Genesisblock aus
-        console.log(blockchain.getBlock(0).blockHash(), blockchain.getBlock(0).targetBits(), blockchain.getBlock(0).blockHeader())
+        console.log(reconstrived_block.blockHash(), reconstrived_block.targetBits(), reconstrived_block.blockHeader())
 
         // Das Mining wird gestartet
-        //blockchain.startMiner('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 3, 1, (error) => { console.log('NEW_BLOCKS', blockchain.blockHight()); });
+        blockchain.startMiner('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 4, 5, (error) => { });
     });
 });

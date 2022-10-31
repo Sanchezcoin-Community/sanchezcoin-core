@@ -1,7 +1,6 @@
-const { CoinbaseInput, UnspentOutput } = require('./utxos')
-const { CoinbaseTransaction } = require('./transaction');
+const { CoinbaseTransaction, readDbTransactionElement } = require('./transaction');
+const { CoinbaseInput, UnspentOutput } = require('./utxos');
 const { computeMerkleRoot } = require('./merkle');
-const { sha256dBTC } = require('./hash_algo');
 const { Coin } = require('./coin');
 const crypto = require('crypto');
 const cbor = require('cbor');
@@ -121,8 +120,25 @@ class CandidatePoWBlock {
 
 // Fertiger Block
 class PoWBlock {
-    static loadFromDbElements(prevBlockHash, hash_algo, txElements, blockElements) {
+    // Ließt ein Datenbankelement ein
+    static loadFromDbElements(prevBlockHash, hash_algo, txElements, headerElements) {
+        // Es wird versucht die Headerdaten mittels CBOR einzulesen
+        let decoded_headerd = cbor.decode(headerElements);
 
+        // Die headerdaten werden eingelesen
+        let block_timestamp = parseInt(decoded_headerd[0].toString('hex'), 16);
+        let target_bits = decoded_headerd[1].toString('hex');
+        let nonce = parseInt(decoded_headerd[2].toString('hex'), 16);
+
+        // Es wird versucht die Transaktionen mittels CBOR einzulesen
+        let decoded_tx_elements = cbor.decode(txElements);
+
+        // Die Transaktionen werden eingelesen
+        let parsed_transactions = [];
+        for(const tx_item of decoded_tx_elements) parsed_transactions.push(readDbTransactionElement(tx_item));
+
+        // Der Block wird nachgebaut
+        return new PoWBlock(prevBlockHash, parsed_transactions, target_bits, hash_algo, block_timestamp, nonce);
     };
 
     constructor(prv_block_hash, transactions, target_bits, hash_algo, timestamp, nonce) {
@@ -132,6 +148,12 @@ class PoWBlock {
         this.timestamp = timestamp;
         this.hash_algo = hash_algo;
         this.nonce = nonce;
+    };
+
+    // Gibt die Aktuelle Block Höhe aus
+    coinbaseBlockHight() {
+        let first = this.transactions[0];
+        return first.blockHight;
     };
 
     // Gibt die Target Bits aus
@@ -203,10 +225,10 @@ class PoWBlock {
     txDbHeaderElement() {
         // Das Objekt wird gebaut
         let build_obj = {
-            0:Buffer.from(this.timestamp.toString(16), 'hex'),
-            1:Buffer.from(this.target_bits, 'hex'),
-            2:Buffer.from(this.nonce.toString(16), 'hex'),
-            3:Buffer.from(this.computeMerkleRoot(), 'hex')
+            0:this.timestamp.toString(16),
+            1:this.target_bits,
+            2:this.nonce.toString(16),
+            3:this.computeMerkleRoot()
         };
 
         // Gibt das erstellt Objekt zurück
