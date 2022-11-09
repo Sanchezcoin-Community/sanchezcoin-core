@@ -1,8 +1,8 @@
+const { CoinbaseInput, UnspentOutput } = require('./utxos');
 const { CandidatePoWBlock, PoWBlock } = require('./block');
-const { CoinbaseInput, UnspentOutput } = require('./utxos')
 const { CoinbaseTransaction } = require('./transaction');
+const { ramSwiftyHash } = require('./hash_algo');
 const { Blockchain } = require('./chain');
-const { sha256dBTC } = require('./hash_algo');
 const { Coin } = require('./coin');
 
 
@@ -33,7 +33,7 @@ function RickcoinMainnet(callback) {
     let diff_adjust = 0;                                                                                            // Gibt an, aller wieviel Blöcke das Halvening Durchgeführt werden soll
     let block_time_ms = 0;                                                                                          // Gibt die Blockzeit an (3 Minuten) weialnge es im Schnitt dauern soll bist ein neuer Block erstellt wird
     let halvening_period = 0;                                                                                       // Gibt die Anzahl der Blöcke an, wann das Halvening durchgeführt werden soll
-    let hash_algo = sha256dBTC;                                                                                     // Gibt den zu verwendeten Mining Algorithmus an
+    let hash_algo = ramSwiftyHash;                                                                                     // Gibt den zu verwendeten Mining Algorithmus an
     let rickcoin = new Coin(8, "3eecf85c306b5c", 110700, 800);                                                      // Gibt den Coin an, welcher verwendet werden soll
     let start_pow_target = "00000ffff0000000000000000000000000000000000000000000000000000000";                      // Gibt Startschwierigkeit für das Mining an
 
@@ -59,12 +59,7 @@ function RickcoinMainnet(callback) {
     };
 
     // Der Genesis Block wird gebaut
-    let genesis_block = generateGenesisMainnetBlock("1e00ffff", 1666840060139, 716128880, hash_algo, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", rickcoin);
-
-    // Es wird geprüft ob es sich den Zulässigen Block handelt
-    if(genesis_block.blockHash() !== '0x61d8f67f6d561df970d11d00e8380717302a3256f02e3bde76ff8ca7de6cf43a') {
-        console.log('INVALID_GENESIS_BLOCK');
-    }
+    let genesis_block = generateGenesisMainnetBlock("1e00ffff", 1668007569924, 703222, hash_algo, "9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b", rickcoin);
 
     // Das Chain Objekt wird start_target
     let chain_object = new Blockchain(genesis_block, rickcoin, chainparms);

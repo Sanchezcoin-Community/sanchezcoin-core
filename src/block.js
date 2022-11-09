@@ -1,7 +1,6 @@
 const { CoinbaseTransaction, readDbTransactionElement } = require('./transaction');
 const { CoinbaseInput, UnspentOutput } = require('./utxos');
 const { computeMerkleRoot } = require('./merkle');
-const { Coin } = require('./coin');
 const crypto = require('crypto');
 const cbor = require('cbor');
 
@@ -161,6 +160,11 @@ class PoWBlock {
         return `0x${this.target_bits}`
     };
 
+    // Gibt den Namen des Algos aus
+    algorithmName() {
+        return this.hash_algo.name;
+    };
+
     // Berechnet den MerkleRoot des Blocks
     computeMerkleRoot() {
         // Die Transaktions IDS werden Reverst
@@ -254,7 +258,7 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], target_bits, hash_algo, Date.now());
 
     var pow = require('./consensus/pow/consensus');
-    const multi_thread_miner = new pow(3);
+    const multi_thread_miner = new pow(3, hash_algo);
     multi_thread_miner.startMine(target, new_block.blockTemplate(), (error, found_nonce) => {
         // Es wird geprüft ob ein Fehler aufgetreten ist
         if(error !== null) {
@@ -277,8 +281,10 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
 
 
 // Der Genesisblock wird erzeugt
-const test_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
-//mineGenesisPoWBlock('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', '00000ffff0000000000000000000000000000000000000000000000000000000', test_coin, sha256dBTC)
+//const { Coin } = require('./coin');
+//const { sha256dBTC } = require('./hash_algo');
+//const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
+//mineGenesisPoWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
 
 
 // Exportiert die Klassen

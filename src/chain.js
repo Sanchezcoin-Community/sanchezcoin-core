@@ -20,6 +20,9 @@ class Blockchain {
         // Die Chainparms werden eingelesen
         this.main_parms = chainparms['$'];
 
+        // Speichert die Akutelle Gearbeitete Leistung
+        this.chain_work = 0;
+
         // Speichert die Parameter ab welche zum Betrieb des Peers benötigt werden
         this.blockchain_db = new BlockcahinDatabase(genesis_block, chainparms['$']);
         this.genesis_block = genesis_block;
@@ -153,7 +156,7 @@ class Blockchain {
         if(this.miner !== null) return;
 
         // Es wird ein neuer MultiThread Miner erstellt
-        this.miner = new this.main_parms.mt_miner(threads);
+        this.miner = new this.main_parms.mt_miner(threads, this.main_parms.pow_hash_algo);
 
         // Speichert alle Blöcke ab
         let current_round = 0;

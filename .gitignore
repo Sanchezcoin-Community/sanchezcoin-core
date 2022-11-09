@@ -3,4 +3,4 @@
 suply_test.py
 node_modules/
 database/
-src/swiftyh.js
+src/consensus/pos/latus_catenae.js

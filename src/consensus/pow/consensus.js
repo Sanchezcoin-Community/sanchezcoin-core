@@ -32,7 +32,7 @@ class ProofOfWorkConsensus {
             // Der Worker wird gestartet
             let pushData = { start:start, end:end, i:i};
 
-            const worker = new Worker('./src/consensus/pow/btc_sha256d_miner.js', { workerData:pushData });
+            const worker = new Worker(this.miner_algo.multi_thread_miner, { workerData:pushData });
             worker.on('message', (resolve) => {
                 if(typeof resolve === 'string') {
                     if(resolve === 'STARTED') {

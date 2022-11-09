@@ -1,3 +1,4 @@
+const { ramSwiftyHash, sha256dBTC } = require('./hash_algo');
 const sqlite3 = require('sqlite3').verbose();
 const { PoWBlock } = require('./block');
 const crypto = require('crypto');
@@ -95,40 +96,44 @@ class BlockcahinDatabase {
         if(this.genesis_block.blockHash(false) === blockHash) return this.genesis_block;
 
         // Der Block wird abgerufen
-        let result = new Promise((resolved, reject) => {
+        let result = await new Promise((resolved, reject) => {
             // Es wird eine Anfrage an die Datenbank gestellt um den Block abzurufen
             this.block_db.all(`SELECT prev_hash, type, block_hash, pre_header, transactions from blocks WHERE block_hash = '${blockHash}' LIMIT 1`, (err, row) => {
+                // Es wird geprüft ob beim Abrufen des Blocks ein Fehler aufgetreten ist
+                if(err !== null) { throw new Error(err); }
+
                 // Es wird geprüft ob genau 1 Eintrag zugegeben wurde
-                if(row.length !== 1) {
-                    reject('Invalid system');
-                    return;
-                }
+                if(row.length !== 1) { reject(false); return; }
 
                 // Es wird geprüft ob der Blockhash mit dem gesuchten Hash übereinstimmt
                 const fBlock = row[0];
-                if(fBlock.block_hash !== `${blockHash}`) {
-                    reject('Invalid block response from database');
-                    return;
-                }
+                if(fBlock.block_hash !== `${blockHash}`) { throw new Error('INVALID_BLOCK_DB_RESULT'); }
 
                 // Es wird geprüft ob es sich um eien PoW Block handelt
                 if(fBlock.type === 'sha256d_pow') {
                     // Es wird versucht den Block zu Rekonstruieren
-                    const reconstructed_by_block_hash = PoWBlock.loadFromDbElements(fBlock.prev_hash, this.main_parms.pow_hash_algo, fBlock.transactions, fBlock.pre_header);
+                    const reconstructed_by_block_hash = PoWBlock.loadFromDbElements(fBlock.prev_hash, sha256dBTC, fBlock.transactions, fBlock.pre_header);
 
                     // Der Hash des Blocks wird mit dem Hash des Gesuchten Blocks verglichen
-                    if(blockHash !== reconstructed_by_block_hash.blockHash(false)) {
-                        reject('INVALID_BLOCK_RETRIVED');
-                        return false;
-                    }
+                    if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
+
+                    // Der Block wird zurückgegeben
+                    resolved(reconstructed_by_block_hash);
+                    return;
+                }
+                else if(fBlock.type === 'swiftyh256_pow') {
+                    // Es wird versucht den Block zu Rekonstruieren
+                    const reconstructed_by_block_hash = PoWBlock.loadFromDbElements(fBlock.prev_hash, ramSwiftyHash, fBlock.transactions, fBlock.pre_header);
+
+                    // Der Hash des Blocks wird mit dem Hash des Gesuchten Blocks verglichen
+                    if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
 
                     // Der Block wird zurückgegeben
                     resolved(reconstructed_by_block_hash);
                     return;
                 }
                 else {
-                    reject('UNKOWN_BLOCK_CONSENSUS_POW');
-                    return;
+                    throw new Error('UNKOWN_INVALID_BLOCK_CONSENSUS');
                 }
             });
         });
@@ -139,8 +144,9 @@ class BlockcahinDatabase {
 
     // Wird verwendet um zu überprüfen ob der Block bereits hinzugefügt wurde
     async #isAlwaysInDatabase(blockHash) {
-        try{ await this.#loadBlockFromDatabase(blockHash); }
+        try{ var result = await this.#loadBlockFromDatabase(blockHash); }
         catch(e) { return false; }
+        if(result === false) return false;
         return true;
     };
 
@@ -471,7 +477,7 @@ class BlockcahinDatabase {
             }
 
             // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
-            let total_inner = [otem.prv_block_hash, 'sha256d_pow', otem.blockHash(false), otem.txDbHeaderElement(), otem.txDbElement()];
+            let total_inner = [otem.prv_block_hash, otem.algorithmName(), otem.blockHash(false), otem.txDbHeaderElement(), otem.txDbElement()];
 
             // Die Daten werden in die Datenbank geschrieben
             await new Promise((resolveOuter, reject) => {
@@ -481,10 +487,13 @@ class BlockcahinDatabase {
                 });
             });
 
-            // Die Aktuelle Blockhöhe sowie der Aktuelle Block werden Aktualisiert, sofern der Block neue als der letzet Block ist
+            // Die Aktuelle Blockhöhe sowie der Aktuelle Block werden Aktualisiert, sofern der Block neuer als der letzet Block ist
             if(this.current_block.coinbaseBlockHight() +1 === otem.coinbaseBlockHight()) {
-                this.current_block_hight = otem.coinbaseBlockHight();
+                // Der Aktuelle Block wird gespeichert
                 this.current_block = otem;
+
+                // Die Aktuelle Blockhöhe wird abgespeichert
+                this.current_block_hight = otem.coinbaseBlockHight();
             }
         };
 
