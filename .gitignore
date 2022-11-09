@@ -1,6 +1,5 @@
 
 .DS_Store
-suply_test.py
 node_modules/
 database/
 src/consensus/pos/latus_catenae.js
