@@ -1,6 +1,7 @@
 //add this script in myWorker.js file
 const {parentPort, workerData} = require("worker_threads");
-const { ramSwiftyHash } = require('../../hash_algo');
+const { ramSwiftyHash } = require('./hash_algo');
+const { sha256dBTC } = require('./hash_algo');
 const bigInt = require("big-integer");
 
 

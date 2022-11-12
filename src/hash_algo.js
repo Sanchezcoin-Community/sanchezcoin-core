@@ -18,6 +18,6 @@ function ramSwiftyHash(byteValue) {
 
 // Die Module werden exportiert
 module.exports = {
-    sha256dBTC:{ name:"sha256d_pow", compute:sha256dBTC, multi_thread_miner:'./src/consensus/pow/btc_sha256d_miner.js' },
-    ramSwiftyHash:{ name:"swiftyh256_pow", compute:ramSwiftyHash, multi_thread_miner:'./src/consensus/pow/ram_swiftyh_miner.js' }
+    sha256dBTC:{ name:"sha256d_pow", compute:sha256dBTC },
+    ramSwiftyHash:{ name:"swiftyh256_pow", compute:ramSwiftyHash }
 }

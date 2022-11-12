@@ -1,6 +1,9 @@
 const { CoinbaseTransaction, readDbTransactionElement } = require('./transaction');
 const { CoinbaseInput, UnspentOutput } = require('./utxos');
 const { computeMerkleRoot } = require('./merkle');
+const { sha256dBTC } = require('./hash_algo');
+const bigInt = require("big-integer");
+const { SHA3 } = require('sha3');
 const crypto = require('crypto');
 const cbor = require('cbor');
 
@@ -113,6 +116,96 @@ class CandidatePoWBlock {
         const final = crypto.createHash('sha256').update(this.getCandidateBlockHash()).digest('hex');
         if(withZeroX === true) return `0x${final}`;
         else return `${final}`;
+    };
+};
+
+
+// Wird verwendet um einen neuen Proof of Stake v3 Block zu erstellen
+class CandidatePoSMintingBlock {
+    constructor(prv_block_hash, prev_stake_modifier, transactions_ids, minter_pub_key, minting_utxo_id, minting_utxo_vout, mintin_utxo_value, minting_utxo_timestamp, timestamp) {
+        this.prv_block_hash = prv_block_hash;
+        this.prev_stake_modifier = prev_stake_modifier;
+        this.transactions_ids = transactions_ids;
+        this.minting_utxo_id = minting_utxo_id;
+        this.minting_utxo_vout = minting_utxo_vout;
+        this.mintin_utxo_value = mintin_utxo_value;
+        this.minting_utxo_timestamp = minting_utxo_timestamp;
+        this.minter_pub_key = minter_pub_key;
+        this.timestamp = timestamp;
+    };
+
+    // Berechnet den MerkleRoot des Blocks
+    computeMerkleRoot() {
+        // Die Transaktions IDS werden Reverst
+        const reversed = [];
+        for(const otem of this.transactions_ids) reversed.push(otem)
+        const a = computeMerkleRoot(sha256dBTC, reversed.reverse());
+        return a;
+    };
+
+    // Gibt das Blocktemplate aus
+    blockTemplate() {
+        // Der neue Block wird erstellt
+        const block_version = "02000000";
+
+        // Der Previous Block wird umgewandelt
+        let prev_block = Buffer.from(this.prv_block_hash, 'hex').reverse().toString('hex');
+
+        // Der Previous Stake Modifer wird hinzugefügt
+        let prev_stake_modifer = Buffer.from(this.prev_stake_modifier, 'hex').reverse().toString('hex');
+
+        // Die Staking Transaktion wird hinzugefügt
+        let minting_utxo_id = Buffer.from(this.minting_utxo_id, 'hex').reverse().toString('hex');
+
+        // Der Minitingbetrag des Benutzers wird ermittelt
+        let converted_amount = this.mintin_utxo_value.toString(16).padStart(64, 0);
+
+        let fixed_length_hight = this.minting_utxo_vout.toString(16).toUpperCase().padStart(4, 0);
+        let final_minting_output = `${converted_amount}${minting_utxo_id}${fixed_length_hight}`;
+
+        // Die Zeit wird umgewandelt
+        let timestamp = toBytesInt32(this.timestamp).reverse().toString('hex');
+
+        // Die Minting Timestamp wird angepasst
+        let mint_time = toBytesInt32(this.minting_utxo_timestamp).reverse().toString('hex');
+
+        // Der Merkelroot wird vorbereitet
+        let merkle_root = Buffer.from(this.computeMerkleRoot(), 'hex').reverse().toString('hex');
+
+        // Die Daten des Block Templates werden zurückgegeebn
+        return `${block_version}${prev_block}${prev_stake_modifer}${merkle_root}${this.minter_pub_key}${final_minting_output}${mint_time}${timestamp}`;
+    };
+
+    // Gibt den Block Kernel aus
+    getKernel() {
+        // Der Previous Stake Modifer wird hinzugefügt
+        let prev_stake_modifer = Buffer.from(this.prev_stake_modifier, 'hex').reverse().toString('hex');
+
+        // Die Staking Transaktion wird hinzugefügt
+        let minting_utxo_id = Buffer.from(this.minting_utxo_id, 'hex').reverse().toString('hex');
+
+        let fixed_length_hight = this.minting_utxo_vout.toString(16).toUpperCase().padStart(4, 0);
+
+        // Die Zeit wird umgewandelt
+        let timestamp = toBytesInt32(this.timestamp).reverse().toString('hex');
+
+        // Die Minting Timestamp wird angepasst
+        let mint_time = toBytesInt32(this.minting_utxo_timestamp).reverse().toString('hex');
+
+        // Die Daten des Block Templates werden zurückgegeebn
+        return `${prev_stake_modifer}${mint_time}${minting_utxo_id}${fixed_length_hight}${timestamp}`;
+    };
+
+    // Erzeugt einen Staking Modifier Hash
+    computeStakeModifer() {
+
+    };
+
+    // Gibt den KernelHash aus
+    computeKernelHash() {
+        let sha3_f = new SHA3(256);
+        sha3_f.update(Buffer.from(this.getKernel(), 'ascii'));
+        return sha3_f.digest('hex');
     };
 };
 
@@ -242,7 +335,7 @@ class PoWBlock {
 
 
 // Wird verwendet um einen Genesis Mining Block zu erstellen
-function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
+async function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     // Der Betrag für den Aktuellen Block wird abgerufen
     let current_reward = coin.current_reward;
 
@@ -257,8 +350,8 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     // Der Block wird gebaut
     let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], target_bits, hash_algo, Date.now());
 
-    var pow = require('./consensus/pow/consensus');
-    const multi_thread_miner = new pow(3, hash_algo);
+    var { PoWMinerClass } = require('./pow');
+    const multi_thread_miner = new PoWMinerClass(3, hash_algo);
     multi_thread_miner.startMine(target, new_block.blockTemplate(), (error, found_nonce) => {
         // Es wird geprüft ob ein Fehler aufgetreten ist
         if(error !== null) {
@@ -279,12 +372,51 @@ function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     });
 };
 
+// Wird verwendet um einen Proof Of Staking Work Block zu erstellen
+async function createGenesisPoSWBlock(reciver_address, target, coin) {
+    // Der Betrag für den Aktuellen Block wird abgerufen
+    let current_reward = coin.current_reward;
+
+    // Die Genesis Transaktion für den Empfänger wird erstellt
+    let new_input = new CoinbaseInput();
+    let new_output = new UnspentOutput(reciver_address, current_reward);
+    let genesis_coinbase_tx = new CoinbaseTransaction(0, [new_input], [new_output]);
+
+    // Führt eine Pause durch
+    function sleep(ms) {
+    return new Promise((resolve) => {
+            setTimeout(resolve, ms);
+        });
+    };
+
+    // Speichert alle Verfüggabren UTXOS ab
+    let utxos = [
+        { txid:"6795e665a77744080b0f2faad5aa7ddac282c479f5f0f9d6f04a73820e4d8d01", vout:0, value:45000000000000, timestamp:1668183397 },
+        { txid:"32c220482c68413fbf8290e3b1e49b0a85901cfcd62ab0738760568a2a6e8a57", vout:0, value:60000000000000, timestamp:1668183397 },
+    ];
+
+    while(true){
+        let has_found = false;
+        let now_data = Date.now();
+        let block_time = now_data - (now_data % 5);
+        for(const utxo of utxos){
+            let posDifficulty = bigInt("000000000000dfff000000000000000000000000000000000000000000000000", 16) * utxo.value;
+            let stake_block = new CandidatePoSMintingBlock("0000000000000000000000000000000000000000000000000000000000000000", "0000000000000000000000000000000000000000000000000000000000000000", [genesis_coinbase_tx.computeHash()], reciver_address, utxo.txid, utxo.vout, utxo.value, utxo.timestamp, block_time);
+            let hash = stake_block.computeKernelHash();
+            if(bigInt(hash, 16) < posDifficulty) { console.log('FOUND', hash, utxo.txid, utxo.value, new Date().toISOString()); has_found = true; break; }
+        };
+        if(has_found === true) console.log();
+        await sleep(5000);
+    }
+};
+
 
 // Der Genesisblock wird erzeugt
-//const { Coin } = require('./coin');
-//const { sha256dBTC } = require('./hash_algo');
-//const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
+const { Coin } = require('./coin');
+const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
 //mineGenesisPoWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
+//createGenesisPoSWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
+
 
 
 // Exportiert die Klassen

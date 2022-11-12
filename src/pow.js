@@ -2,7 +2,7 @@ const { Worker } = require('worker_threads');
 
 
 // Proof of Work Consensus Object
-class ProofOfWorkConsensus {
+class PoWMinerClass {
     constructor(threads, miner_algo) {
         this.miner_algo = miner_algo;
         this.running_workers = [];
@@ -32,7 +32,7 @@ class ProofOfWorkConsensus {
             // Der Worker wird gestartet
             let pushData = { start:start, end:end, i:i};
 
-            const worker = new Worker(this.miner_algo.multi_thread_miner, { workerData:pushData });
+            const worker = new Worker('./src/pow_thread.js', { workerData:pushData });
             worker.on('message', (resolve) => {
                 if(typeof resolve === 'string') {
                     if(resolve === 'STARTED') {
@@ -73,4 +73,6 @@ class ProofOfWorkConsensus {
 
 
 // Die Minig Klasse wird Exportiert
-module.exports = ProofOfWorkConsensus;
+module.exports = {
+    PoWMinerClass:PoWMinerClass,
+};

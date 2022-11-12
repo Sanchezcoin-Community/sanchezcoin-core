@@ -17,14 +17,11 @@ class BlockcahinDatabase {
         // Speichert den Genesisblock ab
         this.genesis_block = genesis_block;
 
-        // Speichert den Aktuellen Block ab
-        this.current_block = genesis_block;
-
-        // Speichert die Aktuelle Block Höhe ab
-        this.current_block_hight = 0;
-
-        // Speichert die letzten 4 Blöcke ab
-        this.last_item_blocks = [];
+        // Speichert die Aktuelle Blockeinstellungen ab
+        this.c_chain_state = {
+            c_hight:0,
+            c_block:genesis_block.blockHash(false),
+        };
 
         // Speichert die Aktuelle Datenbank ab
         this.block_db = null;
@@ -37,7 +34,7 @@ class BlockcahinDatabase {
     };
 
     // wird verwendet um die Chainstate auf den Aktuellen Stnad zu updaten
-    async updateChainState() {
+    async #updateChainState() {
         // Die Hashes der Dateien werden erstellt
         let block_file_h = await new Promise((resolveOuter) => {
             var fd = fs.createReadStream('database/blocks.db');
@@ -56,7 +53,7 @@ class BlockcahinDatabase {
 
         // Die Chainsate wird angepasst
         let new_chain_state = {
-            current_block:Buffer.from(this.current_block.blockHash(false), 'hex'),
+            config:this.c_chain_state,
             tx_db:Buffer.from(txdb_file_h, 'hex'),
             block_db:Buffer.from(block_file_h, 'hex')
         };
@@ -77,7 +74,7 @@ class BlockcahinDatabase {
     };
 
     // Wird verwendet um die Höhe der Blockchain anhand der PreviousBlockID zu ermitteln
-    async #currentBlockHight() {
+    async cleanedBlockHight() {
         // Es wird eine Anfrage an die Datenbank gestellt um die Aktuelle Blockhöhe zu ermitteln
         let current_block_hight = await new Promise((resolved, reject) => {
             // Es wird eine Anfrage an die Datenbank gestellt um den Block abzurufen
@@ -91,14 +88,14 @@ class BlockcahinDatabase {
     };
 
     // Wird verwendet um einen Eintrag aus der Datenbank zu laden
-    async #loadBlockFromDatabase(blockHash) {
+    async loadBlockFromDatabase(blockHash) {
         // Es wird geprüft ob es sich um den Genesisblock handelt
-        if(this.genesis_block.blockHash(false) === blockHash) return this.genesis_block;
+        if(this.genesis_block.blockHash(false) === blockHash) return { block:this.genesis_block, hight:0 };
 
         // Der Block wird abgerufen
         let result = await new Promise((resolved, reject) => {
             // Es wird eine Anfrage an die Datenbank gestellt um den Block abzurufen
-            this.block_db.all(`SELECT prev_hash, type, block_hash, pre_header, transactions from blocks WHERE block_hash = '${blockHash}' LIMIT 1`, (err, row) => {
+            this.block_db.all(`SELECT prev_hash, type, block_hash, pre_header, transactions, hight from blocks WHERE block_hash = '${blockHash}' LIMIT 1`, (err, row) => {
                 // Es wird geprüft ob beim Abrufen des Blocks ein Fehler aufgetreten ist
                 if(err !== null) { throw new Error(err); }
 
@@ -118,7 +115,7 @@ class BlockcahinDatabase {
                     if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
 
                     // Der Block wird zurückgegeben
-                    resolved(reconstructed_by_block_hash);
+                    resolved({ block:reconstructed_by_block_hash, hight:fBlock.hight });
                     return;
                 }
                 else if(fBlock.type === 'swiftyh256_pow') {
@@ -129,7 +126,7 @@ class BlockcahinDatabase {
                     if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
 
                     // Der Block wird zurückgegeben
-                    resolved(reconstructed_by_block_hash);
+                    resolved({ block:reconstructed_by_block_hash, hight:fBlock.hight });
                     return;
                 }
                 else {
@@ -143,8 +140,8 @@ class BlockcahinDatabase {
     };
 
     // Wird verwendet um zu überprüfen ob der Block bereits hinzugefügt wurde
-    async #isAlwaysInDatabase(blockHash) {
-        try{ var result = await this.#loadBlockFromDatabase(blockHash); }
+    async isAlwaysInDatabase(blockHash) {
+        try{ var result = await this.loadBlockFromDatabase(blockHash); }
         catch(e) { return false; }
         if(result === false) return false;
         return true;
@@ -153,24 +150,6 @@ class BlockcahinDatabase {
     // Gibt alle Blöcke aus, für die es mehrere Nachfolger gibt
     async getPreviousOrphanBlocks() {
         return [];
-    };
-
-    // Wird verwendet um den Aktuellen Block aus der Datenbank abzurufen
-    async loadBlockFromDatabaseByBlockHash(blockHash) {
-        // Es wird geprüft ob es sich bei dem Block um den Aktuellen Block handelt
-        if(blockHash === this.current_block.blockHash(false)) {
-            return true;
-        }
-        else {
-            // Der Block wird aus der Datenbank geladen
-            let loaded_from_db = await this.#loadBlockFromDatabase(blockHash);
-
-            // Der Block wird abgespeichert
-            this.current_block = loaded_from_db;
-
-            // Der Vorgang wurde erfolgreich fertigestellt
-            return true;
-        }
     };
 
     // Lädt die Datenbank
@@ -210,12 +189,20 @@ class BlockcahinDatabase {
 
         // Es wird geprüft ob die Chainsate Datei vorhanden ist
         if(fs.existsSync('database/chain.state')) chain_state = await new Promise((resolveOuter) => {
-            fs.readFile('database/chain.state', function(status, fd) {
+            fs.readFile('database/chain.state', (status, fd) => {
+                // Es wird geprüft ob die Datei erfolgreeich geladen wurde
                 if (status) {
                     console.log(status.message);
                     return;
                 }
+
+                // Es wird versucht die Datei mittels CBOR zu Dekodierren
                 let decoded = cbor.decode(fd);
+
+                // Die Aktuelle Chainstate wird Extrahiert
+                this.c_chain_state = decoded.config;
+
+                // Der Vorgang wurde erfolgreich durchgeführt
                 resolveOuter(decoded);
             });
         });
@@ -283,7 +270,7 @@ class BlockcahinDatabase {
         catch(e) { console.log(e); return; }
 
         // Der Vorgang wird Asynchron ausgeführt
-        let nblock_result = await new Promise((resolveOuter) => {
+        await new Promise((resolveOuter) => {
             // Wird ausgeführt wenn der Vorgang final fertigestellt wurde
             const ___totalf_finally = (newBlockCh) => {
                 this.block_db = block_db;
@@ -294,7 +281,7 @@ class BlockcahinDatabase {
             // Wird verwendet um einen ChainReork durchzuführen
             const ___finally = () => {
                 // Es wird geprüft ob die Chainstate Vorhanden ist, wenn nicht wird sie erzeugt
-                if(chain_state === null) this.updateChainState().then((e) => {
+                if(chain_state === null) this.#updateChainState().then((e) => {
                     // Es wird geprüft ob ein Fehler aufgetreten ist
                     if(e !== true) { console.log(e); return; }
 
@@ -324,7 +311,7 @@ class BlockcahinDatabase {
                         }
 
                         // Die Tabelle wird erstellt
-                        block_db.run('CREATE TABLE "blocks" ("block_id" INTEGER UNIQUE, "prev_hash"	BLOB, "type" TEXT, "block_hash" BLOB, "pre_header" BLOB, "transactions" BLOB, PRIMARY KEY("block_id" AUTOINCREMENT));', (error) => {
+                        block_db.run('CREATE TABLE "blocks" ("block_id" INTEGER UNIQUE, "hight"	INTEGER, "prev_hash"	BLOB, "type" TEXT, "block_hash" BLOB, "pre_header" BLOB, "transactions" BLOB, PRIMARY KEY("block_id" AUTOINCREMENT));', (error) => {
                             // Es wird geprüft ob der Block korrekt ist
                             if(error) {
                                 console.log(error);
@@ -422,101 +409,47 @@ class BlockcahinDatabase {
             return;
         }
 
-        // Es wird geprüft ob ein Fehler aufgetreten ist
-        if(typeof nblock_result !== 'boolean') {
-            console.log(nblock_result);
-            return;
-        }
-
-        // Es wird geprüft ob eine neue Blockchain erstellt wurde, wenn nicht wird der Aktuelle Block geladen
-        if(nblock_result === false) {
-            // Der Aktuelle Block wird aus der Datenbank abgerufen
-            if((await this.loadBlockFromDatabaseByBlockHash(chain_state.current_block.toString('hex'))) !== true) {
-                // Es ist ein Fehler aufgetreten
-                console.log('ERROR_BY_LOADING_DATABASE');
-                return;
-            }
-
-            // Es wird geprüft ob der Hash des Aktuellen Blocks mit dem Block aus der Chainstate übereinstimmt
-            if(chain_state.current_block.toString('hex') !== this.current_block.blockHash(false)) {
-                console.log('INVALID_CHAIN_STATE_LOADED');
-                return false;
-            }
-        }
-
-        // Die Aktuelle Blockhöhe wird abgerufen und abgespeichert
-        this.current_block_hight = await this.#currentBlockHight();
-
-        // Es wird geprüft ob die Blöckhöhe übereinstimmt
-        if(this.current_block_hight !== this.current_block.coinbaseBlockHight()) {
-            console.log('ERROR_INVALID_DATABASE');
-            return;
-        }
-
         // Gibt die Daten zurück
-        console.log('Blockchain loaded:', this.current_block.blockHash(true), this.current_block_hight);
         return true;
     };
 
     // Wird verwendet um einen neuen Block hinzuzufügen
-    async addBlock(...blockData) {
-        // Die Blockdaten werden verabeitet
-        for await(const otem of blockData) {
-            // Es wird geprüft ob der Block bereits in der Datenbank vorhanden ist
-            let is_invaited = await this.#isAlwaysInDatabase(otem.blockHash(false));
-            if(is_invaited === true) { console.log('IGNORE_BLOCK_IS_ALWAYS_IN_DATABASE'); return; }
+    async addBlock(blockData, block_hight) {
+        // Es wird geprüft ob der Block bereits in der Datenbank vorhanden ist
+        let is_invaited = await this.isAlwaysInDatabase(blockData.blockHash(false));
+        if(is_invaited === true) { return 'is_always_in_db'; }
 
-            // Es wird versucht den PreviosBlock abzurufen
-            try{ var responded_block = await this.#loadBlockFromDatabase(otem.prv_block_hash); }
-            catch(e) { console.log('IGNORE_BLOCK_UNKOWN_PREVIOUS_BLOCK', e); continue; }
+        // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
+        let total_inner = [blockData.prv_block_hash, blockData.algorithmName(), blockData.blockHash(false), blockData.txDbHeaderElement(), blockData.txDbElement(), block_hight];
 
-            // Es wird geprüft ob der Block welcher Hinzugefügt werden soll eine Blocknummer größer als der Aktuelle Block ist
-            if(responded_block.coinbaseBlockHight() + 1 !== otem.coinbaseBlockHight()) {
-                console.log('INVALID_BLOCK_HIGHT', responded_block.coinbaseBlockHight(), otem.coinbaseBlockHight());
-                return;
-            }
-
-            // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
-            let total_inner = [otem.prv_block_hash, otem.algorithmName(), otem.blockHash(false), otem.txDbHeaderElement(), otem.txDbElement()];
-
-            // Die Daten werden in die Datenbank geschrieben
-            await new Promise((resolveOuter, reject) => {
-                this.block_db.run('INSERT INTO blocks(prev_hash, type, block_hash, pre_header, transactions) VALUES(?, ?, ?, ?, ?)', total_inner, (err) => {
-                    if(err) { reject(err.message); return; }
-                    resolveOuter();
-                });
+        // Die Daten werden in die Datenbank geschrieben
+        await new Promise((resolveOuter, reject) => {
+            this.block_db.run('INSERT INTO blocks(prev_hash, type, block_hash, pre_header, transactions, hight) VALUES(?, ?, ?, ?, ?, ?)', total_inner, (err) => {
+                if(err) { reject(err.message); return; }
+                resolveOuter();
             });
-
-            // Die Aktuelle Blockhöhe sowie der Aktuelle Block werden Aktualisiert, sofern der Block neuer als der letzet Block ist
-            if(this.current_block.coinbaseBlockHight() +1 === otem.coinbaseBlockHight()) {
-                // Der Aktuelle Block wird gespeichert
-                this.current_block = otem;
-
-                // Die Aktuelle Blockhöhe wird abgespeichert
-                this.current_block_hight = otem.coinbaseBlockHight();
-            }
-        };
+        });
 
         // Die Chainstate wird geupdated
-        await this.updateChainState();
+        await this.#updateChainState();
+
+        // Der Vorgang wurde erfolgreich durchgeführt
+        return true;
     };
 
-    // Gibt den Aktuellen Block aus
-    getCurrentBlock() {
-        return this.current_block;
+    // Gibt den Aktuellen Blockhash aus der Chainstate aus
+    async getChainStateLastBlock() {
+        let last_block_by_c_state = await this.loadBlockFromDatabase(this.c_chain_state.c_block);
+        return last_block_by_c_state;
     };
 
-    // Gibt die Aktuelle Blockhöhe aus
-    getCurrentBlockHight() {
-        return this.current_block_hight;
-    };
+    // Schreibt den Aktuellen Block sowie die Akuelle Blockhöhe in die Datenbank
+    async setChainStateLastBlock(block_hash, hight) {
+        // Der Aktuelle Block, sowie die Aktuelle Blockhöhe werden geschrieben
+        this.c_chain_state = { c_hight:hight, c_block:block_hash, };
 
-    // Gibt den Aktuellen Block sowie die Block Höhe aus
-    getCurrentBlockAndHight() {
-        return {
-            block:this.current_block,
-            hight:this.current_block_hight
-        }
+        // Die Änderungen werden gespeichert
+        await this.#updateChainState();
     };
 }
 
