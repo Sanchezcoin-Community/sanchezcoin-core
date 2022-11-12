@@ -1,6 +1,7 @@
 const { SHA3 } = require('sha3');
 
 
+
 // Wird verwendet um neue Coins zu Generieren
 class CoinbaseInput {
     constructor() {}
@@ -15,7 +16,8 @@ class CoinbaseInput {
 class TxInput {
     constructor(txId, outputHight) {
         // Die Parameter werden überprüft
-        if(typeof blockHight !== 'number' || blockHight < 0);
+        if(typeof blockHight !== 'number' || blockHight < 0) throw new Error('Invalid output transaction hight');
+        if(typeof txId !== 'string' || txId.length !== 64) throw new Error('Invalid transaction id');
 
         // Die Parameter werden abgeseichert
         this.outputHight = outputHight;
@@ -43,6 +45,7 @@ class UnspentOutput {
         return `${amount_len_hex}${hexed_amount}${this.reciver_address}`;
     }
 }
+
 
 // Die Klassen werden Exportiert
 module.exports = {

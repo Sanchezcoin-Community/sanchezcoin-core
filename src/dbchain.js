@@ -1,4 +1,5 @@
 const { ramSwiftyHash, sha256dBTC } = require('./hash_algo');
+const { os_based_file_path_create } = require('./host');
 const sqlite3 = require('sqlite3').verbose();
 const { PoWBlock } = require('./block');
 const crypto = require('crypto');
@@ -22,6 +23,11 @@ class BlockcahinDatabase {
             c_hight:0,
             c_block:genesis_block.blockHash(false),
         };
+
+        // Speichert den Aktuelle Path der Dateien ab
+        this.blocks_db_file = null;
+        this.utxo_db_file = null;
+        this.chain_state_file = null;
 
         // Speichert die Aktuelle Datenbank ab
         this.block_db = null;
@@ -153,7 +159,7 @@ class BlockcahinDatabase {
     };
 
     // Lädt die Datenbank
-    async loadDatabase() {
+    async loadDatabase(blockahin_db_path) {
         // Speichert die Prüfwerte der Datenbanken ab
         let local_chsum_blocks = null, local_chsum_txdb = null;
 
@@ -414,7 +420,7 @@ class BlockcahinDatabase {
     };
 
     // Wird verwendet um einen neuen Block hinzuzufügen
-    async addBlock(blockData, block_hight) {
+    async addBlock(blockData, block_hight, update_txdb=true) {
         // Es wird geprüft ob der Block bereits in der Datenbank vorhanden ist
         let is_invaited = await this.isAlwaysInDatabase(blockData.blockHash(false));
         if(is_invaited === true) { return 'is_always_in_db'; }

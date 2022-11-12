@@ -422,6 +422,7 @@ const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
 // Exportiert die Klassen
 module.exports = {
     createGenesisPoSMintingBlock:createGenesisPoSMintingBlock,
+    CandidatePoSMintingBlock:CandidatePoSMintingBlock,
     mineGenesisPoWBlock:mineGenesisPoWBlock,
     CandidatePoWBlock:CandidatePoWBlock,
     targetToBits:targetToBits,

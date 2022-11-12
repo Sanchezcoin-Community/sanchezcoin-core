@@ -1,9 +1,12 @@
+const { CandidatePoWBlock, CandidatePoSMintingBlock, PoWBlock } = require('./block');
 const { CoinbaseInput, UnspentOutput } = require('./utxos')
 const { CoinbaseTransaction } = require('./transaction');
 const BlockcahinDatabase = require('./dbchain');
 const { targetToBits } = require('./block');
 const { Mempool } = require('./mempool');
 const bigInt = require("big-integer");
+const { SHA3 } = require('sha3');
+
 
 
 
@@ -24,11 +27,13 @@ class Blockchain {
         this.mempool = new Mempool();
         this.cblock = null;
         this.coin = coin;
-        this.blocks = [];
         this.db = null;
 
         // Speichert das Aktuelle Target ab
         this.current_pow_target = this.consensusForHight(0).pow_target;
+
+        // Speichert das Aktuelle PoS Ziel ab
+        this.current_pos_target = this.consensusForHight(0).pow_target;
     };
 
     // Gibt die Aktiven Regeln für die Aktuelle Blockhöhe aus
@@ -106,7 +111,7 @@ class Blockchain {
         if(ignored === true) return false;
 
         // Der Aktuelle Block wird in der Datenbank hinzugefügt
-        await this.blockchain_db.addBlock(block_obj, previous_block.hight + 1);
+        await this.blockchain_db.addBlock(block_obj, (previous_block.hight + 1), true);
 
         // Es wird geprüft ob es sich um den Nachfolgeblock des Aktuellen Blocks handelt, wenn ja wird dieser Geupdated
         if(this.cblock.block.blockHash(false) === block_obj.prv_block_hash && next_block_hight === this.cblock.hight + 1) {
@@ -122,9 +127,6 @@ class Blockchain {
                 console.log('INVALID_BLOCK_CHAIN_REGO');
             }
         }
-
-        // Der Block wird der Datenabnk hinzugefügt
-        this.blocks.push(block_obj);
 
         // Die Aktive Kette wird ausgewählt
         await this.selectActiveChain();
@@ -148,6 +150,11 @@ class Blockchain {
 
     };
 
+    // Gibt alle Minting Commitment Hashes aus welche derzeit berechtigt sind zu Minten
+    async getAllMintingCommitmentHashes(with_amount=true, with_public_key=true) {
+
+    };
+
     // Gibt die Aktuelle Blockbelohnung aus
     currentBlockReward() {
 
@@ -168,24 +175,63 @@ class Blockchain {
     };
 
     // Gibt die Mining Vorlage für den Aktuellen Block aus
-    getBlockTemplate(reciverPublicKeyHash) {
+    getPoWBlockTemplate(reciver_pkey_or_pkey_hash) {
+        // Das Aktuelle Consensusverfahren wird abgerufen
+        let current_consens = this.nextBlockConsensus();
+
+        // Es wird geprüft ob dass Aktuelle Verfahren für diese Art von Template zulässig ist
+        if(current_consens.consensus !== 'pow') throw new Error('Unsupported consensus');
+
         // Der Letzte Block sowie die Blockhöhe werden abgerufen
         let current_block_and_hight = this.cblock;
-
-        // Das Aktuelle Consensusverfahren wird abgerufen
-        let current_consens = this.consensusForHight(current_block_and_hight.hight + 1);
 
         // Die Genesis Transaktion für den Empfänger wird erstellt
         let new_input = new CoinbaseInput();
         let next_block_hight = current_block_and_hight.hight + 1;
-        let new_output = new UnspentOutput(reciverPublicKeyHash, this.coin.current_reward);
+        let new_output = new UnspentOutput(reciver_pkey_or_pkey_hash, this.coin.current_reward);
         let genesis_coinbase_tx = new CoinbaseTransaction(next_block_hight, [new_input], [new_output]);
 
         // Aus dem Target werden die Target Bits abgeleitet
         let target_bits = targetToBits(this.current_pow_target);
 
         // Es wird ein neuer Candidate Block erstellt
-        let new_candidate_block = new current_consens.candidate_block(current_block_and_hight.block.blockHash(false), [genesis_coinbase_tx.computeHash()], target_bits, current_consens.pow_hash_algo, Date.now());
+        let new_candidate_block = new CandidatePoWBlock(current_block_and_hight.block.blockHash(false), [genesis_coinbase_tx.computeHash()], target_bits, current_consens.pow_hash_algo, Date.now());
+
+        // Der Block wird zurückgegeben
+        return { cblock:new_candidate_block, txns:[genesis_coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
+    };
+
+    // Gibt die Minting Vorlage für den Aktuellen Block aus
+    getPoSMintingBlockTemplate(minter_public_key, commitment_utxo_h) {
+        // Das Aktuelle Consensusverfahren wird abgerufen
+        let current_consens = this.nextBlockConsensus();
+
+        // Es wird geprüft ob dass Aktuelle Verfahren für diese Art von Template zulässig ist
+        if(current_consens.consensus !== 'posm') throw new Error('Unsupported consensus');
+
+        // Der Letzte Block sowie die Blockhöhe werden abgerufen
+        let current_block_and_hight = this.cblock;
+
+        // Der Previous Stake Modifier wird extrahiert, sollte es sich bei dem Vorgänger um einen Proof of Work block handeln,
+        // so wird der Proof of Work Hash als Stake Modifier verwendet
+        console.log(current_block_and_hight);
+
+        // Aus dem Commitment Hash, dem Stake Modifer des letzten Blocks, sowie dem Öffentlichen Schlüssel des Stakes wird der Stake Modifier abgeleitet
+        let stake_modifier = new SHA3(256);
+        stake_modifier.update(Buffer.from(`${commitment_utxo_h}${minter_public_key}`, 'ascii'));
+        stake_modifier = stake_modifier.digest('hex');
+
+        // Die Genesis Transaktion für den Empfänger wird erstellt
+        let new_input = new CoinbaseInput();
+        let next_block_hight = (current_block_and_hight.hight + 1);
+        let new_output = new UnspentOutput(reciver_pkey_or_pkey_hash, this.coin.current_reward);
+        let genesis_coinbase_tx = new CoinbaseTransaction(next_block_hight, [new_input], [new_output]);
+
+        // Aus dem Target werden die Target Bits abgeleitet
+        let target_bits = targetToBits(this.current_pow_target);
+
+        // Es wird ein neuer Candidate Block erstellt
+        let new_candidate_block = new CandidatePoSMintingBlock(current_block_and_hight.block.blockHash(false), [genesis_coinbase_tx.computeHash()], target_bits, current_consens.pow_hash_algo, Date.now());
 
         // Der Block wird zurückgegeben
         return { cblock:new_candidate_block, txns:[genesis_coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
@@ -194,7 +240,7 @@ class Blockchain {
     // Wird verwendet um die Blockchain Datenbank zu laden
     loadBlockchainDatabase(file_path, callback) {
         // Die Datenbank wird geladen
-        this.blockchain_db.loadDatabase().then(async (result) => {
+        this.blockchain_db.loadDatabase(file_path).then(async (result) => {
             // Der Aktuelle Block wird abgerufen und zwischengspeichert
             this.cblock = await this.blockchain_db.getChainStateLastBlock();
 
@@ -204,9 +250,6 @@ class Blockchain {
                 throw new Error('INVALID_BLOCKCHAIN_DB');
             }
 
-            // Der Block wird in die Liste der Aktuellen Blöcke aufgenommen
-            this.blocks.push(this.cblock);
-
             // Der Vorgang wurde erfolgreich durchgeführt
             callback(result);
         })
@@ -214,12 +257,6 @@ class Blockchain {
             console.log(c);
             callback(c);
         })
-    };
-
-    // Gibt die Anzahl aller im Moment exestierenden Blöcke an
-    getCurrentSupply() {
-        // Es wird eine Liste aus den Cacheblöcken sowie den
-        let total_list = [this.genesis_block, ...this.blocks];
     };
 
     // Gibt den letzten Block aus
@@ -235,6 +272,11 @@ class Blockchain {
     // Gibt die Aktuelle PoW Schwierigkeit aus
     getPoWTarget() {
         return this.current_pow_target;
+    };
+
+    // Gibt die Aktuelle PoS Minting Schwierigkeit aus
+    getPoSMintingTarget() {
+        return this.current_pos_target;
     };
 }
 

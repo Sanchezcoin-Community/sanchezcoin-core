@@ -30,10 +30,10 @@ function generateGenesisMainnetBlock(bits, timestamp, nonce, hash_algo, reciver,
 // Erstellt die Rickchain # Hauptnetzwerk
 function RickcoinMainnet(callback) {
     // Gibt die Basisparameter der Aktuellen Blockchain an
-    let pow_diff_adjust = 0;                                                                                            // Gibt an, aller wieviel Blöcke das Halvening Durchgeführt werden soll
+    let pow_diff_adjust = 0;                                                                                        // Gibt an, aller wieviel Blöcke das Halvening Durchgeführt werden soll
     let block_time_ms = 0;                                                                                          // Gibt die Blockzeit an (3 Minuten) weialnge es im Schnitt dauern soll bist ein neuer Block erstellt wird
-    let pow_halvening_period = 0;                                                                                       // Gibt die Anzahl der Blöcke an, wann das Halvening durchgeführt werden soll
-    let hash_algo = ramSwiftyHash;                                                                                     // Gibt den zu verwendeten Mining Algorithmus an
+    let pow_halvening_period = 0;                                                                                   // Gibt die Anzahl der Blöcke an, wann das Halvening durchgeführt werden soll
+    let hash_algo = ramSwiftyHash;                                                                                  // Gibt den zu verwendeten Mining Algorithmus an
     let rickcoin = new Coin(8, "3eecf85c306b5c", 110700, 800);                                                      // Gibt den Coin an, welcher verwendet werden soll
     let start_pow_target = "00000ffff0000000000000000000000000000000000000000000000000000000";                      // Gibt Startschwierigkeit für das Mining an
 
@@ -48,14 +48,15 @@ function RickcoinMainnet(callback) {
             consensus:'pow',
             pow_hash_algo:hash_algo,
             block_header:block_header,
-            finally_block_tpye:PoWBlock,
             block_time_ms:block_time_ms,
             tx_header:transaction_header,
             pow_target:start_pow_target,
             pow_diff_adjust:pow_diff_adjust,
             pow_halvening_period:pow_halvening_period,
-            candidate_block:CandidatePoWBlock,
         },
+        130:{
+            consensus:'posm',
+        }
     };
 
     // Der Genesis Block wird gebaut

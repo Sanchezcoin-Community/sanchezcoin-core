@@ -1,7 +1,9 @@
-const { PoWBlock } = require('./block');
 const { mainnet } = require("./chainparms");
 const { PoWMinerClass } = require('./pow');
+const { mintNewBlock } = require('./pos');
+const { PoWBlock } = require('./block');
 const bigInt = require("big-integer");
+
 
 
 // Wird als Node Objekt verwendet
@@ -12,13 +14,21 @@ class Node {
 
         // Speichert das Miner Objekt ab
         this.miner = null;
+
+        // Speichert die Aktuelle Wallet ab
+        this.wallet = null;
     };
 
     // Wird verwendet um die Einstellungen zu laden
     loadChain(path, callback) {
         // Die Blockchaindatenbank wird geladen
         this.block_chain_object.loadBlockchainDatabase(path, callback);
-    }
+    };
+
+    // Wird verwendet um eine Wallet zu laden
+    loadWallet(path, passphr, callback) {
+        this.wallet = 'a';
+    };
 
     // Startet den Mining Vorgang
     startMiner(reciverPublicKeyHash, threads=2, total=null, callback=null) {
@@ -26,7 +36,7 @@ class Node {
         if(this.miner !== null) return;
 
         // Das Aktuelle Consensusverfahren wird abgerufen
-        let current_consens_prog = this.block_chain_object.nextBlockConsensus()
+        let current_consens_prog = this.block_chain_object.nextBlockConsensus();
 
         // Es wird geprüft ob das Mining für diesen Block zur verfüung steht
         if(current_consens_prog.consensus !== 'pow') {
@@ -41,8 +51,16 @@ class Node {
 
         // Diese Funktion wird ausgeführt um den Mining Vorgang durchzuführen
         const ___mine = () => {
+            // Das Aktuelle Konsensus verfahren wird abgerufen, es wird geprüft ob es sich weiterhin um ein Proof Of Work System handelt
+            current_consens_prog = this.block_chain_object.nextBlockConsensus();
+            if(current_consens_prog.consensus !== 'pow') {
+                this.miner.clearCurrentProcess();
+                if(callback !== null) callback('Consensus changed, no mining longer supported');
+                return;
+            }
+
             // Der Aktuelle Template Block wird abgerufen
-            let c_template = this.block_chain_object.getBlockTemplate(reciverPublicKeyHash);
+            let c_template = this.block_chain_object.getPoWBlockTemplate(reciverPublicKeyHash);
             let current_template_block = c_template.cblock;
 
             // Es wird geprüft ob es sich um einen Mineable Block handelt
@@ -107,22 +125,42 @@ class Node {
     };
 
     // Wird verwendet um dass Staking zu Starten
-    startBlockMinting(staker_private_key) {
+    startBlockMinting(staker_private_key, total=null, callback=null) {
         // Das Aktuelle Consensusverfahren wird abgerufen
-        let current_consens_prog = this.nextBlockConsensus()
+        let current_consens_prog = this.block_chain_object.nextBlockConsensus()
 
         // Es wird geprüft ob das Mining für diesen Block zur verfüung steht
         if(current_consens_prog.consensus !== 'posm') {
-            throw new Error('Mining its not available');
+            if(callback !== null) {
+                callback('Mining its not available');
+                return;
+            }
+            else {
+                throw new Error('Mining its not available');
+            }
         }
 
-        // Diese Variable Gibt an, ob der Minting vorgang durchgefühhrt werden soll
-
+        // Es wird geprüft ob eine Wallet geladen wurde
+        if(this.wallet === null) {
+            if(callback !== null) {
+                callback('No wallet loaded');
+                return;
+            }
+            else {
+                throw new Error('No wallet loaded');
+            }
+        }
 
         // Diese Schleife wird Asynchrone ausgeführt, es wird versucht einen neuen Block zu Minten
-        (async() => {
-            
-        })();
+        mintNewBlock(null, this.block_chain_object, (state, data) => {
+
+        });
+
+        // Der Minting Vorgang wurde erfolgreich gestartet
+        if(callback !== null) { callback(null, true); };
+
+        // Erfolgreich
+        return true;
     };
 
     // Gibt den Aktuellen Block aus
