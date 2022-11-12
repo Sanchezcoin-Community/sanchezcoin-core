@@ -1,8 +1,7 @@
 const { CoinbaseInput, UnspentOutput } = require('./utxos')
 const { CoinbaseTransaction } = require('./transaction');
-const { targetToBits, PoWBlock } = require('./block');
 const BlockcahinDatabase = require('./dbchain');
-const { PoWMinerClass } = require('./pow');
+const { targetToBits } = require('./block');
 const { Mempool } = require('./mempool');
 const bigInt = require("big-integer");
 
@@ -18,29 +17,22 @@ class Blockchain {
             return;
         }
 
-        // Speichert die Akutelle Gearbeitete Leistung
-        this.chain_work = 0;
-
         // Speichert die Parameter ab welche zum Betrieb des Peers benötigt werden
         this.blockchain_db = new BlockcahinDatabase(genesis_block, chainparms['$']);
         this.genesis_block = genesis_block;
         this.chainparms = chainparms;
         this.mempool = new Mempool();
         this.cblock = null;
-        this.chight = 0;
         this.coin = coin;
         this.blocks = [];
         this.db = null;
 
         // Speichert das Aktuelle Target ab
-        this.current_pow_target = this.#consensusForHight(0).pow_target;
-
-        // Speichert den Aktuellen Miner ab
-        this.miner = null;
+        this.current_pow_target = this.consensusForHight(0).pow_target;
     };
 
     // Gibt die Aktiven Regeln für die Aktuelle Blockhöhe aus
-    #consensusForHight(hight) {
+    consensusForHight(hight) {
         // Es werden alle Blockeinstellungen für diese Blockhöhe aufgelistet
         let temp_chain_pamrs = { ...this.chainparms };
         let main_parms = temp_chain_pamrs["$"];
@@ -53,14 +45,14 @@ class Blockchain {
     };
 
     // Gibt das Konsensusverfahren für den Nächstenblock aus
-    #nextBlockConsensus() {
-        return this.#consensusForHight(this.cblock.hight + 1);
+    nextBlockConsensus() {
+        return this.consensusForHight(this.cblock.hight + 1);
     };
 
     // Fügt der Kette neue Blöcke hinzu
     async addBlock(block_obj, full_block=true) {
         // Die Atuellen Consensusregeln werden abgerufen
-        let current_consens_rules = this.#nextBlockConsensus();
+        let current_consens_rules = this.nextBlockConsensus();
 
         // Es wird geprüft ob es sich um einen Proof of Work Block handelt
         if(block_obj.constructor.name === 'PoWBlock' && current_consens_rules.consensus === 'pow') {
@@ -181,7 +173,7 @@ class Blockchain {
         let current_block_and_hight = this.cblock;
 
         // Das Aktuelle Consensusverfahren wird abgerufen
-        let current_consens = this.#consensusForHight(current_block_and_hight.hight + 1);
+        let current_consens = this.consensusForHight(current_block_and_hight.hight + 1);
 
         // Die Genesis Transaktion für den Empfänger wird erstellt
         let new_input = new CoinbaseInput();
@@ -197,105 +189,6 @@ class Blockchain {
 
         // Der Block wird zurückgegeben
         return { cblock:new_candidate_block, txns:[genesis_coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
-    };
-
-    // Startet den Mining Vorgang
-    startMiner(reciverPublicKeyHash, threads=2, total=null, callback=null) {
-        // Es wird geprüft ob bereits ein neuer Miner vorhanden ist
-        if(this.miner !== null) return;
-
-        // Das Aktuelle Consensusverfahren wird abgerufen
-        let current_consens_prog = this.#nextBlockConsensus()
-
-        // Es wird geprüft ob das Mining für diesen Block zur verfüung steht
-        if(current_consens_prog.consensus !== 'pow') {
-            throw new Error('Mining its not available');
-        }
-
-        // Es wird ein neuer MultiThread Miner erstellt
-        this.miner = new PoWMinerClass(threads, current_consens_prog.pow_hash_algo);
-
-        // Speichert alle Blöcke ab
-        let current_round = 0;
-
-        // Diese Funktion wird ausgeführt um den Mining Vorgang durchzuführen
-        const ___mine = () => {
-            // Der Aktuelle Template Block wird abgerufen
-            let c_template = this.getBlockTemplate(reciverPublicKeyHash);
-            let current_template_block = c_template.cblock;
-
-            // Es wird geprüft ob es sich um einen Mineable Block handelt
-            if(c_template.type !== 'pow') {
-                console.log('Mining stoped, consesnus changed');
-                this.miner.clearCurrentProcess();
-                return;
-            }
-
-            // Der Mining vorgang wird gestartet
-            this.miner.startMine(this.current_pow_target, current_template_block.blockTemplate(), (error, found_nonce) => {
-                // Es wird geprüft ob ein Fehler aufgetreten ist
-                if(error !== null) {
-                    console.log(error);
-                    return;
-                }
-
-                // Die Nonce des Blocks wird angepasst
-                current_template_block.setNonce(found_nonce);
-
-                // Es wird geprüft ob der Block die Aktuelle Diff erfüllt
-                if((bigInt(current_template_block.getCandidateBlockHash(), 16) < bigInt(this.current_pow_target, 16)) !== true) {
-                    console.log('INVALID_BLOCK_NOT_ACCEPTED');
-                    return; 
-                }
-
-                // Die Gefundenen Daten werden angezeigt
-                console.log(current_template_block.blockHash(), `0x${current_template_block.target_bits}`, c_template.hight);
-
-                // Das Finale Blockobjekt wird erstellt
-                let final_block = new PoWBlock(current_template_block.prv_block_hash, c_template.txns, current_template_block.target_bits, current_template_block.hash_algo, current_template_block.timestamp, found_nonce);
-
-                // Es wird geprüft ob es sich um einen gültigen Block handelt
-                if(final_block.blockHash() !== current_template_block.blockHash()) {
-                    console.log('INVALID_BLOCK_WAS_DROPPED');
-                }
-
-                // Es wird eine Runde hochgezählt
-                current_round += 1;
-
-                // Der Block wird der Kette Hinzugefügt
-                this.addBlock(final_block).then(() => {
-                    // Der nächste Block wird abgeabut
-                    if(total !== null) {
-                        if(total != current_round) {
-                            ___mine();
-                        }
-                        else {
-                            if(callback !== null) callback(null, final_block);
-                        }
-                    }
-                    else {
-                        ___mine();
-                        if(callback !== null) callback(null, final_block);
-                    }
-                });
-            });
-        };
-
-        // Started den Miningvorgang
-        ___mine();
-    };
-
-    // Wird verwendet um dass Staking zu Starten
-    startBlockMinting(staker_private_key) {
-        // Das Aktuelle Consensusverfahren wird abgerufen
-        let current_consens_prog = this.#nextBlockConsensus()
-
-        // Es wird geprüft ob das Mining für diesen Block zur verfüung steht
-        if(current_consens_prog.consensus !== 'posm') {
-            throw new Error('Mining its not available');
-        }
-
-        // 
     };
 
     // Wird verwendet um die Blockchain Datenbank zu laden
@@ -337,6 +230,11 @@ class Blockchain {
     // Gibt an, ob das Objekt einsatzbereit ist
     useable() {
         return this.db !== null;
+    };
+
+    // Gibt die Aktuelle PoW Schwierigkeit aus
+    getPoWTarget() {
+        return this.current_pow_target;
     };
 }
 

@@ -334,6 +334,7 @@ class PoWBlock {
 };
 
 
+
 // Wird verwendet um einen Genesis Mining Block zu erstellen
 async function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
     // Der Betrag für den Aktuellen Block wird abgerufen
@@ -373,7 +374,7 @@ async function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
 };
 
 // Wird verwendet um einen Proof Of Staking Work Block zu erstellen
-async function createGenesisPoSWBlock(reciver_address, target, coin) {
+async function createGenesisPoSMintingBlock(reciver_address, target, coin) {
     // Der Betrag für den Aktuellen Block wird abgerufen
     let current_reward = coin.current_reward;
 
@@ -418,9 +419,9 @@ const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
 //createGenesisPoSWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
 
 
-
 // Exportiert die Klassen
 module.exports = {
+    createGenesisPoSMintingBlock:createGenesisPoSMintingBlock,
     mineGenesisPoWBlock:mineGenesisPoWBlock,
     CandidatePoWBlock:CandidatePoWBlock,
     targetToBits:targetToBits,

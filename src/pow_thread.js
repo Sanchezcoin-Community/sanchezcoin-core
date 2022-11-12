@@ -1,7 +1,6 @@
 //add this script in myWorker.js file
-const {parentPort, workerData} = require("worker_threads");
-const { ramSwiftyHash } = require('./hash_algo');
-const { sha256dBTC } = require('./hash_algo');
+const { parentPort, workerData } = require("worker_threads");
+const { sha256dBTC,ramSwiftyHash } = require('./hash_algo');
 const bigInt = require("big-integer");
 
 
@@ -32,7 +31,9 @@ async function worker() {
                     var merged_data = `${current_state.process_data.block_header}${nonce}`;
 
                     // Es wird ein Hash aus dem Wert erzeugt
-                    reval_hash = ramSwiftyHash.compute(Buffer.from(merged_data, 'hex'));
+                    if(workerData.hash_algo === 'swiftyh256_pow') reval_hash = ramSwiftyHash.compute(Buffer.from(merged_data, 'hex'));
+                    else if (workerData.hash_algo === 'sha256d_pow') reval_hash = sha256dBTC.compute(Buffer.from(merged_data, 'hex'));
+                    else throw new Error(`Invalid Mining algo ${workerData.hash_algo}`);
                     if(reval_hash === last_hash) {
                         console.log(reval_hash, 'error', cnonce, merged_data);
                         return;

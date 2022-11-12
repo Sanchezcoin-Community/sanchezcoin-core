@@ -46,13 +46,13 @@ function RickcoinMainnet(callback) {
         // Speichert allgemeine Parameter ab
         "$":{
             consensus:'pow',
-            pow_target:start_pow_target,
-            pow_diff_adjust:pow_diff_adjust,
             pow_hash_algo:hash_algo,
             block_header:block_header,
             finally_block_tpye:PoWBlock,
             block_time_ms:block_time_ms,
             tx_header:transaction_header,
+            pow_target:start_pow_target,
+            pow_diff_adjust:pow_diff_adjust,
             pow_halvening_period:pow_halvening_period,
             candidate_block:CandidatePoWBlock,
         },
@@ -65,7 +65,7 @@ function RickcoinMainnet(callback) {
     let chain_object = new Blockchain(genesis_block, rickcoin, chainparms);
 
     // Das Chain Objekt wird zurückgegeben
-    callback(null, chain_object);
+    callback(null, chain_object, 'mainnet');
 };
 
 

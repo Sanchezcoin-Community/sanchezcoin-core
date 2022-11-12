@@ -1,6 +1,7 @@
 const { Worker } = require('worker_threads');
 
 
+
 // Proof of Work Consensus Object
 class PoWMinerClass {
     constructor(threads, miner_algo) {
@@ -30,9 +31,9 @@ class PoWMinerClass {
         // Die Miner Threads werden gestartet
         for (let i = 0; i < this.threads; i++) {
             // Der Worker wird gestartet
-            let pushData = { start:start, end:end, i:i};
+            let pushData = { start:start, end:end, i:i, hash_algo:this.miner_algo.name };
 
-            const worker = new Worker('./src/pow_thread.js', { workerData:pushData });
+            const worker = new Worker('./src/pow_thread.js', { workerData:pushData});
             worker.on('message', (resolve) => {
                 if(typeof resolve === 'string') {
                     if(resolve === 'STARTED') {
