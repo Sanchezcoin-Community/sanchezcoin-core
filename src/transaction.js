@@ -59,7 +59,7 @@ class CoinbaseTransaction {
 
 // Stellt eine Coinstake Transaktion dar, eine Coinstake Transaktion ist mit einer Coinbase Transaktion vergleichbar
 class CoinstakeTransaction {
-    constructor(blockHight, inputs, outputs, stake_tx_signature) {
+    constructor(blockHight, inputs, outputs) {
         this.blockHight = blockHight;
         this.outputs = outputs;
         this.inputs = inputs;
@@ -107,7 +107,7 @@ class CoinstakeTransaction {
             3:prepared_outputs
         }
     };
-}
+};
 
 
 // Wird verwendet um Transaktionen aus der Datenbank einzuelesen
@@ -162,5 +162,6 @@ function readDbTransactionElement(tx_db_element) {
 // Exportiert die Klassen
 module.exports = {
     readDbTransactionElement:readDbTransactionElement,
+    CoinstakeTransaction:CoinstakeTransaction,
     CoinbaseTransaction:CoinbaseTransaction 
 }

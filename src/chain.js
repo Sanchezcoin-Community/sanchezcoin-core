@@ -1,6 +1,6 @@
-const { CandidatePoWBlock, CandidatePoSMintingBlock, PoWBlock } = require('./block');
-const { CoinbaseInput, UnspentOutput } = require('./utxos')
-const { CoinbaseTransaction } = require('./transaction');
+const { CoinbaseTransaction, CoinstakeTransaction } = require('./transaction');
+const { CoinbaseInput, UnspentOutput } = require('./utxos');
+const { CandidatePoWBlock } = require('./block');
 const BlockcahinDatabase = require('./dbchain');
 const { targetToBits } = require('./block');
 const { Mempool } = require('./mempool');
@@ -185,24 +185,24 @@ class Blockchain {
         // Der Letzte Block sowie die Blockhöhe werden abgerufen
         let current_block_and_hight = this.cblock;
 
-        // Die Genesis Transaktion für den Empfänger wird erstellt
+        // Die Coinbase Transaktion für den Empfänger wird erstellt
         let new_input = new CoinbaseInput();
         let next_block_hight = current_block_and_hight.hight + 1;
         let new_output = new UnspentOutput(reciver_pkey_or_pkey_hash, this.coin.current_reward);
-        let genesis_coinbase_tx = new CoinbaseTransaction(next_block_hight, [new_input], [new_output]);
+        let coinbase_tx = new CoinbaseTransaction(next_block_hight, [new_input], [new_output]);
 
         // Aus dem Target werden die Target Bits abgeleitet
         let target_bits = targetToBits(this.current_pow_target);
 
         // Es wird ein neuer Candidate Block erstellt
-        let new_candidate_block = new CandidatePoWBlock(current_block_and_hight.block.blockHash(false), [genesis_coinbase_tx.computeHash()], target_bits, current_consens.pow_hash_algo, Date.now());
+        let new_candidate_block = new CandidatePoWBlock(current_block_and_hight.block.blockHash(false), [coinbase_tx.computeHash()], target_bits, current_consens.pow_hash_algo, Date.now());
 
         // Der Block wird zurückgegeben
-        return { cblock:new_candidate_block, txns:[genesis_coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
+        return { cblock:new_candidate_block, txns:[coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
     };
 
     // Gibt die Minting Vorlage für den Aktuellen Block aus
-    getPoSMintingBlockTemplate(minter_public_key, commitment_utxo_h) {
+    getPoSMintingBlockTemplate(minter_public_key, unspend_output_utxo) {
         // Das Aktuelle Consensusverfahren wird abgerufen
         let current_consens = this.nextBlockConsensus();
 
@@ -214,27 +214,26 @@ class Blockchain {
 
         // Der Previous Stake Modifier wird extrahiert, sollte es sich bei dem Vorgänger um einen Proof of Work block handeln,
         // so wird der Proof of Work Hash als Stake Modifier verwendet
-        console.log(current_block_and_hight);
+        let previous_stake_modifier = null;
+        if(current_block_and_hight.block.constructor.name !== 'PoSMintedBlock') previous_stake_modifier = current_block_and_hight.block.blockHash(false);
+        else previous_stake_modifier = current_block_and_hight.block.getStakeModifier();
 
         // Aus dem Commitment Hash, dem Stake Modifer des letzten Blocks, sowie dem Öffentlichen Schlüssel des Stakes wird der Stake Modifier abgeleitet
         let stake_modifier = new SHA3(256);
-        stake_modifier.update(Buffer.from(`${commitment_utxo_h}${minter_public_key}`, 'ascii'));
+        stake_modifier.update(Buffer.from(`${previous_stake_modifier}${unspend_output_utxo}${minter_public_key}`, 'ascii'));
         stake_modifier = stake_modifier.digest('hex');
 
-        // Die Genesis Transaktion für den Empfänger wird erstellt
+        // Die Coinstake Transaktion für den Empfänger wird erstellt
         let new_input = new CoinbaseInput();
         let next_block_hight = (current_block_and_hight.hight + 1);
         let new_output = new UnspentOutput(reciver_pkey_or_pkey_hash, this.coin.current_reward);
-        let genesis_coinbase_tx = new CoinbaseTransaction(next_block_hight, [new_input], [new_output]);
+        let coinbase_tx = new CoinstakeTransaction(next_block_hight, [new_input], [new_output]);
 
         // Aus dem Target werden die Target Bits abgeleitet
-        let target_bits = targetToBits(this.current_pow_target);
-
-        // Es wird ein neuer Candidate Block erstellt
-        let new_candidate_block = new CandidatePoSMintingBlock(current_block_and_hight.block.blockHash(false), [genesis_coinbase_tx.computeHash()], target_bits, current_consens.pow_hash_algo, Date.now());
+        let target_bits = targetToBits(this.current_pos_target);
 
         // Der Block wird zurückgegeben
-        return { cblock:new_candidate_block, txns:[genesis_coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
+        return { target:{ full:this.current_pos_target, bits:target_bits }, cstake_tx:coinbase_tx, txns:[coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
     };
 
     // Wird verwendet um die Blockchain Datenbank zu laden

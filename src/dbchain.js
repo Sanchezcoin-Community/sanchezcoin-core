@@ -1,5 +1,4 @@
 const { ramSwiftyHash, sha256dBTC } = require('./hash_algo');
-const { os_based_file_path_create } = require('./host');
 const sqlite3 = require('sqlite3').verbose();
 const { PoWBlock } = require('./block');
 const crypto = require('crypto');
