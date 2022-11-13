@@ -17,7 +17,6 @@ const toBytesInt32 = (num) => {
     return Buffer.from(arr);
 };
 
-
 // Wird verwendet um die Difficulty (das Target) in eine kleine Bit reihenfolge umzuwandeln
 function targetToBits(target) {
     // Die Anzahl der Nullen am Ende wird Ermittelt
@@ -242,6 +241,11 @@ class PoWBlock {
         this.nonce = nonce;
     };
 
+    // Gibt den Aktuellen Block Typen aus
+    getBlockType() {
+        return "pow"; 
+    };
+
     // Gibt die Aktuelle Block Höhe aus
     coinbaseBlockHight() {
         let first = this.transactions[0];
@@ -309,17 +313,17 @@ class PoWBlock {
     };
 
     // Gibt die Transaktionen für die Datenbank aus
-    txDbElement() {
+    txIdDbElement() {
         // Die Transaktionen werden abgearbeitet
         let prepared_txns = [];
-        for(const otem of this.transactions) prepared_txns.push(otem.toDbElement())
+        for(const otem of this.transactions) prepared_txns.push(otem.computeHash());
 
         // Die Daten werden zurückgegeben
         return cbor.encode(prepared_txns);
     };
 
     // Gibt die Header Daten für die Datenbank aus
-    txDbHeaderElement() {
+    dbHeaderElement() {
         // Das Objekt wird gebaut
         let build_obj = {
             0:this.timestamp.toString(16),
@@ -334,96 +338,99 @@ class PoWBlock {
 };
 
 
+// Wird als Test ausgeführt
+if (require.main === module) (() => {
+    const { NotSpendlabelMessageOutput } = require('./utxos');
 
-// Wird verwendet um einen Genesis Mining Block zu erstellen
-async function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
-    // Der Betrag für den Aktuellen Block wird abgerufen
-    let current_reward = coin.current_reward;
+    // Wird verwendet um einen Genesis Mining Block zu erstellen
+    async function mineGenesisPoWBlock(reciver_address, target, coin, hash_algo) {
+        // Der Betrag für den Aktuellen Block wird abgerufen
+        let current_reward = coin.current_reward;
 
-    // Die Genesis Transaktion für den Empfänger wird erstellt
-    let new_input = new CoinbaseInput();
-    let new_output = new UnspentOutput(reciver_address, current_reward);
-    let genesis_coinbase_tx = new CoinbaseTransaction(0, [new_input], [new_output]);
+        // Die Genesis Transaktion für den Empfänger wird erstellt
+        let new_input = new CoinbaseInput();
+        let new_output = new UnspentOutput(reciver_address, bigInt(current_reward), bigInt("100"), bigInt("0"));
+        let message_output = new NotSpendlabelMessageOutput(Buffer.from("November 13, 2022 This coin has no claim to money, I like Rick And Morty and that's why I created it.", 'utf8'))
+        let genesis_coinbase_tx = new CoinbaseTransaction(bigInt("0"), [new_input], [new_output, message_output]);
 
-    // Aus dem Target werden die Target Bits abgeleitet
-    const target_bits = targetToBits(target);
+        // Aus dem Target werden die Target Bits abgeleitet
+        const target_bits = targetToBits(target);
 
-    // Der Block wird gebaut
-    let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], target_bits, hash_algo, Date.now());
+        // Der Block wird gebaut
+        let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], target_bits, hash_algo, Date.now());
 
-    var { PoWMinerClass } = require('./pow');
-    const multi_thread_miner = new PoWMinerClass(3, hash_algo);
-    multi_thread_miner.startMine(target, new_block.blockTemplate(), (error, found_nonce) => {
-        // Es wird geprüft ob ein Fehler aufgetreten ist
-        if(error !== null) {
-            console.log(error);
-            return;
-        }
+        var { PoWMinerClass } = require('./pow');
+        const multi_thread_miner = new PoWMinerClass(3, hash_algo);
+        multi_thread_miner.startMine(target, new_block.blockTemplate(), (error, found_nonce) => {
+            // Es wird geprüft ob ein Fehler aufgetreten ist
+            if(error !== null) {
+                console.log(error);
+                return;
+            }
 
-        // Die Nonce des Blocks wird angepasst
-        new_block.setNonce(found_nonce);
+            // Die Nonce des Blocks wird angepasst
+            new_block.setNonce(found_nonce);
 
-        // Die Gefundenen Daten werden angezeigt
-        console.log('Block timestamp        :', new_block.timestamp);
-        console.log('Block proof            :', new_block.getCandidateBlockHash());
-        console.log('Block nonce            :', found_nonce);
-        console.log('Block target bits      :', new_block.target_bits);
-        console.log('Block tempalte         :', new_block.blockTemplate());
-        console.log('Block header           :', new_block.blockHeader());
-    });
-};
-
-// Wird verwendet um einen Proof Of Staking Work Block zu erstellen
-async function createGenesisPoSMintingBlock(reciver_address, target, coin) {
-    // Der Betrag für den Aktuellen Block wird abgerufen
-    let current_reward = coin.current_reward;
-
-    // Die Genesis Transaktion für den Empfänger wird erstellt
-    let new_input = new CoinbaseInput();
-    let new_output = new UnspentOutput(reciver_address, current_reward);
-    let genesis_coinbase_tx = new CoinbaseTransaction(0, [new_input], [new_output]);
-
-    // Führt eine Pause durch
-    function sleep(ms) {
-    return new Promise((resolve) => {
-            setTimeout(resolve, ms);
+            // Die Gefundenen Daten werden angezeigt
+            console.log('Block timestamp        :', new_block.timestamp);
+            console.log('Block proof            :', new_block.getCandidateBlockHash());
+            console.log('Block nonce            :', found_nonce);
+            console.log('Block target bits      :', new_block.target_bits);
+            console.log('Block tempalte         :', new_block.blockTemplate());
+            console.log('Block header           :', new_block.blockHeader());
         });
     };
 
-    // Speichert alle Verfüggabren UTXOS ab
-    let utxos = [
-        { txid:"6795e665a77744080b0f2faad5aa7ddac282c479f5f0f9d6f04a73820e4d8d01", vout:0, value:45000000000000, timestamp:1668183397 },
-        { txid:"32c220482c68413fbf8290e3b1e49b0a85901cfcd62ab0738760568a2a6e8a57", vout:0, value:60000000000000, timestamp:1668183397 },
-    ];
+    // Wird verwendet um einen Proof Of Staking Work Block zu erstellen
+    async function createGenesisPoSMintingBlock(reciver_address, target, coin) {
+        // Der Betrag für den Aktuellen Block wird abgerufen
+        let current_reward = coin.current_reward;
 
-    while(true){
-        let has_found = false;
-        let now_data = Date.now();
-        let block_time = now_data - (now_data % 5);
-        for(const utxo of utxos){
-            let posDifficulty = bigInt("000000000000dfff000000000000000000000000000000000000000000000000", 16) * utxo.value;
-            let stake_block = new CandidatePoSMintingBlock("0000000000000000000000000000000000000000000000000000000000000000", "0000000000000000000000000000000000000000000000000000000000000000", [genesis_coinbase_tx.computeHash()], reciver_address, utxo.txid, utxo.vout, utxo.value, utxo.timestamp, block_time);
-            let hash = stake_block.computeKernelHash();
-            if(bigInt(hash, 16) < posDifficulty) { console.log('FOUND', hash, utxo.txid, utxo.value, new Date().toISOString()); has_found = true; break; }
+        // Die Genesis Transaktion für den Empfänger wird erstellt
+        let new_input = new CoinbaseInput();
+        let new_output = new UnspentOutput(reciver_address, current_reward);
+        let genesis_coinbase_tx = new CoinbaseTransaction(0, [new_input], [new_output]);
+
+        // Führt eine Pause durch
+        function sleep(ms) {
+        return new Promise((resolve) => {
+                setTimeout(resolve, ms);
+            });
         };
-        if(has_found === true) console.log();
-        await sleep(5000);
-    }
-};
+
+        // Speichert alle Verfüggabren UTXOS ab
+        let utxos = [
+            { txid:"6795e665a77744080b0f2faad5aa7ddac282c479f5f0f9d6f04a73820e4d8d01", vout:0, value:45000000000000, timestamp:1668183397 },
+            { txid:"32c220482c68413fbf8290e3b1e49b0a85901cfcd62ab0738760568a2a6e8a57", vout:0, value:60000000000000, timestamp:1668183397 },
+        ];
+
+        while(true){
+            let has_found = false;
+            let now_data = Date.now();
+            let block_time = now_data - (now_data % 5);
+            for(const utxo of utxos){
+                let posDifficulty = bigInt("000000000000dfff000000000000000000000000000000000000000000000000", 16) * utxo.value;
+                let stake_block = new CandidatePoSMintingBlock("0000000000000000000000000000000000000000000000000000000000000000", "0000000000000000000000000000000000000000000000000000000000000000", [genesis_coinbase_tx.computeHash()], reciver_address, utxo.txid, utxo.vout, utxo.value, utxo.timestamp, block_time);
+                let hash = stake_block.computeKernelHash();
+                if(bigInt(hash, 16) < posDifficulty) { console.log('FOUND', hash, utxo.txid, utxo.value, new Date().toISOString()); has_found = true; break; }
+            };
+            if(has_found === true) console.log();
+            await sleep(5000);
+        }
+    };
 
 
-// Der Genesisblock wird erzeugt
-const { Coin } = require('./coin');
-const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
-//mineGenesisPoWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
-//createGenesisPoSWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
+    // Der Genesisblock wird erzeugt
+    //const { Coin } = require('./coin');
+    //const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
+    //mineGenesisPoWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
+    //createGenesisPoSWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
+})
 
 
 // Exportiert die Klassen
 module.exports = {
-    createGenesisPoSMintingBlock:createGenesisPoSMintingBlock,
     CandidatePoSMintingBlock:CandidatePoSMintingBlock,
-    mineGenesisPoWBlock:mineGenesisPoWBlock,
     CandidatePoWBlock:CandidatePoWBlock,
     targetToBits:targetToBits,
     PoWBlock:PoWBlock 

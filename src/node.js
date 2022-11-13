@@ -88,7 +88,7 @@ class Node {
                 }
 
                 // Die Gefundenen Daten werden angezeigt
-                console.log(current_template_block.blockHash(), `0x${current_template_block.target_bits}`, c_template.hight);
+                console.log(current_template_block.blockHash(), `0x${current_template_block.target_bits}`, c_template.hight.toString());
 
                 // Das Finale Blockobjekt wird erstellt
                 let final_block = new PoWBlock(current_template_block.prv_block_hash, c_template.txns, current_template_block.target_bits, current_template_block.hash_algo, current_template_block.timestamp, found_nonce);

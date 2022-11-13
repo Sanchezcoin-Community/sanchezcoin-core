@@ -1,6 +1,8 @@
 const { ramSwiftyHash, sha256dBTC } = require('./hash_algo');
+const { byteListToObjectList } = require('./utils');
 const sqlite3 = require('sqlite3').verbose();
 const { PoWBlock } = require('./block');
+const bigInt = require("big-integer");
 const crypto = require('crypto');
 const cbor = require('cbor');
 const fs = require('fs');
@@ -78,6 +80,33 @@ class BlockcahinDatabase {
         return state;
     };
 
+    // Wird verwendet um einen Block in die Datenbank zu schreiben
+    async #WriteBlockToDb(block_obj, block_no) {
+        // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
+        let total_inner = [block_obj.prv_block_hash, block_obj.algorithmName(), block_obj.blockHash(false), block_obj.dbHeaderElement(), block_obj.txIdDbElement(), block_no];
+
+        // Der Block wird in die Datenbank geschrieben
+        let writed_block_id = await new Promise((resolveOuter, reject) => {
+            this.block_db.run('INSERT INTO blocks(prev_hash, type, block_hash, pre_header, transactions, hight) VALUES(?, ?, ?, ?, ?, ?)', total_inner, function(err)  {
+                if(err) { reject(err.message); return; }
+                resolveOuter(this.lastID);
+            });
+        });
+
+        // Die ID des geschriebenen Blocks wird zurückgegeben
+        return writed_block_id;
+    };
+
+    // Wird verwendet um eine Transaktion in die Datenbank zu schreiben
+    async #WriteTxToDb(block_id, block_hash, block_no, ...txitem) {
+        console.log(block_id, block_hash, block_no, txitem)
+    };
+
+    // Wird verwendet um eine Transaktion aus der Datenbank abzurufen
+    async #FetchTxFromDB(tx_hash, block_hash=null, block_no=null) {
+
+    };
+
     // Wird verwendet um die Höhe der Blockchain anhand der PreviousBlockID zu ermitteln
     async cleanedBlockHight() {
         // Es wird eine Anfrage an die Datenbank gestellt um die Aktuelle Blockhöhe zu ermitteln
@@ -89,13 +118,13 @@ class BlockcahinDatabase {
         });
 
         // Die Anzahl der Gesamtwerte wird zurückgegeben
-        return current_block_hight;
+        return bigInt(current_block_hight);
     };
 
     // Wird verwendet um einen Eintrag aus der Datenbank zu laden
     async loadBlockFromDatabase(blockHash) {
         // Es wird geprüft ob es sich um den Genesisblock handelt
-        if(this.genesis_block.blockHash(false) === blockHash) return { block:this.genesis_block, hight:0 };
+        if(this.genesis_block.blockHash(false) === blockHash) return { block:this.genesis_block, hight:bigInt("0") };
 
         // Der Block wird abgerufen
         let result = await new Promise((resolved, reject) => {
@@ -111,6 +140,13 @@ class BlockcahinDatabase {
                 const fBlock = row[0];
                 if(fBlock.block_hash !== `${blockHash}`) { throw new Error('INVALID_BLOCK_DB_RESULT'); }
 
+                // Die Einzelenen Transaktionen werden geladen
+                let tx_list = byteListToObjectList(fBlock.transactions), full_fetched_txns = [];
+                for(const otem of tx_list) {
+                    // Die Ausgewählte Transaktion wird aus der Datenbank abgerufen
+
+                };
+
                 // Es wird geprüft ob es sich um eien PoW Block handelt
                 if(fBlock.type === 'sha256d_pow') {
                     // Es wird versucht den Block zu Rekonstruieren
@@ -120,7 +156,7 @@ class BlockcahinDatabase {
                     if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
 
                     // Der Block wird zurückgegeben
-                    resolved({ block:reconstructed_by_block_hash, hight:fBlock.hight });
+                    resolved({ block:reconstructed_by_block_hash, hight:bigInt(fBlock.hight) });
                     return;
                 }
                 else if(fBlock.type === 'swiftyh256_pow') {
@@ -131,7 +167,7 @@ class BlockcahinDatabase {
                     if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
 
                     // Der Block wird zurückgegeben
-                    resolved({ block:reconstructed_by_block_hash, hight:fBlock.hight });
+                    resolved({ block:reconstructed_by_block_hash, hight:bigInt(fBlock.hight) });
                     return;
                 }
                 else {
@@ -275,7 +311,7 @@ class BlockcahinDatabase {
         catch(e) { console.log(e); return; }
 
         // Der Vorgang wird Asynchron ausgeführt
-        await new Promise((resolveOuter) => {
+        let new_db_writed = await new Promise((resolveOuter) => {
             // Wird ausgeführt wenn der Vorgang final fertigestellt wurde
             const ___totalf_finally = (newBlockCh) => {
                 this.block_db = block_db;
@@ -408,6 +444,11 @@ class BlockcahinDatabase {
             });
         });
 
+        // Es wird geprüft ob eine neue Blockchain erstellt wurde, wenn ja werden die Transaktionen aus dem Genesisblock in die Datenbank geschrieben
+        if(new_db_writed === true) {
+            console.log('Gebesisblock add to database');
+        }
+
         // Es wird geprüft ob die Datenbank Objekte geladen wurden
         if(this.block_db === null || this.tx_db === null) {
             console.log('UNKOWN_INTERNAL_ERROR');
@@ -424,16 +465,11 @@ class BlockcahinDatabase {
         let is_invaited = await this.isAlwaysInDatabase(blockData.blockHash(false));
         if(is_invaited === true) { return 'is_always_in_db'; }
 
-        // Gibt die Daten an, welche in die Datenbank geschrieben werden sollen
-        let total_inner = [blockData.prv_block_hash, blockData.algorithmName(), blockData.blockHash(false), blockData.txDbHeaderElement(), blockData.txDbElement(), block_hight];
+        // Der Block wird geschrieben
+        let writed_block_id = await this.#WriteBlockToDb(blockData, block_hight);
 
-        // Die Daten werden in die Datenbank geschrieben
-        await new Promise((resolveOuter, reject) => {
-            this.block_db.run('INSERT INTO blocks(prev_hash, type, block_hash, pre_header, transactions, hight) VALUES(?, ?, ?, ?, ?, ?)', total_inner, (err) => {
-                if(err) { reject(err.message); return; }
-                resolveOuter();
-            });
-        });
+        // Die Transaktionen werde in die Datenbank geschrieben
+        if(update_txdb === true) await this.#WriteTxToDb(writed_block_id, blockData.blockHash(false), block_hight, ...blockData.transactions);
 
         // Die Chainstate wird geupdated
         await this.#updateChainState();

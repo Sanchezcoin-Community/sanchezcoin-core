@@ -79,9 +79,9 @@ class Blockchain {
         }
 
         // Es wird geprüft ob die Blochöhe korrekt angegeben wurde
-        let next_block_hight = previous_block.hight + 1;
-        if(next_block_hight !== block_obj.coinbaseBlockHight()) {
-            console.log('INVALID_BLOCK_HIGHT', previous_block.hight +1, block_obj.coinbaseBlockHight());
+        let next_block_hight = previous_block.hight.add("1");
+        if(next_block_hight.toString(16) !== block_obj.coinbaseBlockHight().toString(16)) {
+            console.log('INVALID_BLOCK_HIGHT', next_block_hight, block_obj.coinbaseBlockHight());
         }
 
         // Es wird geprüft ob die Verwendeten Ausgänge der Transaktionen bereits verwenden werden
@@ -111,10 +111,11 @@ class Blockchain {
         if(ignored === true) return false;
 
         // Der Aktuelle Block wird in der Datenbank hinzugefügt
-        await this.blockchain_db.addBlock(block_obj, (previous_block.hight + 1), true);
+        await this.blockchain_db.addBlock(block_obj, next_block_hight, true);
 
         // Es wird geprüft ob es sich um den Nachfolgeblock des Aktuellen Blocks handelt, wenn ja wird dieser Geupdated
-        if(this.cblock.block.blockHash(false) === block_obj.prv_block_hash && next_block_hight === this.cblock.hight + 1) {
+        let current_block_object = this.cblock;
+        if(current_block_object.block.blockHash(false) === block_obj.prv_block_hash && next_block_hight.toString(16) === current_block_object.hight.add("1").toString(16)) {
             // Die Kopie des letzten Blocks, sowie die Aktuelle Höhe wird zwischengespeichert
             this.cblock = { block:block_obj, hight:next_block_hight };
 
@@ -123,7 +124,7 @@ class Blockchain {
 
             // Es wird geprüft ob die Aktuelle Blockhöhe in der Datenbank mit der Aktuellen Blockhöhe übereinstimmt
             let current_block_hight = await this.blockchain_db.cleanedBlockHight();
-            if(current_block_hight !== next_block_hight) {
+            if(current_block_hight.toString(16) !== next_block_hight.toString(16)) {
                 console.log('INVALID_BLOCK_CHAIN_REGO');
             }
         }
@@ -187,8 +188,8 @@ class Blockchain {
 
         // Die Coinbase Transaktion für den Empfänger wird erstellt
         let new_input = new CoinbaseInput();
-        let next_block_hight = current_block_and_hight.hight + 1;
-        let new_output = new UnspentOutput(reciver_pkey_or_pkey_hash, this.coin.current_reward);
+        let next_block_hight = current_block_and_hight.hight.add(1);
+        let new_output = new UnspentOutput(reciver_pkey_or_pkey_hash, bigInt(this.coin.current_reward), bigInt("100"), bigInt("0"));
         let coinbase_tx = new CoinbaseTransaction(next_block_hight, [new_input], [new_output]);
 
         // Aus dem Target werden die Target Bits abgeleitet
@@ -198,7 +199,7 @@ class Blockchain {
         let new_candidate_block = new CandidatePoWBlock(current_block_and_hight.block.blockHash(false), [coinbase_tx.computeHash()], target_bits, current_consens.pow_hash_algo, Date.now());
 
         // Der Block wird zurückgegeben
-        return { cblock:new_candidate_block, txns:[coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
+        return { cblock:new_candidate_block, txns:[coinbase_tx], hight:next_block_hight, type:current_consens.consensus };
     };
 
     // Gibt die Minting Vorlage für den Aktuellen Block aus
@@ -245,7 +246,8 @@ class Blockchain {
 
             // Es wird geprüft ob die Höhe mit dem letzten Block übereinstimmt
             let clean_hight = await this.blockchain_db.cleanedBlockHight();
-            if(clean_hight !== this.cblock.hight) {
+            if(clean_hight.toString(16) !== this.cblock.hight.toString(16)) {
+                console.log(clean_hight, this.cblock.hight)
                 throw new Error('INVALID_BLOCKCHAIN_DB');
             }
 

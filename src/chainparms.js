@@ -1,8 +1,9 @@
-const { CoinbaseInput, UnspentOutput } = require('./utxos');
+const { CoinbaseInput, UnspentOutput, NotSpendlabelMessageOutput } = require('./utxos');
 const { CandidatePoWBlock, PoWBlock } = require('./block');
 const { CoinbaseTransaction } = require('./transaction');
 const { ramSwiftyHash } = require('./hash_algo');
 const { Blockchain } = require('./chain');
+const bigInt = require("big-integer");
 const { Coin } = require('./coin');
 
 
@@ -14,8 +15,9 @@ function generateGenesisMainnetBlock(bits, timestamp, nonce, hash_algo, reciver,
 
     // Die Genesis Transaktion für den Empfänger wird erstellt
     let new_input = new CoinbaseInput();
-    let new_output = new UnspentOutput(reciver, current_reward);
-    let genesis_coinbase_tx = new CoinbaseTransaction(0, [new_input], [new_output]);
+    let new_output = new UnspentOutput(reciver, bigInt(current_reward), bigInt("100"), bigInt("0"));
+    let message_output = new NotSpendlabelMessageOutput(Buffer.from("November 13, 2022 This coin has no claim to money, I like Rick And Morty and that's why I created it.", 'utf8'))
+    let genesis_coinbase_tx = new CoinbaseTransaction(bigInt("0"), [new_input], [new_output, message_output]);
 
     // Der Block wird gebaut
     let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], bits, hash_algo, timestamp, nonce);
@@ -35,7 +37,7 @@ function RickcoinMainnet(callback) {
     let pow_halvening_period = 0;                                                                                   // Gibt die Anzahl der Blöcke an, wann das Halvening durchgeführt werden soll
     let hash_algo = ramSwiftyHash;                                                                                  // Gibt den zu verwendeten Mining Algorithmus an
     let rickcoin = new Coin(8, "3eecf85c306b5c", 110700, 800);                                                      // Gibt den Coin an, welcher verwendet werden soll
-    let start_pow_target = "00000ffff0000000000000000000000000000000000000000000000000000000";                      // Gibt Startschwierigkeit für das Mining an
+    let start_pow_target = "0000ffff00000000000000000000000000000000000000000000000000000000";                      // Gibt Startschwierigkeit für das Mining an
 
     // Gibt die Netzwerkparameter an, welche verwendet werden um Verbindungen mit anderen Node herzustellen
     let transaction_header = "";
@@ -60,7 +62,7 @@ function RickcoinMainnet(callback) {
     };
 
     // Der Genesis Block wird gebaut
-    let genesis_block = generateGenesisMainnetBlock("1e00ffff", 1668007569924, 703222, hash_algo, "9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b", rickcoin);
+    let genesis_block = generateGenesisMainnetBlock("1e00ffff", 1668359315492, 304473, hash_algo, "9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b", rickcoin);
 
     // Das Chain Objekt wird start_target
     let chain_object = new Blockchain(genesis_block, rickcoin, chainparms);

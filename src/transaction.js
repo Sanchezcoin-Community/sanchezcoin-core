@@ -1,5 +1,8 @@
 const { CoinbaseInput, UnspentOutput } = require('./utxos');
+const { intToVInt, isBigInt } = require('./vint');
+const bigInt = require("big-integer");
 const { SHA3 } = require('sha3');
+
 
 
 
@@ -7,6 +10,10 @@ const { SHA3 } = require('sha3');
 // diese Transaktion wird verwendet um die Gebühren sowie den Reward an den Block ersteller zu übergeben
 class CoinbaseTransaction {
     constructor(blockHight, inputs, outputs) {
+        // Es wird geprüft ob es sich bei der Angabe um die Blockhöhe um eine Korrekte angabe handelt
+        if(isBigInt(blockHight) !== true) throw Error('Invalid current block hight');
+
+        // Speichert die Daten zwischen
         this.blockHight = blockHight;
         this.outputs = outputs;
         this.inputs = inputs;
@@ -17,12 +24,16 @@ class CoinbaseTransaction {
         // Es werden alle Eingänge abgerufen
         let totalInputHexStringed = '';
         for(const otem of this.inputs) { totalInputHexStringed += otem.getRawData(); }
+
+        // Die Gesamtanzahl aller Eingänge wird umgewandelt
         const hexed_total_inputs = this.inputs.length.toString(16);
         const total_inputs_hex_len = hexed_total_inputs.toString(16).toUpperCase().padStart(2, 0);
 
         // Es werden alle ausgänge abgerufen
         let totalRawHexString = '';
         for(const otem of this.outputs) { totalRawHexString += otem.getRawData(); }
+
+        // Die Anzahl aller Ausgänge wird ermittelt
         const hexed_total_output = this.outputs.length.toString(16);
         const total_output_hex_len = hexed_total_output.toString(16).toUpperCase().padStart(2, 0);
 
@@ -34,25 +45,6 @@ class CoinbaseTransaction {
     computeHash() {
         const hash = new SHA3(256).update(Buffer.from(this.getRawData(), 'ascii').reverse()).digest('hex');
         return hash;
-    };
-
-    // Gibt die Transaktion so aus, dass sie in die Datenbank gechrieben werden kann
-    toDbElement() {
-        // Die Inputs werden vorbereitet
-        let prepared_inputs = [];
-        for(const otem of this.inputs) prepared_inputs.push(Buffer.from(otem.getRawData(), 'hex'));
-
-        // Die Outputs werden vorbereitet
-        let prepared_outputs = [];
-        for(const otem of this.outputs) prepared_outputs.push(Buffer.from(otem.getRawData(), 'hex'));
-
-        // Die Outputs werden vorbereitet
-        return {
-            0:1,
-            1:this.blockHight,
-            2:prepared_inputs,
-            3:prepared_outputs
-        }
     };
 };
 
@@ -87,25 +79,6 @@ class CoinstakeTransaction {
     computeHash() {
         const hash = new SHA3(256).update(Buffer.from(this.getRawData(), 'ascii').reverse()).digest('hex');
         return hash;
-    };
-
-    // Gibt die Transaktion so aus, dass sie in die Datenbank gechrieben werden kann
-    toDbElement() {
-        // Die Inputs werden vorbereitet
-        let prepared_inputs = [];
-        for(const otem of this.inputs) prepared_inputs.push(Buffer.from(otem.getRawData(), 'hex'));
-
-        // Die Outputs werden vorbereitet
-        let prepared_outputs = [];
-        for(const otem of this.outputs) prepared_outputs.push(Buffer.from(otem.getRawData(), 'hex'));
-
-        // Die Outputs werden vorbereitet
-        return {
-            0:1,
-            1:this.blockHight,
-            2:prepared_inputs,
-            3:prepared_outputs
-        }
     };
 };
 
