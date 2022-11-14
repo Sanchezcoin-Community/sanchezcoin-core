@@ -1,5 +1,5 @@
 const { CoinbaseInput, UnspentOutput, NotSpendlabelMessageOutput } = require('./utxos');
-const { CandidatePoWBlock, PoWBlock } = require('./block');
+const { verfiyPoWBlockStructure, PoWBlock } = require('./block');
 const { CoinbaseTransaction } = require('./transaction');
 const { ramSwiftyHash } = require('./hash_algo');
 const { Blockchain } = require('./chain');
@@ -19,11 +19,8 @@ function generateGenesisMainnetBlock(bits, timestamp, nonce, hash_algo, reciver,
     let message_output = new NotSpendlabelMessageOutput(Buffer.from("November 13, 2022 This coin has no claim to money, I like Rick And Morty and that's why I created it.", 'utf8'))
     let genesis_coinbase_tx = new CoinbaseTransaction(bigInt("0"), [new_input], [new_output, message_output]);
 
-    // Der Block wird gebaut
-    let new_block = new CandidatePoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx.computeHash()], bits, hash_algo, timestamp, nonce);
-
     // Das Finale Blockobjekt wird erstellt
-    let final_block = new PoWBlock(new_block.prv_block_hash, [genesis_coinbase_tx], bits, hash_algo, timestamp, nonce);
+    let final_block = new PoWBlock('0000000000000000000000000000000000000000000000000000000000000000', [genesis_coinbase_tx], bits, hash_algo, timestamp, nonce);
 
     // Der neue Block wird zurückgegeben
     return final_block;
@@ -63,6 +60,12 @@ function RickcoinMainnet(callback) {
 
     // Der Genesis Block wird gebaut
     let genesis_block = generateGenesisMainnetBlock("1e00ffff", 1668359315492, 304473, hash_algo, "9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b", rickcoin);
+
+    // Es wird geprüft ob der Aufbau des Blocks korrekt ist
+    if(verfiyPoWBlockStructure(genesis_block) !== true) throw new Error('Invalid genesis block');
+
+    // Es wird geprüft ob der Hash des Genesis Blocks korrekt ist
+    if(genesis_block.blockHash(true) !== '0x74b2391a809e00e3944d2a914464a8d5cd19612cae5b677147eef4ef8bbfab9d') throw new Error('Invalid Genesisblock');
 
     // Das Chain Objekt wird start_target
     let chain_object = new Blockchain(genesis_block, rickcoin, chainparms);

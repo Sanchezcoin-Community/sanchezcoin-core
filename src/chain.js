@@ -1,6 +1,6 @@
 const { CoinbaseTransaction, CoinstakeTransaction } = require('./transaction');
+const { CandidatePoWBlock, verfiyPoWBlockStructure } = require('./block');
 const { CoinbaseInput, UnspentOutput } = require('./utxos');
-const { CandidatePoWBlock } = require('./block');
 const BlockcahinDatabase = require('./dbchain');
 const { targetToBits } = require('./block');
 const { Mempool } = require('./mempool');
@@ -67,6 +67,12 @@ class Blockchain {
                 console.log('INVALID_BLOCK_NOT_ACCEPTED');
                 return false;
             }
+
+            // Es wird geprüft ob die Struktur des BLocks korrekt ist
+            if(verfiyPoWBlockStructure(block_obj) !== true) {
+                console.log('INVALID_BLOCK_NOT_ACCEPTED');
+                return false;
+            }
         }
         else {
             throw new Error('Unknown block type');
@@ -84,40 +90,40 @@ class Blockchain {
             console.log('INVALID_BLOCK_HIGHT', next_block_hight, block_obj.coinbaseBlockHight());
         }
 
-        // Es wird geprüft ob die Verwendeten Ausgänge der Transaktionen bereits verwenden werden
-        let current_transaction_hight = 0, ignored = false;
-        for(const tx_obj of block_obj.transactions) {
-            // Es wird geprüft ob es sich um die Coinbase Transaktion handelt
-            if(tx_obj.constructor.name === 'CoinbaseTransaction' && current_transaction_hight === 0) {
-                // Es wird geprüft wieviele Inputs und wieviele Outputs vorhanden sind
-                if(tx_obj.inputs.length !== 1 || tx_obj.outputs.length !== 1) {
-                    console.log('INVALID_COINBASE_TRANSACTION');
-                    ignored = true;
-                    break;
-                }
-            }
-            else if(tx_obj.constructor.name === 'SignatedTransaction' && current_transaction_hight > 0) {
-                // Es handelt sich um eine Signierte Transaktion
-            }
-            else {
-                // Es handelt sich um einen Unbekannten Transaktionstypen
-            }
-
-            // Der Zähler wird nach oben gezähltl
-            current_transaction_hight += 1;
-        };
-
-        // Es wird geprüft ob es eine Üngpltige Transaktion gibt
-        if(ignored === true) return false;
-
-        // Der Aktuelle Block wird in der Datenbank hinzugefügt
-        await this.blockchain_db.addBlock(block_obj, next_block_hight, true);
-
         // Es wird geprüft ob es sich um den Nachfolgeblock des Aktuellen Blocks handelt, wenn ja wird dieser Geupdated
         let current_block_object = this.cblock;
         if(current_block_object.block.blockHash(false) === block_obj.prv_block_hash && next_block_hight.toString(16) === current_block_object.hight.add("1").toString(16)) {
+            // Es wird geprüft ob die Verwendeten Ausgänge der Transaktionen bereits verwenden werden
+            let current_transaction_hight = 0, ignored = false;
+            for(const tx_obj of block_obj.transactions) {
+                // Es wird geprüft ob es sich um die Coinbase Transaktion handelt
+                if(tx_obj.constructor.name === 'CoinbaseTransaction' && current_transaction_hight === 0) {
+                    // Es wird geprüft wieviele Inputs und wieviele Outputs vorhanden sind
+                    if(tx_obj.inputs.length !== 1 || tx_obj.outputs.length !== 1) {
+                        console.log('INVALID_COINBASE_TRANSACTION');
+                        ignored = true;
+                        break;
+                    }
+                }
+                else if(tx_obj.constructor.name === 'SignatedTransaction' && current_transaction_hight > 0) {
+                    // Es handelt sich um eine Signierte Transaktion
+                }
+                else {
+                    // Es handelt sich um einen Unbekannten Transaktionstypen
+                }
+
+                // Der Zähler wird nach oben gezähltl
+                current_transaction_hight += 1;
+            };
+
+            // Es wird geprüft ob es eine Üngpltige Transaktion gibt
+            if(ignored === true) return false;
+
             // Die Kopie des letzten Blocks, sowie die Aktuelle Höhe wird zwischengespeichert
             this.cblock = { block:block_obj, hight:next_block_hight };
+
+            // Der Block wird der Datenbank hinzugefügt
+            await this.blockchain_db.addBlock(block_obj, next_block_hight, true);
 
             // Der Datenbank wird Signalisiert, was der Aktuelleste Block ist
             await this.blockchain_db.setChainStateLastBlock(block_obj.blockHash(false), next_block_hight);
@@ -127,6 +133,36 @@ class Blockchain {
             if(current_block_hight.toString(16) !== next_block_hight.toString(16)) {
                 console.log('INVALID_BLOCK_CHAIN_REGO');
             }
+        }
+        else {
+            // Es wird geprüft ob die Verwendeten Ausgänge der Transaktionen bereits verwenden werden
+            let current_transaction_hight = 0, ignored = false;
+            for(const tx_obj of block_obj.transactions) {
+                // Es wird geprüft ob es sich um die Coinbase Transaktion handelt
+                if(tx_obj.constructor.name === 'CoinbaseTransaction' && current_transaction_hight === 0) {
+                    // Es wird geprüft wieviele Inputs und wieviele Outputs vorhanden sind
+                    if(tx_obj.inputs.length !== 1 || tx_obj.outputs.length !== 1) {
+                        console.log('INVALID_COINBASE_TRANSACTION');
+                        ignored = true;
+                        break;
+                    }
+                }
+                else if(tx_obj.constructor.name === 'SignatedTransaction' && current_transaction_hight > 0) {
+                    // Es handelt sich um eine Signierte Transaktion
+                }
+                else {
+                    // Es handelt sich um einen Unbekannten Transaktionstypen
+                }
+
+                // Der Zähler wird nach oben gezähltl
+                current_transaction_hight += 1;
+            };
+
+            // Es wird geprüft ob es eine Üngpltige Transaktion gibt
+            if(ignored === true) return false;
+
+            // Der Block wird der Datenbank hinzugefügt
+            await this.blockchain_db.addBlock(block_obj, next_block_hight, false);
         }
 
         // Die Aktive Kette wird ausgewählt

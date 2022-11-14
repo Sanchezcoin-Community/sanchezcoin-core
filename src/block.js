@@ -17,6 +17,7 @@ const toBytesInt32 = (num) => {
     return Buffer.from(arr);
 };
 
+
 // Wird verwendet um die Difficulty (das Target) in eine kleine Bit reihenfolge umzuwandeln
 function targetToBits(target) {
     // Die Anzahl der Nullen am Ende wird Ermittelt
@@ -39,6 +40,23 @@ function targetToBits(target) {
     // Die Daten werden zurückgegeben
     let temp = Buffer.from([...target_len_bytes, ...byted_target]).toString('hex');
     return temp; 
+};
+
+
+// Wird verwendet um die Block Struktur eines PoW Blocks zu prüfen
+function verfiyPoWBlockStructure(block_object) {
+    if(typeof block_object !== 'object') return false;
+    if(block_object.constructor.name !== 'PoWBlock') return false;
+    if(block_object.transactions === undefined) return false;
+    if(block_object.transactions.length < 1) return false;
+
+    // Es wird geprüft ob es sich bei der ersten Transaktion um eine Coinbase Transaktion handelt
+    let tx_obj = block_object.transactions[0];
+    if(typeof tx_obj !== 'object') return false;
+    if(tx_obj.constructor.name !== 'CoinbaseTransaction') return false;
+
+    // Der Aufbau des PoW Blocks ist korrekt
+    return true;
 };
 
 
@@ -338,6 +356,7 @@ class PoWBlock {
 };
 
 
+
 // Wird als Test ausgeführt
 if (require.main === module) (() => {
     const { NotSpendlabelMessageOutput } = require('./utxos');
@@ -431,6 +450,7 @@ if (require.main === module) (() => {
 // Exportiert die Klassen
 module.exports = {
     CandidatePoSMintingBlock:CandidatePoSMintingBlock,
+    verfiyPoWBlockStructure:verfiyPoWBlockStructure,
     CandidatePoWBlock:CandidatePoWBlock,
     targetToBits:targetToBits,
     PoWBlock:PoWBlock 
