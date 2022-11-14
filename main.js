@@ -31,6 +31,7 @@ console.log(`
 |------------------------------------------------------------------------|
 |  Version: 22.10.00                                                     |
 |  Build Year: 2022                                                      |
+|  Total supply: 177,119,999.00 Ricks                                    |
 |  Github Page: https://github.com/silentium-official/RickChain          |
 |------------------------------------------------------------------------|
 `)
