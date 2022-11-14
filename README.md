@@ -9,5 +9,4 @@
 <b>PoW algorithm:</b> swiftyHash256<br>
 <b>Block time:</b> 3 min<br>
 <b>Block size:</b> 2 mb<br>
-<b>Block size:</b> 2 mb<br>
 <b>Symbol:</b> RICK<br>
