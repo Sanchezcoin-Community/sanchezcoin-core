@@ -1,7 +1,5 @@
 
 .DS_Store
-logo.svg
-logo2.svg
 node_modules/
 database/
 mthread_mining/
