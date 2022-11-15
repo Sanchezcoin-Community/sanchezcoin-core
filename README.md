@@ -1,6 +1,6 @@
 # RickChain 22.10
 
-<img align="right" src="https://media.giphy.com/media/5wFHChzgBtfANDa76U/giphy.gif" width="256" height="256" />
+<img align="right" src="assets/logo2.png" width="256" height="256" />
 
 <br>
 <b>Unit description:</b> 1 Rick = 100,000,000 Mortys<br>
