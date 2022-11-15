@@ -1,6 +1,9 @@
-# Rickcoin 22.10
+<h1 align="center">
+<img src="assets/logo2.png" alt="Dogecoin" width="300"/>
+<br/><br/>
+Rickcoin Core [RICK]  
+</h1>
 
-<img align="right" src="assets/logo2.png" width="256" height="256" />
 
 <br>
 <b>Unit description:</b> 1 Rick = 100,000,000 Mortys<br>
