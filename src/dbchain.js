@@ -148,11 +148,14 @@ class BlockcahinDatabase {
             let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'cb', 1, 0];
 
             // Die Werte werden geschrieben
-            this.tx_db.all(`INSERT INTO "inputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer") VALUES (?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
+            this.tx_db.get(`SELECT id FROM txn_roots WHERE txid = '${tx_hash}' AND active = 1 LIMIT 1`, inner_data, function(err, data)  {
                 if(err) { reject(err.message); return; }
-                resolveOuter();
+                resolveOuter(data.id);
             });
         });
+
+        // Die ID wird zurückgegeben
+        return tx_id_result;
     };
 
     // Wird verwendet um eine Transaktion in die Datenbank zu schreiben
@@ -848,6 +851,11 @@ class BlockcahinDatabase {
 
         // Die Transaktionen werde in die Datenbank geschrieben
         await this.#WriteTxToDb(writed_block_id, block_hight, active_block, ...blockData.transactions);
+
+        // Sofern es sich um einen Aktiven Block handelt, werden alle verwendeten Ausgänge als ausgegeben Markiert
+        if(active_block === true) {
+
+        }
 
         // Die Chainstate wird geupdated
         await this.#updateChainState();
