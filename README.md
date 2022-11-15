@@ -1,4 +1,4 @@
-# RickChain 22.10
+# Rickcoin 22.10
 
 <img align="right" src="assets/logo2.png" width="256" height="256" />
 
