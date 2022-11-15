@@ -3,6 +3,7 @@ const { byteListToObjectList } = require('./utils');
 const sqlite3 = require('sqlite3').verbose();
 const { PoWBlock } = require('./block');
 const bigInt = require("big-integer");
+const { SHA3 } = require('sha3');
 const crypto = require('crypto');
 const cbor = require('cbor');
 const fs = require('fs');
@@ -110,17 +111,237 @@ class BlockcahinDatabase {
         return writed_block_id;
     };
 
+    // Wird verwendet um ein neues NFT der Datenbank hinzuzufügen
+    async #WriteNftToDb(block_id, block_no, active_nft, mint_input, tx_id) {
+        // Das NFT wird in die Datenbank geschrieben
+        let nft_commitment_id = await new Promise((resolveOuter, reject) => {
+            // Der Wert ob der Block Aktiv ist, wird umgewandelt
+            let active_value = (active_nft === true) ? 1 : 0;
+
+            // Die Daten werden vorbereitet
+            let inner_data = [active_value, block_no, block_id, tx_id, "pnft", mint_input.getCommitmentImage(), mint_input.cborData()];
+
+            // Die Werte werden geschrieben
+            this.nft_db.run(`INSERT INTO "nfts" ("active", "block_no", "block_db_id", "txid", "type", "commitment_hash", "data") VALUES (?, ?, ?, ?, ? ,?, ?);`, inner_data, function(err)  {
+                if(err) { reject(err.message); return; }
+                resolveOuter(this.lastID);
+            });
+        });
+
+        // Die Daten werden zurückgegeben
+        return nft_commitment_id;
+    };
+
+    // Wird verwendet um die DBID eines NFTs abzurufen
+    async #GetNftDBId(commitment_id) {
+
+    };
+
+    // Wird verwenet um die DBID einer Transaktion abzurufen
+    async #GetTxDbId(tx_hash) {
+        // Es wird versucht den Eintrag aus der Datenbank abzurufen
+        let tx_id_result = await new Promise((resolveOuter, reject) => {
+            // Der Wert ob der Block Aktiv ist, wird umgewandelt
+            let active_value = (active_txn === true) ? 1 : 0;
+
+            // Die Daten werden vorbereitet
+            let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'cb', 1, 0];
+
+            // Die Werte werden geschrieben
+            this.tx_db.all(`INSERT INTO "inputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer") VALUES (?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
+                if(err) { reject(err.message); return; }
+                resolveOuter();
+            });
+        });
+    };
+
     // Wird verwendet um eine Transaktion in die Datenbank zu schreiben
     async #WriteTxToDb(block_id, block_no, active_txn, ...txitem) {
-        // Wird als Funktion verwendet um die Basisdaten der Transaktionen in die Datenbank zu schreiben
-        const write_tx_obj = async(tx_obj) => {
+        // Speichert alle Nfts ab, welcher in der Aktuellen Transaktion erzeugt oder verwendet wurden
+        let tx_genused_nfs = {};
 
+        // Wird verwendet um die Eingänge in die Datenbank zu schreiben
+        const write_tx_inputs = async(tx_db_id, hight, input) => {
+            if(input.constructor.name === 'TxInput') {
+                await new Promise(async (resolveOuter, reject) => {
+                    // Die TxDbId der Verwendeten Transaktion wird abgerufen
+                    let tx_db_id = await this.#GetTxDbId(input.txId);
+
+                    // Es wird geprüft ob die Transaktion abgerufen werden konnte
+                    if(tx_db_id === undefined || tx_db_id === null || tx_db_id === false) {
+                        throw new Error('Invalid ')
+                    }
+
+                    // Der Wert ob der Block Aktiv ist, wird umgewandelt
+                    let active_value = (active_txn === true) ? 1 : 0;
+
+                    // Die Daten werden vorbereitet
+                    let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 1, 0, tx_db_id, input.outputHight];
+
+                    // Die Werte werden geschrieben
+                    this.tx_db.run(`INSERT INTO "inputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer", "vout_txid", "vout_hight") VALUES (?, ?, ?, ?, ?, 'txin', ?, ?, ?, ?);`, inner_data, function(err)  {
+                        if(err) { reject(err.message); return; }
+                        resolveOuter();
+                    });
+                });
+            }
+            else if(input.constructor.name === 'CoinbaseInput') {
+                await new Promise((resolveOuter, reject) => {
+                    // Der Wert ob der Block Aktiv ist, wird umgewandelt
+                    let active_value = (active_txn === true) ? 1 : 0;
+
+                    // Die Daten werden vorbereitet
+                    let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'cb', 1, 0];
+
+                    // Die Werte werden geschrieben
+                    this.tx_db.run(`INSERT INTO "inputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer") VALUES (?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
+                        if(err) { reject(err.message); return; }
+                        resolveOuter();
+                    });
+                });
+            }
+            else if(input.constructor.name === 'MintNftInput') {
+                // Es wird versucht das NFT in der Datenbank anzulegen
+                let nft_db_write_result_id = await this.#WriteNftToDb(block_id, block_no, active_txn, input, tx_db_id);
+
+                // Es wird geprüft ob das NFT Erfolgreich in die Datenbank geschrieben werden konnte
+                if(nft_db_write_result_id === undefined || nft_db_write_result_id === null || nft_db_write_result_id === false) {
+                    throw new Error('Unkown database error');
+                }
+
+                // Der Wert ob der Block Aktiv ist, wird umgewandelt
+                let active_value = (active_txn === true) ? 1 : 0;
+
+                // Die Daten werden vorbereitet
+                let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'nftm', 0, 1, nft_db_write_result_id];
+
+                // Die Werte werden geschrieben
+                this.tx_db.run(`INSERT INTO "inputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer", "nft_db_id") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
+                    if(err) { reject(err.message); return; }
+
+                    // Der Erzeugt NFT wird zwischengespeichert
+                    tx_genused_nfs[input.getCommitmentImage()] = this.lastID;
+
+                    // Der Vorgang wurde erfolgreich durcheführt
+                    resolveOuter();
+                });
+            }
+            else if(input.constructor.name === 'NftTxInput') {
+
+            }
+            else {
+                throw new Error('Unkown transaction input type');
+            }
+        };
+
+        // Wird verwendet um die Ausgänge in die Datenbank zu schreiben
+        const write_tx_outputs = async(tx_db_id, hight, output) => {
+            if(output.constructor.name === 'UnspentOutput') {
+                await new Promise((resolveOuter, reject) => {
+                    // Der Wert ob der Block Aktiv ist, wird umgewandelt
+                    let active_value = (active_txn === true) ? 1 : 0;
+
+                    // Es wird geprüft ob eine BlockID angegeben wurde
+                    let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'utxo', 1, 0, 1, 0, 0, 1, 0, output.reciver_address_hash, output.bLockTime.toString(16), output.dtLockTime.toString(16), output.amount.toString(16), 0];
+
+                    // Die Werte werden geschrieben
+                    this.tx_db.run(`INSERT INTO "outputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer", "is_spendlabel", "is_burnt", "is_minting_commitment", "reciver_is_hash", "reciver_is_pkey", "fully_reciver_data", "n_block_time", "n_unix_lock_time", "hexed_amount", "is_spend") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
+                        if(err) { console.log(err); reject(err.message); return; }
+                        resolveOuter();
+                    });
+                });
+            }
+            else if(output.constructor.name === 'UnspentPKeyOutput') {
+                await new Promise((resolveOuter, reject) => {
+                    // Der Wert ob der Block Aktiv ist, wird umgewandelt
+                    let active_value = (active_txn === true) ? 1 : 0;
+
+                    // Der Wert ob es sich um ein Minting Commitment handelt wird erzeugt
+                    let is_minting_commitment = (output.is_minting_commitment === true) ? 1 : 0;
+
+                    // Es wird geprüft ob eine BlockID angegeben wurde
+                    let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'cb', 1, 0, 1, 0, is_minting_commitment, 0, 1, output.reciver_address, output.bLockTime.toString(16), output.dtLockTime.toString(16), output.amount.toString(16), 0, output.cryp_algo];
+
+                    // Die Werte werden geschrieben
+                    this.tx_db.run(`INSERT INTO "outputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer", "is_spendlabel", "is_burnt", "is_minting_commitment", "reciver_is_hash", "reciver_is_pkey", "fully_reciver_data", "n_block_time", "n_unix_lock_time", "hexed_amount", "is_spend", "crypto_algo") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
+                        if(err) { console.log('A',err); reject(err.message); return; }
+                        resolveOuter();
+                    });
+                });
+            }
+            else if(output.constructor.name === 'NftUnspentOutput') {
+                
+            }
+            else if(output.constructor.name === 'NotSpendlabelMessageOutput') {
+                await new Promise((resolveOuter, reject) => {
+                    // Der Wert ob der Block Aktiv ist, wird umgewandelt
+                    let active_value = (active_txn === true) ? 1 : 0;
+
+                    // Bereitet die Daten vor welche Geschrieben werden sollen
+                    let insert_data = [active_value, block_no, block_id, hight, tx_db_id, 'msgtxo', null, null, null, null, null, null, null, output.data];
+
+                    // Die Werte werden geschrieben
+                    this.tx_db.run(`INSERT INTO "outputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "coin_transfer", "is_spendlabel", "is_burnt", "reciver_is_hash", "reciver_is_pkey", "is_minting_commitment", "data") VALUES (?, ? ,?, ?, ?, ?, ?, ? ,?, ?, ?, ?, ?, ?);`, insert_data, function(err)  {
+                        if(err) { reject(err.message); return; }
+                        resolveOuter();
+                    });
+                });
+            }
+            else if(output.constructor.name === 'BurnNftOutput') {
+                
+            }
+            else {
+                throw new Error('Unkown transaction input type');
+            }
+        };
+
+        // Wird als Funktion verwendet um die Basisdaten der Transaktionen in die Datenbank zu schreiben
+        const write_tx_obj = async(hight, tx_obj) => {
+            // Die Transaktion wird in die Datenbank geschrieben
+            let writed_tx_id = await new Promise((resolveOuter, reject) => {
+                // Es wird geprüft um was für einen Transaktionstypen es sich handelt
+                if(tx_obj.constructor.name === 'CoinbaseTransaction') {
+                    // Der Wert ob der Block Aktiv ist, wird umgewandelt
+                    let active_value = (active_txn === true) ? 1 : 0;
+
+                    // Es wird geprüft ob eine BlockID angegeben wurde
+                    let c_value = null;
+                    if(block_id !== null) c_value = `INSERT INTO "txn_roots" ("active", "block_no", "block_db_id", "txid", "tx_hight", "type") VALUES ('${active_value}', '${block_no}', '${block_id}', '${tx_obj.computeHash()}', '${hight}', 'cb');`;
+                    else c_value = `INSERT INTO "txn_roots" ("active", "block_no", "txid", "tx_hight", "type") VALUES ('${active_value}', '${block_no}', '${tx_obj.computeHash()}', '${hight}', 'cb');`;
+
+                    // Die Werte werden geschrieben
+                    this.tx_db.run(c_value, function(err)  {
+                        if(err) { reject(err.message); return; }
+                        resolveOuter(this.lastID);
+                    });
+                }
+                else {
+                    throw new Error('Invalid transaction type');
+                }
+            });
+
+            // Die Eingänge werden in die Datenbank geschrieben
+            let input_hight = 0;
+            for await(const input_item of tx_obj.inputs) {
+                let wresult = await write_tx_inputs(writed_tx_id, input_hight, input_item);
+                input_hight += 1;
+            }
+
+            // Es werden alle ausgänge in die Datenbank geschrieben
+            let output_hight = 0;
+            for await(const output_item of tx_obj.outputs) {
+                let wresult = await write_tx_outputs(writed_tx_id, output_hight, output_item);
+                output_hight += 1;
+            };
         };
 
         // Die Transaktionen werden der Datenbank hinzugefügt, sofern diese nicht schon vorhanden sind
+        let tHight = 0;
         for await(const otem of txitem) {
-            let tx_base = await write_tx_obj(otem);
+            let tx_base = await write_tx_obj(tHight, otem);
             if(tx_base === true) return false;
+            tx_genused_nfs = {};
+            tHight += 1;
         };
 
         // Der Vorgang wurde erfolgreich durchgeführt
@@ -443,7 +664,7 @@ class BlockcahinDatabase {
                 });
             };
 
-            // Wird verwendet um zu überprüfen ob die Transaktionsdatenbank korrekt ist
+            // Wird verwendet um zu überprüfen ob die Blockdatenbank korrekt ist
             const ___verify_block_db = () => {
                 // Es wird geprüft ob die benötigten Datenbanken vorhanden sind
                 block_db.all("select name from sqlite_master where type='table'", function (err, tables) {
@@ -500,7 +721,7 @@ class BlockcahinDatabase {
                         }
     
                         // Die Tabelle wird erstellt
-                        tx_db.run('CREATE TABLE "outputs" ( "id" INTEGER, "active" INTEGER, "block_no" INTEGER, "block_db_id" INTEGER, "tx_id" INTEGER, "type" TEXT, "coin_transfer" INTEGER, "is_spendlabel" INTEGER, "is_burnt" INTEGER, "reciver_is_hash" INTEGER, "reciver_is_pkey" INTEGER, "fully_reciver_data" TEXT, "is_minting_commitment" INTEGER, "n_block_time" INTEGER, "n_unix_lock_time" INTEGER, "retampted_commitment" INTEGER, "nft_db_id" INTEGER, "hexed_amount" TEXT, "data" BLOB, PRIMARY KEY("id" AUTOINCREMENT) );', (error) => {
+                        tx_db.run('CREATE TABLE "outputs" ( "id" INTEGER, "active" INTEGER, "block_no" INTEGER, "block_db_id" INTEGER, "hight" INTEGER, "tx_id" INTEGER, "type" TEXT, "coin_transfer" INTEGER, "token_transfer" INTEGER, "is_spendlabel" INTEGER, "is_burnt" INTEGER, "reciver_is_hash" INTEGER, "reciver_is_pkey" INTEGER, "fully_reciver_data" TEXT, "is_minting_commitment" INTEGER, "crypto_algo" INTEGER, "n_block_time" INTEGER, "n_unix_lock_time" INTEGER, "nft_db_id" INTEGER, "hexed_amount" TEXT, "is_spend" INTEGER, "data" BLOB, PRIMARY KEY("id" AUTOINCREMENT) );', (error) => {
                             // Es wird geprüft ob der Block korrekt ist
                             if(error) {
                                 console.log(error);
@@ -537,7 +758,7 @@ class BlockcahinDatabase {
                         }
     
                         // Die Tabelle wird erstellt
-                        tx_db.run('CREATE TABLE "inputs" ( "id" INTEGER, "active" INTEGER, "block_no" INTEGER, "block_db_id" INTEGER, "tx_id" INTEGER, "type" TEXT, "coin_transfer" INTEGER, "token_transfer" INTEGER, "vout_txid" INTEGER, "vout_hight" INTEGER, "nft_db_id" INTEGER, PRIMARY KEY("id" AUTOINCREMENT) );', (error) => {
+                        tx_db.run('CREATE TABLE "inputs" ( "id" INTEGER, "active" INTEGER, "block_no" INTEGER, "block_db_id" INTEGER, "hight" INTEGER, "tx_id" INTEGER, "type" TEXT, "coin_transfer" INTEGER, "token_transfer" INTEGER, "vout_txid" INTEGER, "vout_hight" INTEGER, "nft_db_id" INTEGER, PRIMARY KEY("id" AUTOINCREMENT) );', (error) => {
                             // Es wird geprüft ob der Block korrekt ist
                             if(error) {
                                 console.log(error);
@@ -593,8 +814,17 @@ class BlockcahinDatabase {
 
         // Es wird geprüft ob eine neue Blockchain erstellt wurde, wenn ja werden die Transaktionen aus dem Genesisblock in die Datenbank geschrieben
         if(new_db_writed === true) {
+            // Infotext
             console.log('New BLockchain databases created');
+
+            // Die Transaktionen des Blocks werden in die Datenbank geschrieben
+            await this.#WriteTxToDb(null, 0, true, ...this.genesis_block.transactions);
+
+            // Infotext
             console.log('Gebesisblock add to database');
+
+            // Der Aktuelle Zustand der Blockchain wird gespeichert
+            await this.#updateChainState();
         }
 
         // Es wird geprüft ob die Datenbank Objekte geladen wurden

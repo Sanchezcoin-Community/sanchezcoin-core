@@ -9,7 +9,7 @@ const cbor = require('cbor');
 class TxInput {
     constructor(txId, outputHight) {
         // Die Parameter werden überprüft
-        if(typeof outputHight !== 'number' || outputHight < 0 || outputHight > 65535) throw new Error('Invalid output transaction hight');
+        if(typeof outputHight !== 'number' || outputHight < 0 || outputHight > 4294967295) throw new Error('Invalid output transaction hight');
         if(typeof txId !== 'string' || txId.length !== 64) throw new Error('Invalid transaction id');
 
         // Die Parameter werden abgeseichert
@@ -18,21 +18,19 @@ class TxInput {
     };
 
     // Gibt das Input als RAW Daten aus
-    getRawData() {
+    getRawData(start_prefix='01') {
         // Die Höhe wird in HEX umgewandelt
-        const fixed_length_hight = this.outputHight.toString(16).toUpperCase().padStart(4, 0);
+        const fixed_length_hight = this.outputHight.toString(16).toLowerCase().padStart(8, 0);
 
         // Das Output wird zurückgegeben
-        return `01${this.txId}${fixed_length_hight}`.toLowerCase();
+        return `${start_prefix}${this.txId}${fixed_length_hight}`.toLowerCase();
     };
 };
 
 // Wird verwendet um neue Coins zu Generieren
-class CoinbaseInput {
-    // Gibt das Input als RAW Daten aus
-    getRawData() {
-        return `000000000000000000000000000000000000000000000000000000000000000000ffffffff`
-    }
+class CoinbaseInput extends TxInput{
+    constructor() { super("0000000000000000000000000000000000000000000000000000000000000000", 4294967295); }
+    getRawData() { return super.getRawData('00'); }
 };
 
 // Stellt einen nicht Ausgegeben Wert dar
@@ -71,10 +69,9 @@ class UnspentOutput {
 
 // Stellt einen nicht Ausgegeben Wer dar, dieser Wert wird direkt an einen Öffentlichen Schlüssel gesendet
 class UnspentPKeyOutput {
-    constructor(cryp_algo, reciver_address, amount, bLockTime=bigInt("0"), dtLockTime=bigInt(0), is_minting_commitment=false, retampted_commitment=bigInt("0")) {
+    constructor(cryp_algo, reciver_address, amount, bLockTime=bigInt("0"), dtLockTime=bigInt(0), is_minting_commitment=false) {
         // Die Parameter werden überprüft
         if(typeof is_minting_commitment !== 'boolean') throw new Error('Invalid data type for mintin commitment');
-        if(isBigInt(retampted_commitment) !== true) throw new Error('Invalid value for retampted commitment');
         if(isBigInt(bLockTime) !== true) throw new Error('Invalid locking block time data type');
         if(isBigInt(dtLockTime) !== true) throw new Error('Invalid locktimetamp data type');
         if(isBigInt(amount) !== true) throw new Error('Invalid amount data type');
@@ -86,7 +83,6 @@ class UnspentPKeyOutput {
 
         // Die Werte werden zwischengespeichert
         this.is_minting_commitment = is_minting_commitment;
-        this.retampted_commitment = retampted_commitment;
         this.reciver_address = reciver_address;
         this.dtLockTime = dtLockTime;
         this.bLockTime = bLockTime;
@@ -108,14 +104,19 @@ class UnspentPKeyOutput {
         // Die Länge des Öffentlichen Schlüssels wird ermittelt
         const public_key_len = intToVInt(this.reciver_address.length);
 
-        // Der Retamp Commitment Wert wird umgewandelt
-        const retampted_commitment_len = intToVInt(this.retampted_commitment);
-
         // Es wird ermittelt ob es sich um ein Minting Commitment handelt oder nicht
         const is_minting_commitment = (this.is_minting_commitment === true) ? "00" : "11";
 
         // Das vollständige UTXO wird als Lowercase Hex ausgegeben
-        return `02${vint_amount}${vint_bLock_hight}${vint_lock_time}${this.cryp_algo.toString(16)}${public_key_len}${this.reciver_address}${is_minting_commitment}${retampted_commitment_len}`.toLowerCase();
+        return `02${vint_amount}${vint_bLock_hight}${vint_lock_time}${this.cryp_algo.toString(16)}${public_key_len}${this.reciver_address}${is_minting_commitment}`.toLowerCase();
+    };
+
+    // Erzeugt das Stake Minting Commitment
+    computeStakeMintingCommitment(included_tx_id) {
+        // Es wird geprüft ob das Output als Minting Commitment verwendet werden soll
+        if(this.is_minting_commitment !== true) return "0000000000000000000000000000000000000000000000000000000000000000"
+
+        // Es wird ein SHA3 Hash aus den RAW Daten erzeugt
     };
 };
 
@@ -123,7 +124,7 @@ class UnspentPKeyOutput {
 class MintNftInput {
     constructor(tx_id, output_hight, nft_data) {
         // Die Parameter werden überprüft
-        if(typeof output_hight !== 'number' || output_hight < 0 || output_hight > 65535) throw new Error('Invalid output transaction hight');
+        if(typeof output_hight !== 'number' || output_hight < 0 || output_hight > 4294967295) throw new Error('Invalid output transaction hight');
         if(typeof tx_id !== 'string' || tx_id.length !== 64) throw new Error('Invalid transaction id');
         if(typeof nft_data !== 'object') throw new Error('Only json objects allowed as nft data');
 
@@ -154,13 +155,19 @@ class MintNftInput {
         new_sha.update(Buffer.from(this.getRawData(), 'ascii').reverse());
         return new_sha.digest('hex').toLowerCase();
     };
+
+    // Gibt die Daten also Bytes aus
+    cborData() {
+        let cbored = cbor.encode(this.data);
+        return cbored;
+    };
 };
 
 // Wird verwendet um ein nicht ausgegebenes NFT auszugeben
 class NftTxInput {
     constructor(tx_id, output_hight, nft_commitment_image) {
         // Die Parameter werden überprüft
-        if(typeof output_hight !== 'number' || output_hight < 0 || output_hight > 65535) throw new Error('Invalid output transaction hight');
+        if(typeof output_hight !== 'number' || output_hight < 0 || output_hight > 4294967295) throw new Error('Invalid output transaction hight');
         if(typeof nft_commitment_image !== 'string' || nft_commitment_image.length !== 64) throw new Error('Invalid nft commitment image');
         if(typeof tx_id !== 'string' || tx_id.length !== 64) throw new Error('Invalid transaction id');
 
@@ -299,7 +306,7 @@ if (require.main === module) (() => {
     // Coinbase Transaction
     let test_coinbase_input = new CoinbaseInput();
     let test_unspent_output = new UnspentOutput("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", bigInt("10000000"), bigInt("0"), bigInt("0"));
-    let test_pkey_utxo = new UnspentPKeyOutput(1, "574e22e8bf71e1a888f38ec31bf477a8a674906123a9037385c9d2bab6981902", bigInt("10000000"), bigInt("0"), bigInt("0"), false, bigInt("0"));
+    let test_pkey_utxo = new UnspentPKeyOutput(1, "574e22e8bf71e1a888f38ec31bf477a8a674906123a9037385c9d2bab6981902", bigInt("10000000"), bigInt("0"), bigInt("0"), false);
 
     // Nft Minting
     let test_nft_mint = new MintNftInput("1248712441dbbf43bb37f91d626a020e7e0f4486f050142034b8a267b06a2f0c", 1, { name:"first morty nft", url:"abcdefgssdfsfsd" });
@@ -310,7 +317,11 @@ if (require.main === module) (() => {
     // Not Spendlabel Outputs
     let message_input = new NotSpendlabelMessageOutput(Buffer.from("November 13, 2022 This coin has no claim to money, I like Rick And Morty and that's why I created it.", 'ascii'));
 
+    // Coinbase Input
+    console.log(test_coinbase_input.getRawData());
+    console.log('000000000000000000000000000000000000000000000000000000000000000000ffffffff')
 
+    // Infotext
     console.log()
     console.log('Coinbase input :      ',test_coinbase_input.getRawData());
     console.log('Unspent output :      ',test_unspent_output.getRawData());

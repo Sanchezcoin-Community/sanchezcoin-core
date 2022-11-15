@@ -116,7 +116,9 @@ class Node {
                         ___mine();
                         if(callback !== null) callback(null, final_block);
                     }
-                });
+                }).catch((e) => {
+                    console.log(e);
+                })
             });
         };
 
