@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="assets/logo.svg" alt="Rickcoin" width="300"/>
+<img src="assets/images/logo.svg" alt="Rickcoin" width="300"/>
 <br/><br/>
 Rickcoin Core [RICK, ℜ]  
 </h1>
