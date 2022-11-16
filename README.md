@@ -11,7 +11,7 @@ Select language: EN
 Rickcoin is a community-driven cryptocurrency that was inspired by Rick Sanchez. The Rickcoin Core software allows anyone to operate a node in the Rickcoin blockchain networks and uses the swiftyHash256 hashing method for Proof of Work. It is adapted from Bitcoin Core and other cryptocurrencies.
 
 
-## General coin information 🪙
+## General informations 🪙
 <b>Unit description:</b> 1 Rick = 100,000,000 Mortys<br>
 <b>Genesis generated supply:</b> 800 Ricks<br>
 <b>Total supply:</b> 177,119,999.00 Ricks<br>
@@ -20,6 +20,9 @@ Rickcoin is a community-driven cryptocurrency that was inspired by Rick Sanchez.
 <b>Block time:</b> 3 min<br>
 <b>Block size:</b> 2 mb<br>
 <b>Symbol:</b> RICK [ℜ]<br>
+
+## swiftyHash256 🧩
+swiftHash256 Uses SHA3, Keccak and AES-256-CBC to guarantee initial ASIC resistance.
 
 ## Nft support 👻
 Rickcoin contains a simple universal NFT standard, there are no mandatory NFT data fields or values. Any JSON value can be used as an NFT.
