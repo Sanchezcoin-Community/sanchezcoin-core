@@ -1,12 +1,15 @@
+const { DB_CoinbaseTransaction } = require('./db_objects/transactions');
 const { ramSwiftyHash, sha256dBTC } = require('./hash_algo');
+const { CoinbaseInput, UnspentOutput } = require('./utxos');
 const { byteListToObjectList } = require('./utils');
 const sqlite3 = require('sqlite3').verbose();
 const { PoWBlock } = require('./block');
 const bigInt = require("big-integer");
-const { SHA3 } = require('sha3');
 const crypto = require('crypto');
 const cbor = require('cbor');
 const fs = require('fs');
+
+
 
 
 
@@ -141,14 +144,7 @@ class BlockcahinDatabase {
     async #GetTxDbId(tx_hash) {
         // Es wird versucht den Eintrag aus der Datenbank abzurufen
         let tx_id_result = await new Promise((resolveOuter, reject) => {
-            // Der Wert ob der Block Aktiv ist, wird umgewandelt
-            let active_value = (active_txn === true) ? 1 : 0;
-
-            // Die Daten werden vorbereitet
-            let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'cb', 1, 0];
-
-            // Die Werte werden geschrieben
-            this.tx_db.get(`SELECT id FROM txn_roots WHERE txid = '${tx_hash}' AND active = 1 LIMIT 1`, inner_data, function(err, data)  {
+            this.tx_db.get(`SELECT id FROM txn_roots WHERE txid = '${tx_hash}' AND active = 1 LIMIT 1`, function(err, data)  {
                 if(err) { reject(err.message); return; }
                 resolveOuter(data.id);
             });
@@ -156,6 +152,125 @@ class BlockcahinDatabase {
 
         // Die ID wird zurückgegeben
         return tx_id_result;
+    };
+
+    // Wird verwendet um eine Transaktion aus der Datenbank abzurufen
+    async #FetchTxFromDB(tx_hash, current_block_hight=null) {
+        // Die Aktuelle Block Höhe wird abgerufen
+        let cblock_hight = null;
+        if(current_block_hight === null) cblock_hight = await this.cleanedBlockHight();
+        else cblock_hight = current_block_hight;
+
+        // Der Transaktionsheader wird abgerufen
+        let tx_header_data = await new Promise((resolveOuter, reject) => {
+            this.tx_db.get(`SELECT id, txid, block_no, tx_hight, type, signatures FROM txn_roots WHERE txid = '${tx_hash.toLowerCase()}' AND active = 1 LIMIT 1`, function(err, data)  {
+                if(err) { reject(err.message); return; }
+                resolveOuter(data);
+            });
+        });
+
+        // Die Anzahl der bestätigungen wird ermittelt
+        const confirmations = (1 + (cblock_hight - tx_header_data.block_no));
+
+        // Es wird geprüft ob eine Transaktion abgerufen werden konnte
+        if(tx_header_data === null) throw new Error('Unkown transaction retrived from db');
+
+        // Es wird geprüft ob die abgerufen TransaktionsID mit der Angeforderten ID übereinstimmt
+        if(tx_header_data.txid.toLowerCase() !== tx_hash.toLowerCase()) throw new Error('Unkown db error');
+
+        // Es wird geprüft ob es sich um einen gültigen Transaktionstypen handelt
+        if(tx_header_data.type === undefined || tx_header_data.type === null || typeof tx_header_data.type !== 'string') throw new Error('Invalid return from database')
+        if(tx_header_data.type.toLowerCase() !== 'cb') throw new Error('Unkown transaction type retrived from db');
+
+        // Die Eingänge werden abgerufen
+        let tx_inputs = await new Promise((resolveOuter, reject) => {
+            this.tx_db.all(`SELECT t.txid, i.block_no, i.type, i.tx_id, i.coin_transfer, i.token_transfer, i.vout_txid, i.vout_hight, i.nft_db_id FROM inputs i LEFT JOIN txn_roots t ON t.id = i.tx_id WHERE i.tx_id = ${tx_header_data.id} AND i.active = 1 ORDER BY i.hight ASC;`, function(err, data)  {
+                if(err) { reject(err.message); return; }
+
+                // Es wird versucht alle Eingänge wieder in ein Objekt umzuwandelnt
+                let reconstructed_inputs = [];
+                for(const otem of data) {
+                    // Es wird geprüft ob die Transaktionsid übereinstimmt
+                    if(otem.txid.toLowerCase() !== tx_hash.toLowerCase()) throw new Error('Internal db error');
+
+                    // Es wird geprüft ob der Objekttyp korrekt ist
+                    if(otem.type.toLowerCase() === 'cb') {
+                        reconstructed_inputs.push(new CoinbaseInput())
+                    }
+                    else {
+                        throw new Error('Invalid return');
+                    }
+                };
+
+                // Die Eingänge werden zurückgegeben
+                resolveOuter(reconstructed_inputs);
+            });
+        });
+
+        // Es wird geprüft ob Mindestens 1 Input abgerufen wurde
+        if(tx_inputs.length < 1) throw new Error('Unkown internal db error');
+
+        // Die Ausgänge werden abgerufen
+        let tx_outputs = await new Promise((resolveOuter, reject) => {
+            this.tx_db.all(`SELECT t.txid, o.active, o.block_no, o.block_db_id, o.hight, o.tx_id, o.type, o.coin_transfer, o.token_transfer, o.is_spendlabel, o.is_burnt, o.reciver_is_hash, o.reciver_is_pkey, o.fully_reciver_data, o.is_minting_commitment, o.crypto_algo, o.n_block_time, o.n_unix_lock_time, o.nft_db_id, o.hexed_amount, o.data FROM outputs o LEFT JOIN txn_roots t ON t.id = o.tx_id WHERE o.tx_id = ${tx_header_data.id} AND o.active = 1 ORDER BY o.hight ASC;`, function(err, data)  {
+                if(err) { reject(err.message); return; }
+
+                // Es wird versucht alle Ausgänge wieder in ein Objekt umzuwandelnt
+                let reconstructed_outputs = [], c_item_hight = 0;
+                for(const otem of data) {
+                    // Es wird geprüft ob die Transaktionsid übereinstimmt
+                    if(otem.txid.toLowerCase() !== tx_hash.toLowerCase()) throw new Error('Internal db error');
+
+                    // Es wird geprüft ob die Höhe er eingabe übereinstimmt
+                    if(c_item_hight !== otem.hight) throw new Error('Invalid database');
+
+                    // Es wird geprüft um was für einen Typen es sich handelt
+                    if(otem.type === 'utxo') {
+                        // Es wird geprüft ob es sich um eine Ausgabefähige Coin Transaktion handelt
+                        if(otem.coin_transfer !== 1 || otem.is_spendlabel !== 1 || otem.reciver_is_hash !== 1) throw new Error('Invalid unspent output retrived from db');
+
+                        // Es wird geprüft ob die benötigten Daten vorhanden sind
+                        if(otem.fully_reciver_data === null) throw new Error('Invalid unspent output retrived from db');
+                        if(otem.n_unix_lock_time === null) throw new Error('Invalid unspent output retrived from db');
+                        if(otem.n_block_time === null) throw new Error('Invalid unspent output retrived from db');
+                        if(otem.hexed_amount === null) throw new Error('Invalid unspent output retrived from db');
+
+                        // Das UnspentOutput Objekt wird gebaut
+                        let reconstructed_output = new UnspentOutput(otem.fully_reciver_data, bigInt(otem.hexed_amount, 16), bigInt(otem.n_block_time, 16), bigInt(otem.n_unix_lock_time, 16));
+
+                        // Das Objekt wird hinzugefügt
+                        reconstructed_outputs.push(reconstructed_output);
+                    }
+                    else {
+                        throw new Error('Unkown return from db');
+                    }
+
+                    // Es wird eine Runde hochgezählt
+                    c_item_hight += 1;
+                };
+
+                // Die Daten werden zurückgegeben
+                resolveOuter(reconstructed_outputs);
+            });
+        });
+
+        // Es wird geprüft ob Mindestens 1 Ausgang abgerufen wurde
+        if(tx_outputs.length < 1) throw new Error('Unkown internal db error');
+
+        // Das Transaktionsobjekt wird wirderzusammengebaut
+        if(tx_header_data.type === 'cb') {
+            // Das Objekt wird zusammengebaut
+            let reconstructed_transaction = new DB_CoinbaseTransaction(bigInt(tx_header_data.block_no), tx_inputs, tx_outputs, bigInt(confirmations));
+
+            // Es wird geprüft ob der Hash der Transaktion mit dem Hash der Angeforderten Transaktion überinstimmt
+            if(reconstructed_transaction.computeHash().toLowerCase() !== tx_hash.toLowerCase()) throw new Error('Invalid transaction form database fetched');
+
+            // Das Objekt wird zurückgegben
+            return reconstructed_transaction;
+        }
+        else {
+            throw new Error('Unkown db exception');
+        }
     };
 
     // Wird verwendet um eine Transaktion in die Datenbank zu schreiben
@@ -230,7 +345,7 @@ class BlockcahinDatabase {
                 });
             }
             else if(input.constructor.name === 'NftTxInput') {
-
+                
             }
             else {
                 throw new Error('Unkown transaction input type');
@@ -245,10 +360,10 @@ class BlockcahinDatabase {
                     let active_value = (active_txn === true) ? 1 : 0;
 
                     // Es wird geprüft ob eine BlockID angegeben wurde
-                    let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'utxo', 1, 0, 1, 0, 0, 1, 0, output.reciver_address_hash, output.bLockTime.toString(16), output.dtLockTime.toString(16), output.amount.toString(16), 0];
+                    let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'utxo', 1, 0, 1, 0, 0, 1, 0, output.reciver_address_hash, output.bLockTime.toString(16), output.dtLockTime.toString(16), output.amount.toString(16)];
 
                     // Die Werte werden geschrieben
-                    this.tx_db.run(`INSERT INTO "outputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer", "is_spendlabel", "is_burnt", "is_minting_commitment", "reciver_is_hash", "reciver_is_pkey", "fully_reciver_data", "n_block_time", "n_unix_lock_time", "hexed_amount", "is_spend") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
+                    this.tx_db.run(`INSERT INTO "outputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer", "is_spendlabel", "is_burnt", "is_minting_commitment", "reciver_is_hash", "reciver_is_pkey", "fully_reciver_data", "n_block_time", "n_unix_lock_time", "hexed_amount") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
                         if(err) { console.log(err); reject(err.message); return; }
                         resolveOuter();
                     });
@@ -263,10 +378,10 @@ class BlockcahinDatabase {
                     let is_minting_commitment = (output.is_minting_commitment === true) ? 1 : 0;
 
                     // Es wird geprüft ob eine BlockID angegeben wurde
-                    let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'cb', 1, 0, 1, 0, is_minting_commitment, 0, 1, output.reciver_address, output.bLockTime.toString(16), output.dtLockTime.toString(16), output.amount.toString(16), 0, output.cryp_algo];
+                    let inner_data = [active_value, block_no, block_id, hight, tx_db_id, 'cb', 1, 0, 1, 0, is_minting_commitment, 0, 1, output.reciver_address, output.bLockTime.toString(16), output.dtLockTime.toString(16), output.amount.toString(16), output.cryp_algo];
 
                     // Die Werte werden geschrieben
-                    this.tx_db.run(`INSERT INTO "outputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer", "is_spendlabel", "is_burnt", "is_minting_commitment", "reciver_is_hash", "reciver_is_pkey", "fully_reciver_data", "n_block_time", "n_unix_lock_time", "hexed_amount", "is_spend", "crypto_algo") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
+                    this.tx_db.run(`INSERT INTO "outputs" ("active", "block_no", "block_db_id", "hight", "tx_id", "type", "coin_transfer", "token_transfer", "is_spendlabel", "is_burnt", "is_minting_commitment", "reciver_is_hash", "reciver_is_pkey", "fully_reciver_data", "n_block_time", "n_unix_lock_time", "hexed_amount", "crypto_algo") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`, inner_data, function(err)  {
                         if(err) { console.log('A',err); reject(err.message); return; }
                         resolveOuter();
                     });
@@ -351,11 +466,6 @@ class BlockcahinDatabase {
         return true;
     };
 
-    // Wird verwendet um eine Transaktion aus der Datenbank abzurufen
-    async #FetchTxFromDB(tx_hash, block_hash=null, block_no=null) {
-
-    };
-
     // Wird verwendet um die Höhe der Blockchain anhand der PreviousBlockID zu ermitteln
     async cleanedBlockHight() {
         // Es wird eine Anfrage an die Datenbank gestellt um die Aktuelle Blockhöhe zu ermitteln
@@ -382,51 +492,68 @@ class BlockcahinDatabase {
                 // Es wird geprüft ob beim Abrufen des Blocks ein Fehler aufgetreten ist
                 if(err !== null) { throw new Error(err); }
 
+                // Speichert den Ersten und einzigen Eintrag ab
+                let fBlock = row[0];
+
                 // Es wird geprüft ob genau 1 Eintrag zugegeben wurde
                 if(row.length !== 1) { reject(false); return; }
 
                 // Es wird geprüft ob der Blockhash mit dem gesuchten Hash übereinstimmt
-                const fBlock = row[0];
                 if(fBlock.block_hash !== `${blockHash}`) { throw new Error('INVALID_BLOCK_DB_RESULT'); }
 
                 // Die Einzelenen Transaktionen werden geladen
-                let tx_list = byteListToObjectList(fBlock.transactions), full_fetched_txns = [];
-                for(const otem of tx_list) {
-                    // Die Ausgewählte Transaktion wird aus der Datenbank abgerufen
+                let tx_list = byteListToObjectList(fBlock.transactions);
 
-                };
-
-                // Es wird geprüft ob es sich um eien PoW Block handelt
-                if(fBlock.type === 'sha256d_pow') {
-                    // Es wird versucht den Block zu Rekonstruieren
-                    const reconstructed_by_block_hash = PoWBlock.loadFromDbElements(fBlock.prev_hash, sha256dBTC, fBlock.transactions, fBlock.pre_header);
-
-                    // Der Hash des Blocks wird mit dem Hash des Gesuchten Blocks verglichen
-                    if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
-
-                    // Der Block wird zurückgegeben
-                    resolved({ block:reconstructed_by_block_hash, hight:bigInt(fBlock.hight) });
-                    return;
-                }
-                else if(fBlock.type === 'swiftyh256_pow') {
-                    // Es wird versucht den Block zu Rekonstruieren
-                    const reconstructed_by_block_hash = PoWBlock.loadFromDbElements(fBlock.prev_hash, ramSwiftyHash, fBlock.transactions, fBlock.pre_header);
-
-                    // Der Hash des Blocks wird mit dem Hash des Gesuchten Blocks verglichen
-                    if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
-
-                    // Der Block wird zurückgegeben
-                    resolved({ block:reconstructed_by_block_hash, hight:bigInt(fBlock.hight) });
-                    return;
-                }
-                else {
-                    throw new Error('UNKOWN_INVALID_BLOCK_CONSENSUS');
-                }
+                // Die Daten werden zurückgegeben
+                resolved({ ...row[0], transactions:tx_list });
             });
         });
 
-        // Die Daten werden zurückgegeben
-        return result;
+        // Es wird Geprüft ob der Block abgerufen werden konnte
+        if(result === undefined || result === null || result === false) {
+            throw new Error('UNKOWN_BLOCK_DONT_IN_DATABASE');
+        }
+
+        // Es wird geprüft ob es sich um ein einen gültigen Block Typen handelt
+        if(result.type !== 'sha256d_pow' && result.type !== 'swiftyh256_pow') throw new Error('UNKOWN_INVALID_BLOCK_CONSENSUS');
+
+        // Die Einzelnen Transaktionen werden abgerufen
+        let reconstructed_transactions = [];
+        for await(const otem of result.transactions) {
+            // Es wird versucht die Transaktion abzurufen
+            let retrived_transactions = await this.#FetchTxFromDB(otem, result.hight);
+
+            // Es wird geprüft ob der Hash des Transaktionsobjektes mit dem Hash der Angefordert wurde übersintimmt
+            if(retrived_transactions.computeHash().toLowerCase() !== otem.toLowerCase()) throw new Error('Invalid transaction retrived from db');
+
+            // Das Objekt wird zwischegespeichert
+            reconstructed_transactions.push(retrived_transactions);
+        }
+
+        // Es wird geprüft o
+        if(result.type === 'sha256d_pow') {
+            // Es wird versucht den Block zu Rekonstruieren
+            const reconstructed_by_block_hash = PoWBlock.loadFromDbElements(result.prev_hash, sha256dBTC, reconstructed_transactions, result.pre_header);
+
+            // Der Hash des Blocks wird mit dem Hash des Gesuchten Blocks verglichen
+            if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
+
+            // Der Block wird zurückgegeben
+            return { block:reconstructed_by_block_hash, hight:bigInt(result.hight) };
+        }
+        else if(result.type === 'swiftyh256_pow') {
+            // Es wird versucht den Block zu Rekonstruieren
+            const reconstructed_by_block_hash = PoWBlock.loadFromDbElements(result.prev_hash, ramSwiftyHash, reconstructed_transactions, result.pre_header);
+
+            // Der Hash des Blocks wird mit dem Hash des Gesuchten Blocks verglichen
+            if(blockHash !== reconstructed_by_block_hash.blockHash(false)) throw new Error('REBUILDED_BLOCK_IS_INVALID');
+
+            // Der Block wird zurückgegeben
+            return { block:reconstructed_by_block_hash, hight:bigInt(result.hight) };
+        }
+        else {
+            throw new Error('UNKOWN_INVALID_BLOCK_CONSENSUS');
+        }
     };
 
     // Wird verwendet um zu überprüfen ob der Block bereits hinzugefügt wurde
@@ -713,7 +840,7 @@ class BlockcahinDatabase {
                         console.log(err);
                         return;
                     }
-    
+
                     // Es wird geprüft ob die Tabelle vorhanden ist
                     if(tables.map((value) => value.name).includes('outputs') !== true) {
                         // Es wird geprüft ob die Chainstate vorhanden ist, wenn ja wird der Vorgang mit einem Fehler abgebrochen
@@ -724,7 +851,7 @@ class BlockcahinDatabase {
                         }
     
                         // Die Tabelle wird erstellt
-                        tx_db.run('CREATE TABLE "outputs" ( "id" INTEGER, "active" INTEGER, "block_no" INTEGER, "block_db_id" INTEGER, "hight" INTEGER, "tx_id" INTEGER, "type" TEXT, "coin_transfer" INTEGER, "token_transfer" INTEGER, "is_spendlabel" INTEGER, "is_burnt" INTEGER, "reciver_is_hash" INTEGER, "reciver_is_pkey" INTEGER, "fully_reciver_data" TEXT, "is_minting_commitment" INTEGER, "crypto_algo" INTEGER, "n_block_time" INTEGER, "n_unix_lock_time" INTEGER, "nft_db_id" INTEGER, "hexed_amount" TEXT, "is_spend" INTEGER, "data" BLOB, PRIMARY KEY("id" AUTOINCREMENT) );', (error) => {
+                        tx_db.run('CREATE TABLE "outputs" ( "id" INTEGER, "active" INTEGER, "block_no" INTEGER, "block_db_id" INTEGER, "hight" INTEGER, "tx_id" INTEGER, "type" TEXT, "coin_transfer" INTEGER, "token_transfer" INTEGER, "is_spendlabel" INTEGER, "is_burnt" INTEGER, "reciver_is_hash" INTEGER, "reciver_is_pkey" INTEGER, "fully_reciver_data" TEXT, "is_minting_commitment" INTEGER, "crypto_algo" INTEGER, "n_block_time" INTEGER, "n_unix_lock_time" INTEGER, "nft_db_id" INTEGER, "hexed_amount" TEXT, "data" BLOB, PRIMARY KEY("id" AUTOINCREMENT) );', (error) => {
                             // Es wird geprüft ob der Block korrekt ist
                             if(error) {
                                 console.log(error);

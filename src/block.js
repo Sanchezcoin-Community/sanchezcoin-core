@@ -1,5 +1,5 @@
-const { CoinbaseTransaction, readDbTransactionElement } = require('./transaction');
 const { CoinbaseInput, UnspentOutput } = require('./utxos');
+const { CoinbaseTransaction } = require('./transaction');
 const { computeMerkleRoot } = require('./merkle');
 const { sha256dBTC } = require('./hash_algo');
 const bigInt = require("big-integer");
@@ -239,15 +239,8 @@ class PoWBlock {
         let target_bits = decoded_headerd[1].toString('hex');
         let nonce = parseInt(decoded_headerd[2].toString('hex'), 16);
 
-        // Es wird versucht die Transaktionen mittels CBOR einzulesen
-        let decoded_tx_elements = cbor.decode(txElements);
-
-        // Die Transaktionen werden eingelesen
-        let parsed_transactions = [];
-        for(const tx_item of decoded_tx_elements) parsed_transactions.push(readDbTransactionElement(tx_item));
-
         // Der Block wird nachgebaut
-        return new PoWBlock(prevBlockHash, parsed_transactions, target_bits, hash_algo, block_timestamp, nonce);
+        return new PoWBlock(prevBlockHash, txElements, target_bits, hash_algo, block_timestamp, nonce);
     };
 
     constructor(prv_block_hash, transactions, target_bits, hash_algo, timestamp, nonce) {
@@ -440,11 +433,11 @@ if (require.main === module) (() => {
 
 
     // Der Genesisblock wird erzeugt
-    //const { Coin } = require('./coin');
-    //const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
-    //mineGenesisPoWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
+    const { Coin } = require('./coin');
+    const rick_and_morty_coin = new Coin(8, "3eecf85c306b5c", 110700, 800);
+    mineGenesisPoWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
     //createGenesisPoSWBlock('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', '00000ffff0000000000000000000000000000000000000000000000000000000', rick_and_morty_coin, sha256dBTC);
-})
+})();
 
 
 // Exportiert die Klassen

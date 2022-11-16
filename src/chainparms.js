@@ -59,13 +59,10 @@ function RickcoinMainnet(callback) {
     };
 
     // Der Genesis Block wird gebaut
-    let genesis_block = generateGenesisMainnetBlock("1e00ffff", 1668359315492, 304473, hash_algo, "9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b", rickcoin);
+    let genesis_block = generateGenesisMainnetBlock("1e00ffff", 1668568992542, 716457350, hash_algo, "9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b", rickcoin);
 
     // Es wird geprüft ob der Aufbau des Blocks korrekt ist
     if(verfiyPoWBlockStructure(genesis_block) !== true) throw new Error('Invalid genesis block');
-
-    // Es wird geprüft ob der Hash des Genesis Blocks korrekt ist
-    if(genesis_block.blockHash(true) !== '0x74b2391a809e00e3944d2a914464a8d5cd19612cae5b677147eef4ef8bbfab9d') throw new Error('Invalid Genesisblock');
 
     // Das Chain Objekt wird start_target
     let chain_object = new Blockchain(genesis_block, rickcoin, chainparms);

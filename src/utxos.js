@@ -35,7 +35,7 @@ class CoinbaseInput extends TxInput{
 
 // Stellt einen nicht Ausgegeben Wert dar
 class UnspentOutput {
-    constructor(reciver_address_hash, amount, bLockTime=bigInt("0"), dtLockTime=bigInt("0")) {
+    constructor(reciver_address_hash, amount=bigInt("0"), bLockTime=bigInt("0"), dtLockTime=bigInt("0")) {
         // Die Parameter werden überprüft
         if(typeof reciver_address_hash !== 'string' || reciver_address_hash.length !== 64) throw new Error('Invalid reciver address hash');
         if(isBigInt(bLockTime) !== true) throw new Error('Invalid locking block time data type');
