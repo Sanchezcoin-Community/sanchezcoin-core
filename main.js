@@ -34,7 +34,7 @@ console.log(`
 |  Total supply: 177,119,999.00 Ricks                                    |
 |  Github Page: https://github.com/silentium-official/RickChain          |
 |------------------------------------------------------------------------|
-`)
+`);
 
 // Die Mainchain wird geladen
 createMainChain((error, node_object) => {
