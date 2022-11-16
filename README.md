@@ -5,7 +5,7 @@ Rickcoin Core [RICK, ℜ]
 </h1>
 
 
-Select language: EN
+**Select language:** EN
 
 
 Rickcoin is a community-driven cryptocurrency that was inspired by Rick Sanchez. The Rickcoin Core software allows anyone to operate a node in the Rickcoin blockchain networks and uses the swiftyHash256 hashing method for Proof of Work. It is adapted from Bitcoin Core and other cryptocurrencies.
