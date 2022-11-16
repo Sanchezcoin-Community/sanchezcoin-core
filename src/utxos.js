@@ -4,6 +4,9 @@ const { SHA3 } = require('sha3');
 const cbor = require('cbor');
 
 
+/*
+    Normale Klassen
+*/
 
 // Wird verendet um ein Unspent Output zu übertragen
 class TxInput {
@@ -286,9 +289,22 @@ class BurnNftOutput {
     };
 };
 
+/*
+    Datenbank Klassen
+*/
+class DB_UnspentOutput extends UnspentOutput {
+    constructor(reciver_address_hash, amount, bLockTime, dtLockTime, isLocked) {
+        super(reciver_address_hash, amount, bLockTime, dtLockTime)
+        this.isLocked = isLocked;
+    }
+}
+
 
 // Die Klassen werden Exportiert
 module.exports = {
+    // DB Classes
+    DB_UnspentOutput:DB_UnspentOutput,
+    // Normal Classes
     NotSpendlabelMessageOutput:NotSpendlabelMessageOutput,
     UnspentPKeyOutput:UnspentPKeyOutput,
     NftUnspentOutput:NftUnspentOutput,

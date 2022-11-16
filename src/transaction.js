@@ -14,8 +14,8 @@ class CoinbaseTransaction {
 
         // Speichert die Daten zwischen
         this.blockHight = blockHight;
-        this.outputs = outputs;
         this.inputs = inputs;
+        this.outputs = outputs;
     };
 
     // Gibt die Transaktion als RAW Bytes aus
@@ -85,8 +85,17 @@ class CoinstakeTransaction {
 };
 
 
+class DB_CoinbaseTransaction extends CoinbaseTransaction {
+    constructor(blockHight, inputs, outputs, confirmations) {
+        super(blockHight, inputs, outputs);
+        this.confirmations = confirmations;
+    }
+}
+
+
 // Exportiert die Klassen
 module.exports = {
+    DB_CoinbaseTransaction:DB_CoinbaseTransaction,
     CoinstakeTransaction:CoinstakeTransaction,
     CoinbaseTransaction:CoinbaseTransaction 
 }

@@ -192,18 +192,21 @@ class Blockchain {
 
     };
 
+    // Gibt einen Block anhand seiner Höhe aus
+    async getBlockByHight(hight) {
+        let result = await this.blockchain_db.loadBlockFromDatabaseByHight(hight);
+        return result;
+    };
+
+    // Gibt einen Block anhand seines Hashs aus
+    async getBlockByHash(block_hash) {
+        let result = await this.blockchain_db.loadBlockFromDatabase(block_hash);
+        return result;
+    };
+
     // Gibt die Aktuelle Blockbelohnung aus
     currentBlockReward() {
 
-    };
-
-    // Gibt einen Spiziellen Block aus
-    getBlock(hight) {
-        if(hight === 0) { return this.genesis_block; }
-        else {
-            // Es wird geprüft ob genügend Blöcke vorhanden sind
-            return;
-        }
     };
 
     // Gibt den Hash des Ersten Blocks aus

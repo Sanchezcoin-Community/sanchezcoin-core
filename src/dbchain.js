@@ -1,6 +1,6 @@
-const { DB_CoinbaseTransaction } = require('./db_objects/transactions');
+const { CoinbaseInput, DB_UnspentOutput } = require('./utxos');
 const { ramSwiftyHash, sha256dBTC } = require('./hash_algo');
-const { CoinbaseInput, UnspentOutput } = require('./utxos');
+const { DB_CoinbaseTransaction } = require('./transaction');
 const { byteListToObjectList } = require('./utils');
 const sqlite3 = require('sqlite3').verbose();
 const { PoWBlock } = require('./block');
@@ -170,7 +170,7 @@ class BlockcahinDatabase {
         });
 
         // Die Anzahl der bestätigungen wird ermittelt
-        const confirmations = (1 + (cblock_hight - tx_header_data.block_no));
+        const confirmations = bigInt(1 + (cblock_hight - tx_header_data.block_no));
 
         // Es wird geprüft ob eine Transaktion abgerufen werden konnte
         if(tx_header_data === null) throw new Error('Unkown transaction retrived from db');
@@ -184,14 +184,17 @@ class BlockcahinDatabase {
 
         // Die Eingänge werden abgerufen
         let tx_inputs = await new Promise((resolveOuter, reject) => {
-            this.tx_db.all(`SELECT t.txid, i.block_no, i.type, i.tx_id, i.coin_transfer, i.token_transfer, i.vout_txid, i.vout_hight, i.nft_db_id FROM inputs i LEFT JOIN txn_roots t ON t.id = i.tx_id WHERE i.tx_id = ${tx_header_data.id} AND i.active = 1 ORDER BY i.hight ASC;`, function(err, data)  {
+            this.tx_db.all(`SELECT t.txid, i.block_no, i.type, i.tx_id, i.coin_transfer, i.token_transfer, i.vout_txid, i.vout_hight, i.nft_db_id, i.hight FROM inputs i LEFT JOIN txn_roots t ON t.id = i.tx_id WHERE i.tx_id = ${tx_header_data.id} AND i.active = 1 ORDER BY i.hight ASC;`, function(err, data)  {
                 if(err) { reject(err.message); return; }
 
                 // Es wird versucht alle Eingänge wieder in ein Objekt umzuwandelnt
-                let reconstructed_inputs = [];
+                let reconstructed_inputs = [], c_item_hight = 0;
                 for(const otem of data) {
                     // Es wird geprüft ob die Transaktionsid übereinstimmt
                     if(otem.txid.toLowerCase() !== tx_hash.toLowerCase()) throw new Error('Internal db error');
+
+                    // Es wird geprüft ob die Höhe er eingabe übereinstimmt
+                    if(c_item_hight !== otem.hight) throw new Error('Invalid database');
 
                     // Es wird geprüft ob der Objekttyp korrekt ist
                     if(otem.type.toLowerCase() === 'cb') {
@@ -200,6 +203,9 @@ class BlockcahinDatabase {
                     else {
                         throw new Error('Invalid return');
                     }
+
+                    // Es wird eine Runde hochgezählt
+                    c_item_hight += 1;
                 };
 
                 // Die Eingänge werden zurückgegeben
@@ -235,8 +241,14 @@ class BlockcahinDatabase {
                         if(otem.n_block_time === null) throw new Error('Invalid unspent output retrived from db');
                         if(otem.hexed_amount === null) throw new Error('Invalid unspent output retrived from db');
 
+                        // Es wird ermittelt ob die Transaktion gesperrt ist
+                        let is_locked_by_blocks = false;
+                        if(bigInt(otem.n_block_time, 16)) {
+                            
+                        }
+
                         // Das UnspentOutput Objekt wird gebaut
-                        let reconstructed_output = new UnspentOutput(otem.fully_reciver_data, bigInt(otem.hexed_amount, 16), bigInt(otem.n_block_time, 16), bigInt(otem.n_unix_lock_time, 16));
+                        let reconstructed_output = new DB_UnspentOutput(otem.fully_reciver_data, bigInt(otem.hexed_amount, 16), bigInt(otem.n_block_time, 16), bigInt(otem.n_unix_lock_time, 16), is_locked_by_blocks);
 
                         // Das Objekt wird hinzugefügt
                         reconstructed_outputs.push(reconstructed_output);
@@ -260,7 +272,7 @@ class BlockcahinDatabase {
         // Das Transaktionsobjekt wird wirderzusammengebaut
         if(tx_header_data.type === 'cb') {
             // Das Objekt wird zusammengebaut
-            let reconstructed_transaction = new DB_CoinbaseTransaction(bigInt(tx_header_data.block_no), tx_inputs, tx_outputs, bigInt(confirmations));
+            let reconstructed_transaction = new DB_CoinbaseTransaction(bigInt(tx_header_data.block_no), tx_inputs, tx_outputs, confirmations);
 
             // Es wird geprüft ob der Hash der Transaktion mit dem Hash der Angeforderten Transaktion überinstimmt
             if(reconstructed_transaction.computeHash().toLowerCase() !== tx_hash.toLowerCase()) throw new Error('Invalid transaction form database fetched');
@@ -485,6 +497,9 @@ class BlockcahinDatabase {
         // Es wird geprüft ob es sich um den Genesisblock handelt
         if(this.genesis_block.blockHash(false) === blockHash) return { block:this.genesis_block, hight:bigInt("0") };
 
+        // Die Aktuelle Blockhöhe wird abgerufen
+        let current_block_hight = await this.cleanedBlockHight();
+
         // Der Block wird abgerufen
         let result = await new Promise((resolved, reject) => {
             // Es wird eine Anfrage an die Datenbank gestellt um den Block abzurufen
@@ -521,7 +536,7 @@ class BlockcahinDatabase {
         let reconstructed_transactions = [];
         for await(const otem of result.transactions) {
             // Es wird versucht die Transaktion abzurufen
-            let retrived_transactions = await this.#FetchTxFromDB(otem, result.hight);
+            let retrived_transactions = await this.#FetchTxFromDB(otem, current_block_hight);
 
             // Es wird geprüft ob der Hash des Transaktionsobjektes mit dem Hash der Angefordert wurde übersintimmt
             if(retrived_transactions.computeHash().toLowerCase() !== otem.toLowerCase()) throw new Error('Invalid transaction retrived from db');
@@ -554,6 +569,27 @@ class BlockcahinDatabase {
         else {
             throw new Error('UNKOWN_INVALID_BLOCK_CONSENSUS');
         }
+    };
+
+    // Ruft einen Spiziellen Block anhand seiner Block Nummer ab
+    async loadBlockFromDatabaseByHight(block_hight) {
+        // Es wird geprüft ob es sich um den Genesis Block handelt
+        if(block_hight === 0) {
+            let retr_block = await this.loadBlockFromDatabase(this.genesis_block.blockHash(false));
+            return retr_block;
+        }
+
+        // Der Block wird abgerufen
+        let result = await new Promise((resolved, reject) => {
+            this.block_db.get(`SELECT block_hash from blocks WHERE hight = ${block_hight} LIMIT 1`, (err, result) => {
+                if(err !== null) { throw new Error(err); }
+                resolved(result.block_hash)
+            });
+        });
+
+        // Der Block wird anhand seines Hashes abgerufen
+        let revl_block = await this.loadBlockFromDatabase(result);
+        return revl_block;
     };
 
     // Wird verwendet um zu überprüfen ob der Block bereits hinzugefügt wurde

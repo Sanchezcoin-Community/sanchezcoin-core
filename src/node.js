@@ -19,6 +19,18 @@ class Node {
         this.wallet = null;
     };
 
+    // Ruft einen Block anhand seiner Höhe aus der Datenbank ab
+    async loadBlockByHight(b_hight) {
+        let result = await this.block_chain_object.getBlockByHight(b_hight);
+        return result;
+    };
+
+    // Ruft einen Block anhand seines Hashes aus der Datenbank ab
+    async loadBlockByHash(b_hash) {
+        let result = await this.block_chain_object.getBlockByHash(b_hash);
+        return result;
+    }
+
     // Wird verwendet um die Einstellungen zu laden
     loadChain(path, callback) {
         // Die Blockchaindatenbank wird geladen

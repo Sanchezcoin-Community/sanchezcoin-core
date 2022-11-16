@@ -56,9 +56,14 @@ createMainChain((error, node_object) => {
         // Info Text
         console.log('Current block hash', block.blockHash());
         console.log('Current block hight', reconstrived_block.hight.toString());
+        node_object.loadBlockByHight(2).then((r) => {
+            for(const otem of r.block.transactions) {
+                console.log(otem)
+            }
+        });
 
         // Das Mining wird gestartet
-        node_object.startMiner('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', 2, 5, (error, result) => { });
+        //node_object.startMiner('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', 3, 10, (error, result) => { });
         //node_object.startBlockMinting('9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b', 1, (error, result) => { });
     });
 });
