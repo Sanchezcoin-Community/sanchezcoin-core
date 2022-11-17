@@ -204,6 +204,15 @@ class Blockchain {
         return result;
     };
 
+    // Wird verwendet um alle Transaktionen für eine Spizielle Adresse abzurufen
+    async getUnspentCoinTransactions(address_hex_data, min_conf=1, max_conf=9999999, filer_locked=true) {
+        // Die Anfrage wird an die Datenbank übergeben
+        let result = await this.blockchain_db.getUnspentCoinTransactions(address_hex_data, min_conf, max_conf, filer_locked);
+
+        // Die Daten werden zurückgegeben
+        return result;
+    };
+
     // Gibt die Aktuelle Blockbelohnung aus
     currentBlockReward() {
 

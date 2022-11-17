@@ -1,4 +1,4 @@
-const { CoinbaseInput, DB_UnspentOutput } = require('./utxos');
+const { CoinbaseInput, DB_UnspentOutput, DB_UtxCoinOutput } = require('./utxos');
 const { ramSwiftyHash, sha256dBTC } = require('./hash_algo');
 const { DB_CoinbaseTransaction } = require('./transaction');
 const { byteListToObjectList } = require('./utils');
@@ -170,7 +170,7 @@ class BlockcahinDatabase {
         });
 
         // Die Anzahl der bestätigungen wird ermittelt
-        const confirmations = bigInt(1 + (cblock_hight - tx_header_data.block_no));
+        let confirmations = bigInt(cblock_hight - tx_header_data.block_no).add("1");
 
         // Es wird geprüft ob eine Transaktion abgerufen werden konnte
         if(tx_header_data === null) throw new Error('Unkown transaction retrived from db');
@@ -218,7 +218,18 @@ class BlockcahinDatabase {
 
         // Die Ausgänge werden abgerufen
         let tx_outputs = await new Promise((resolveOuter, reject) => {
-            this.tx_db.all(`SELECT t.txid, o.active, o.block_no, o.block_db_id, o.hight, o.tx_id, o.type, o.coin_transfer, o.token_transfer, o.is_spendlabel, o.is_burnt, o.reciver_is_hash, o.reciver_is_pkey, o.fully_reciver_data, o.is_minting_commitment, o.crypto_algo, o.n_block_time, o.n_unix_lock_time, o.nft_db_id, o.hexed_amount, o.data FROM outputs o LEFT JOIN txn_roots t ON t.id = o.tx_id WHERE o.tx_id = ${tx_header_data.id} AND o.active = 1 ORDER BY o.hight ASC;`, function(err, data)  {
+            // Die Anfrage wird verarbeitet
+            let pre_cmd = `\
+            SELECT t.txid, o.active, o.block_no, o.block_db_id, o.hight, o.tx_id, o.type, o.coin_transfer, o.token_transfer, o.is_spendlabel, o.is_burnt, o.reciver_is_hash, o.reciver_is_pkey, o.fully_reciver_data, o.is_minting_commitment, o.crypto_algo, o.n_block_time, o.n_unix_lock_time, o.nft_db_id, o.hexed_amount, o.data,
+            IIF(coin_transfer = 1, (
+                    SELECT COUNT(*) FROM inputs ins WHERE ins.vout_txid = o.tx_id AND ins.vout_hight = o.hight AND ins.active = 1
+            ), NULL ) spend_count
+            FROM outputs o LEFT JOIN txn_roots t 
+            ON t.id = o.tx_id 
+            WHERE o.tx_id = ${tx_header_data.id} AND o.active = 1 ORDER BY o.hight ASC;`
+
+            // Die Anfrage wird an die Datenbank gestellt
+            this.tx_db.all(pre_cmd, function(err, data)  {
                 if(err) { reject(err.message); return; }
 
                 // Es wird versucht alle Ausgänge wieder in ein Objekt umzuwandelnt
@@ -241,14 +252,28 @@ class BlockcahinDatabase {
                         if(otem.n_block_time === null) throw new Error('Invalid unspent output retrived from db');
                         if(otem.hexed_amount === null) throw new Error('Invalid unspent output retrived from db');
 
-                        // Es wird ermittelt ob die Transaktion gesperrt ist
-                        let is_locked_by_blocks = false;
-                        if(bigInt(otem.n_block_time, 16)) {
-                            
-                        }
+                        // Es wird ermittelt ob die Transaktion anhand der Blöcke gesperrt werden soll
+                        let block_locked = false;
+                        if(bigInt(otem.n_block_time, 16).greater(bigInt("0")) === true) {
+                            // Die Transaktion wird gesperrt, sie wird entsperrt wenn die Blockanzahl erreich wurde
+                            block_locked = true;
+
+                            // Es wird geprüft ob die Anzahl der Benötigten Blöcke erreicht wurde um die Transaktion freizuschalten
+                            if(confirmations.greaterOrEquals(bigInt(otem.n_block_time, 16)) === true) block_locked = false;
+                        };
+
+                        // Es wird geprüft ob ein Zeitwert vorhanden ist
+                        let time_locked = false;
+                        if(bigInt(otem.n_unix_lock_time, 16).greater(bigInt("0")) === true) {
+                            // Die Transaktion wird gesperrt bis die Angegebene Zeit erreicht wurde
+                            time_locked = true;
+
+                            // Es wird geprüft ob die Zeit erreicht wurde
+                            if(bigInt(new Date().getTime()).greaterOrEquals(bigInt(otem.n_unix_lock_time, 16)) === true) time_locked = false;
+                        };
 
                         // Das UnspentOutput Objekt wird gebaut
-                        let reconstructed_output = new DB_UnspentOutput(otem.fully_reciver_data, bigInt(otem.hexed_amount, 16), bigInt(otem.n_block_time, 16), bigInt(otem.n_unix_lock_time, 16), is_locked_by_blocks);
+                        let reconstructed_output = new DB_UnspentOutput(otem.fully_reciver_data, bigInt(otem.hexed_amount, 16), bigInt(otem.n_block_time, 16), bigInt(otem.n_unix_lock_time, 16), (time_locked === true || block_locked === true ? true : false), otem.spend_count);
 
                         // Das Objekt wird hinzugefügt
                         reconstructed_outputs.push(reconstructed_output);
@@ -288,7 +313,7 @@ class BlockcahinDatabase {
     // Wird verwendet um eine Transaktion in die Datenbank zu schreiben
     async #WriteTxToDb(block_id, block_no, active_txn, ...txitem) {
         // Speichert alle Nfts ab, welcher in der Aktuellen Transaktion erzeugt oder verwendet wurden
-        let tx_genused_nfs = {};
+        let tx_genused_nfs = { };
 
         // Wird verwendet um die Eingänge in die Datenbank zu schreiben
         const write_tx_inputs = async(tx_db_id, hight, input) => {
@@ -478,6 +503,80 @@ class BlockcahinDatabase {
         return true;
     };
 
+    // Ruft alle nicht ausgeCoin Transaktionen für eine bestimmte Adresse
+    async getUnspentCoinTransactions(address_hex_data, min_conf=1, max_conf=9999999, filter_locked=true) {
+        // Die Aktuelle Blockhöhe wird abgerufen
+        let c_block_hight = await this.cleanedBlockHight();
+
+        // Die Anfrage wird vorbereitet
+        let pre_cmd = `\
+        SELECT o.block_no, o.n_block_time, o.n_unix_lock_time, o.hexed_amount, o.type, o.hight, t.txid, 
+        IIF(coin_transfer = 1, (SELECT COUNT(*) FROM inputs ins WHERE ins.vout_txid = o.tx_id AND ins.vout_hight = o.hight AND ins.active = 1), NULL ) spend_count
+        FROM outputs o
+        LEFT JOIN txn_roots t
+        ON t.id = o.tx_id
+        WHERE o.fully_reciver_data = '${address_hex_data.toLowerCase()}' AND o.type = 'utxo' AND o.active = 1 AND spend_count = 0 ORDER BY o.hight ASC;`
+
+        // Die Anfrage wird an die Datenbank übergeben
+        let tx_data_results = await new Promise((resolveOuter, reject) => {
+            this.tx_db.all(pre_cmd, function(err, data)  {
+                if(err) { reject(err.message); return; }
+                resolveOuter(data);
+            });
+        });
+
+        // Die Einzelnen Transaktionen werden abgerufen
+        let resolved_items = [];
+        for await(const txitem of tx_data_results) {
+            // Es wird geprüft ob es sich um ein UTXO handelt
+            if(txitem.type !== 'utxo') throw new Error('Unkown database error');
+
+            // Es wird geprüft ob die Sperrzeit für Blöcke vorhande ist
+            if(txitem.n_block_time === null) throw new Error('Invalid block hight');
+
+            // Es wird geprüft ob die Unix Zeit vorhanden ist
+            if(txitem.n_unix_lock_time === null) throw new Error('Invalid unix timestamp');
+
+            // Die Anzahl der Bestätigungen wird berechnet
+            let confirmations = bigInt(c_block_hight).minus(bigInt(txitem.block_no)).add("1");
+
+            // Es wird anhand der Blockhöhe geprüft, ob die Transaktion gesperrt ist
+            let block_locked = false;
+            if(bigInt(txitem.n_block_time, 16).greater(bigInt("0")) === true) {
+                // Die Transaktion wird gesperrt, sie wird entsperrt wenn die Blockanzahl erreich wurde
+                block_locked = true;
+
+                // Es wird geprüft ob die Anzahl der Benötigten Blöcke erreicht wurde um die Transaktion freizuschalten
+                if(confirmations.greaterOrEquals(bigInt(txitem.n_block_time, 16)) === true) block_locked = false;
+            };
+
+            // Es wird geprüft ob ein Zeitwert vorhanden ist
+            let time_locked = false;
+            if(bigInt(txitem.n_unix_lock_time, 16).greater(bigInt("0")) === true) {
+                // Die Transaktion wird gesperrt bis die Angegebene Zeit erreicht wurde
+                time_locked = true;
+
+                // Es wird geprüft ob die Zeit erreicht wurde
+                if(bigInt(new Date().getTime()).greaterOrEquals(bigInt(txitem.n_unix_lock_time, 16)) === true) time_locked = false;
+            };
+
+            // Es wird ermittelt ob der Ausgang Blockiert ist
+            let is_locked = (time_locked === true || block_locked === true ? true : false);
+
+            // Es wird geprüft ob der Ausgang herausgeiltert werden soll
+            if(is_locked === true) if(filter_locked === true) continue;
+
+            // Das DB_UtxCoinOutput wird erzeugt
+            let new_utxo = new DB_UtxCoinOutput(bigInt(txitem.block_no), txitem.txid, txitem.hight, address_hex_data, bigInt(txitem.hexed_amount, 16), confirmations, bigInt(txitem.n_block_time, 16), bigInt(txitem.n_unix_lock_time, 16), is_locked, bigInt(txitem.spend_count));
+
+            // Das Utxo wird zwischengespeichert
+            resolved_items.push(new_utxo);
+        };
+
+        // Die ID wird zurückgegeben
+        return resolved_items;
+    };
+
     // Wird verwendet um die Höhe der Blockchain anhand der PreviousBlockID zu ermitteln
     async cleanedBlockHight() {
         // Es wird eine Anfrage an die Datenbank gestellt um die Aktuelle Blockhöhe zu ermitteln
@@ -536,7 +635,7 @@ class BlockcahinDatabase {
         let reconstructed_transactions = [];
         for await(const otem of result.transactions) {
             // Es wird versucht die Transaktion abzurufen
-            let retrived_transactions = await this.#FetchTxFromDB(otem, current_block_hight);
+            let retrived_transactions = await this.#FetchTxFromDB(otem);
 
             // Es wird geprüft ob der Hash des Transaktionsobjektes mit dem Hash der Angefordert wurde übersintimmt
             if(retrived_transactions.computeHash().toLowerCase() !== otem.toLowerCase()) throw new Error('Invalid transaction retrived from db');
@@ -1041,7 +1140,7 @@ class BlockcahinDatabase {
         // Die Änderungen werden gespeichert
         await this.#updateChainState();
     };
-}
+};
 
 
 // Die Klasse wird exportiert

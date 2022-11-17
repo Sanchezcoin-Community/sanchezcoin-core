@@ -1,6 +1,6 @@
 class RpcServer {
-    constructor(local_ip, local_port) {
-
+    constructor(local_end_points) {
+        this.local_end_points = local_end_points;
     }
 };
 

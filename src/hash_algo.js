@@ -26,9 +26,8 @@ function sha3_hash(size, ...data) {
 // Erzeugt einen 256 Bit swiftyHash
 function computeSwiftyH(...value) {
     // Es wird geprüft ob der Wert vorhanden ist
-    if(value === undefined || value === null) {}
-    if(typeof value !== 'object') {}
-    if(Buffer.isBuffer(value) !== true) {}
+    if(value === undefined || value === null) throw new Error('Invalid data type for value parameter');
+    if(typeof value !== 'object') throw new Error('Invalid data type for value parameter');
 
     // Die PreImages werden erstellt
     let pre_image = sha3_hash(384, keccak_hash(512, ...value));

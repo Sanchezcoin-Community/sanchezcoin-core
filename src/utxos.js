@@ -289,21 +289,35 @@ class BurnNftOutput {
     };
 };
 
+
 /*
     Datenbank Klassen
 */
 class DB_UnspentOutput extends UnspentOutput {
-    constructor(reciver_address_hash, amount, bLockTime, dtLockTime, isLocked) {
-        super(reciver_address_hash, amount, bLockTime, dtLockTime)
+    constructor(reciver_address_hash, amount, bLockTime, dtLockTime, isLocked, spendCount) {
+        super(reciver_address_hash, amount, bLockTime, dtLockTime);
+        this.spendCount = spendCount;
         this.isLocked = isLocked;
     }
-}
+};
+
+class DB_UtxCoinOutput extends DB_UnspentOutput {
+    constructor(block_no, tx_id, hight, reciver_address_hash, amount, confirmations, bLockTime, dtLockTime, isLocked, spendCount) {
+        super(reciver_address_hash, amount, bLockTime, dtLockTime, isLocked, spendCount);
+        this.confirmations = confirmations;
+        this.block_no = block_no;
+        this.tx_id = tx_id;
+        this.hight = hight;
+    }
+};
+
 
 
 // Die Klassen werden Exportiert
 module.exports = {
     // DB Classes
     DB_UnspentOutput:DB_UnspentOutput,
+    DB_UtxCoinOutput:DB_UtxCoinOutput,
     // Normal Classes
     NotSpendlabelMessageOutput:NotSpendlabelMessageOutput,
     UnspentPKeyOutput:UnspentPKeyOutput,

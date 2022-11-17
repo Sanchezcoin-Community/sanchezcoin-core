@@ -4,3 +4,4 @@ node_modules/
 database/
 mthread_mining/
 .
+stealth.js

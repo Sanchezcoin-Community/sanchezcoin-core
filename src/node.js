@@ -29,7 +29,16 @@ class Node {
     async loadBlockByHash(b_hash) {
         let result = await this.block_chain_object.getBlockByHash(b_hash);
         return result;
-    }
+    };
+
+    // Ruft alle nicht ausgegebenen Transaktionen ab
+    async getUnspentCoinTransactions(address_hex_data, min_conf=1, max_conf=9999999, filter_locked=true) {
+        // Die Anfrage wird an die Blockchain übergebene
+        let result = await this.block_chain_object.getUnspentCoinTransactions(address_hex_data, min_conf, max_conf, filter_locked);
+
+        // Die Daten werden zurückgegeben
+        return result;
+    };
 
     // Wird verwendet um die Einstellungen zu laden
     loadChain(path, callback) {

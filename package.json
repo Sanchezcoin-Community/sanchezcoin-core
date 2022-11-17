@@ -9,6 +9,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@open-rpc/server-js": "^1.9.3",
     "bech32": "^2.0.0",
     "big-integer": "^1.6.51",
     "blake2b": "^2.1.4",
