@@ -323,7 +323,7 @@ class BlockcahinDatabase {
                     let tx_db_id = await this.#GetTxDbId(input.txId);
 
                     // Es wird geprüft ob die Transaktion abgerufen werden konnte
-                    if(tx_db_id === undefined || tx_db_id === null || tx_db_id === false) {
+                    if(tx_db_id === null || tx_db_id === false) {
                         throw new Error('Invalid ')
                     }
 
@@ -356,6 +356,14 @@ class BlockcahinDatabase {
                 });
             }
             else if(input.constructor.name === 'MintNftInput') {
+                // Die DB-ID der Verwendeten Ausgabe wird ermittelt
+                let tx_db_id = await this.#GetTxDbId(input.txId);
+
+                // Es wird geprüft ob die Transaktion abgerufen werden konnte
+                if(tx_db_id === null || tx_db_id === false) {
+                    throw new Error('Invalid ')
+                }
+
                 // Es wird versucht das NFT in der Datenbank anzulegen
                 let nft_db_write_result_id = await this.#WriteNftToDb(block_id, block_no, active_txn, input, tx_db_id);
 

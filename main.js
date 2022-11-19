@@ -58,8 +58,10 @@ createMainChain((error, node_object) => {
         console.log('Current block hash', block.blockHash());  
         console.log('Current block hight', reconstrived_block.hight.toString());
 
+        // Es werden alle nicht ausgegeben Coin UTXOs des Benutezrs abgerufen
         node_object.getUnspentCoinTransactions("9b65ac81d16a8cab6e07e31a7870bdcf966a7de0595dde0318de5e91b878ca5b").then((r) => {
-            console.log(r)
+            // Der Gesamtverfügbare Betrag wird ermittelt
+            console.log(r) 
         });
         //node_object.loadBlockByHight(5).then((r) => { for(const otem of r.block.transactions) { console.log(otem) } });
 

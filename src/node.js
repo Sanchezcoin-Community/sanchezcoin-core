@@ -81,65 +81,66 @@ class Node {
             }
 
             // Der Aktuelle Template Block wird abgerufen
-            let c_template = this.block_chain_object.getPoWBlockTemplate(reciverPublicKeyHash);
-            let current_template_block = c_template.cblock;
+            this.block_chain_object.getPoWBlockTemplate(reciverPublicKeyHash).then((c_template) => {
+                let current_template_block = c_template.cblock;
 
-            // Es wird geprüft ob es sich um einen Mineable Block handelt
-            if(c_template.type !== 'pow') {
-                console.log('Mining stoped, consesnus changed');
-                this.miner.clearCurrentProcess();
-                return;
-            }
-
-            // Der Mining vorgang wird gestartet
-            this.miner.startMine(this.block_chain_object.getPoWTarget(), current_template_block.blockTemplate(), (error, found_nonce) => {
-                // Es wird geprüft ob ein Fehler aufgetreten ist
-                if(error !== null) {
-                    console.log(error);
+                // Es wird geprüft ob es sich um einen Mineable Block handelt
+                if(c_template.type !== 'pow') {
+                    console.log('Mining stoped, consesnus changed');
+                    this.miner.clearCurrentProcess();
                     return;
                 }
 
-                // Die Nonce des Blocks wird angepasst
-                current_template_block.setNonce(found_nonce);
+                // Der Mining vorgang wird gestartet
+                this.miner.startMine(this.block_chain_object.getPoWTarget(), current_template_block.blockTemplate(), (error, found_nonce) => {
+                    // Es wird geprüft ob ein Fehler aufgetreten ist
+                    if(error !== null) {
+                        console.log(error);
+                        return;
+                    }
 
-                // Es wird geprüft ob der Block die Aktuelle Diff erfüllt
-                if((bigInt(current_template_block.getCandidateBlockHash(), 16) < bigInt(this.block_chain_object.getPoWTarget(), 16)) !== true) {
-                    console.log('INVALID_BLOCK_NOT_ACCEPTED');
-                    return; 
-                }
+                    // Die Nonce des Blocks wird angepasst
+                    current_template_block.setNonce(found_nonce);
 
-                // Die Gefundenen Daten werden angezeigt
-                console.log(current_template_block.blockHash(), `0x${current_template_block.target_bits}`, c_template.hight.toString());
+                    // Es wird geprüft ob der Block die Aktuelle Diff erfüllt
+                    if((bigInt(current_template_block.getCandidateBlockHash(), 16) < bigInt(this.block_chain_object.getPoWTarget(), 16)) !== true) {
+                        console.log('INVALID_BLOCK_NOT_ACCEPTED');
+                        return; 
+                    }
 
-                // Das Finale Blockobjekt wird erstellt
-                let final_block = new PoWBlock(current_template_block.prv_block_hash, c_template.txns, current_template_block.target_bits, current_template_block.hash_algo, current_template_block.timestamp, found_nonce);
+                    // Die Gefundenen Daten werden angezeigt
+                    console.log(current_template_block.blockHash(), `0x${current_template_block.target_bits}`, c_template.hight.toString());
 
-                // Es wird geprüft ob es sich um einen gültigen Block handelt
-                if(final_block.blockHash() !== current_template_block.blockHash()) {
-                    console.log('INVALID_BLOCK_WAS_DROPPED');
-                }
+                    // Das Finale Blockobjekt wird erstellt
+                    let final_block = new PoWBlock(current_template_block.prv_block_hash, c_template.txns, current_template_block.target_bits, current_template_block.hash_algo, current_template_block.timestamp, found_nonce);
 
-                // Es wird eine Runde hochgezählt
-                current_round += 1;
+                    // Es wird geprüft ob es sich um einen gültigen Block handelt
+                    if(final_block.blockHash() !== current_template_block.blockHash()) {
+                        console.log('INVALID_BLOCK_WAS_DROPPED');
+                    }
 
-                // Der Block wird der Kette Hinzugefügt
-                this.block_chain_object.addBlock(final_block).then(() => {
-                    // Der nächste Block wird abgeabut
-                    if(total !== null) {
-                        if(total != current_round) {
-                            ___mine();
+                    // Es wird eine Runde hochgezählt
+                    current_round += 1;
+
+                    // Der Block wird der Kette Hinzugefügt
+                    this.block_chain_object.addBlock(final_block).then(() => {
+                        // Der nächste Block wird abgeabut
+                        if(total !== null) {
+                            if(total != current_round) {
+                                ___mine();
+                            }
+                            else {
+                                if(callback !== null) callback(null, final_block);
+                            }
                         }
                         else {
+                            ___mine();
                             if(callback !== null) callback(null, final_block);
                         }
-                    }
-                    else {
-                        ___mine();
-                        if(callback !== null) callback(null, final_block);
-                    }
-                }).catch((e) => {
-                    console.log(e);
-                })
+                    }).catch((e) => {
+                        console.log(e);
+                    })
+                });
             });
         };
 

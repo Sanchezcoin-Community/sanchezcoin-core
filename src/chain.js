@@ -22,9 +22,9 @@ class Blockchain {
 
         // Speichert die Parameter ab welche zum Betrieb des Peers benötigt werden
         this.blockchain_db = new BlockcahinDatabase(genesis_block, chainparms['$']);
+        this.mempool = new Mempool(this.blockchain_db);
         this.genesis_block = genesis_block;
         this.chainparms = chainparms;
-        this.mempool = new Mempool();
         this.cblock = null;
         this.coin = coin;
         this.db = null;
@@ -36,22 +36,13 @@ class Blockchain {
         this.current_pos_target = this.consensusForHight(0).pow_target;
     };
 
-    // Gibt die Aktiven Regeln für die Aktuelle Blockhöhe aus
-    consensusForHight(hight) {
-        // Es werden alle Blockeinstellungen für diese Blockhöhe aufgelistet
-        let temp_chain_pamrs = { ...this.chainparms };
-        let main_parms = temp_chain_pamrs["$"];
-        delete temp_chain_pamrs["$"];
-        let temp_chain_pamrs_keys = Object.keys(temp_chain_pamrs);
-        for(const otem of temp_chain_pamrs_keys) {
-            if(hight >= otem) main_parms = { ...main_parms, ...temp_chain_pamrs[otem] };
-        }
-        return main_parms;
-    };
+    // Ruft die bestbewerteten Transaktionen aus dem Mempool ab
+    async getBestTransactionsFromMemmpool(max_total_byte_size=null) {
+        // Es werden alle Transaktionen aus dem Mempool abgerufen
+        let retrived_txns = await this.mempool.getAllUseableTransactions(max_total_byte_size);
 
-    // Gibt das Konsensusverfahren für den Nächstenblock aus
-    nextBlockConsensus() {
-        return this.consensusForHight(this.cblock.hight + 1);
+        // Die Transgebühren werden zusammengerechnet
+        let total_amount = bigInt("0");
     };
 
     // Fügt der Kette neue Blöcke hinzu
@@ -209,22 +200,16 @@ class Blockchain {
         // Die Anfrage wird an die Datenbank übergeben
         let result = await this.blockchain_db.getUnspentCoinTransactions(address_hex_data, min_conf, max_conf, filer_locked);
 
+        // Die Beträge werden zusammengerechnet
+        let total_amount = bigInt("0");
+        for await(let oitem of result) total_amount = total_amount.add(oitem.amount);
+
         // Die Daten werden zurückgegeben
-        return result;
-    };
-
-    // Gibt die Aktuelle Blockbelohnung aus
-    currentBlockReward() {
-
-    };
-
-    // Gibt den Hash des Ersten Blocks aus
-    hashOfFirstBlock() {
-        return this.genesis_block.blockHash();
+        return { txns:result, total_amount:total_amount };
     };
 
     // Gibt die Mining Vorlage für den Aktuellen Block aus
-    getPoWBlockTemplate(reciver_pkey_or_pkey_hash) {
+    async getPoWBlockTemplate(reciver_pkey_or_pkey_hash) {
         // Das Aktuelle Consensusverfahren wird abgerufen
         let current_consens = this.nextBlockConsensus();
 
@@ -233,6 +218,9 @@ class Blockchain {
 
         // Der Letzte Block sowie die Blockhöhe werden abgerufen
         let current_block_and_hight = this.cblock;
+
+        // Die Transaktionen mit dem Höchsten Ertrag werden aus dem Mempool extrahiert und auf gültigkeit geprüft
+        let retrived_succs_transactions = await this.getBestTransactionsFromMemmpool(current_consens.block_size.minus("320"));
 
         // Die Coinbase Transaktion für den Empfänger wird erstellt
         let new_input = new CoinbaseInput();
@@ -285,6 +273,34 @@ class Blockchain {
         return { target:{ full:this.current_pos_target, bits:target_bits }, cstake_tx:coinbase_tx, txns:[coinbase_tx], hight:current_block_and_hight.hight + 1, type:current_consens.consensus };
     };
 
+    // Gibt die Aktiven Regeln für die Aktuelle Blockhöhe aus
+    consensusForHight(hight) {
+        // Es werden alle Blockeinstellungen für diese Blockhöhe aufgelistet
+        let temp_chain_pamrs = { ...this.chainparms };
+        let main_parms = temp_chain_pamrs["$"];
+        delete temp_chain_pamrs["$"];
+        let temp_chain_pamrs_keys = Object.keys(temp_chain_pamrs);
+        for(const otem of temp_chain_pamrs_keys) {
+            if(hight >= otem) main_parms = { ...main_parms, ...temp_chain_pamrs[otem] };
+        }
+        return main_parms;
+    };
+
+    // Gibt das Konsensusverfahren für den Nächstenblock aus
+    nextBlockConsensus() {
+        return this.consensusForHight(this.cblock.hight + 1);
+    };
+
+    // Gibt die Aktuelle Blockbelohnung aus
+    currentBlockReward() {
+
+    };
+
+    // Gibt den Hash des Ersten Blocks aus
+    hashOfFirstBlock() {
+        return this.genesis_block.blockHash();
+    };
+
     // Wird verwendet um die Blockchain Datenbank zu laden
     loadBlockchainDatabase(file_path, callback) {
         // Die Datenbank wird geladen
@@ -299,8 +315,11 @@ class Blockchain {
                 throw new Error('INVALID_BLOCKCHAIN_DB');
             }
 
-            // Der Vorgang wurde erfolgreich durchgeführt
-            callback(result);
+            // Der Mempool wird geladen
+            this.mempool.loadAndStartMempool(file_path).then((state) => {
+                // Der Vorgang wurde erfolgreich druchgeführt
+                callback(result);
+            });
         })
         .catch((c) => {
             console.log(c);

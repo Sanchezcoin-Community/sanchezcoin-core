@@ -309,6 +309,11 @@ class DB_UtxCoinOutput extends DB_UnspentOutput {
         this.tx_id = tx_id;
         this.hight = hight;
     }
+
+    // Wandelt dass Output in ein Input um
+    getInputObj() {
+        return new TxInput(this.tx_id, this.hight);
+    }
 };
 
 
@@ -333,6 +338,9 @@ module.exports = {
 
 // Es wird geprüft ob die Datei direkt gestartet wird, wenn ja wird die Funktion ausgeführt
 if (require.main === module) (() => {
+    // Das Transaktionsobjekt wird Imporitert
+    let { UnsignatedTransaction } = require('./transaction');
+
     // Coinbase Transaction
     let test_coinbase_input = new CoinbaseInput();
     let test_unspent_output = new UnspentOutput("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", bigInt("10000000"), bigInt("0"), bigInt("0"));
@@ -343,6 +351,9 @@ if (require.main === module) (() => {
     let nft_input = new NftTxInput("35669191c32a9cfb532e5d79b09f2b0926c0faf27e7543f1fbe433bd94ae78d7", 0, test_nft_mint.getCommitmentImage());
     let unspent_nft = new NftUnspentOutput(nft_input.getCommitmentImage(), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", bigInt("1"), bigInt("0"), bigInt("0"));
     let burn_nft = new BurnNftOutput(unspent_nft.getCommitmentImage(), bigInt("1"));
+
+    // Es wird ein nicht Signiertes Objekt erzeugt
+    let test_usig = new UnsignatedTransaction();
 
     // Not Spendlabel Outputs
     let message_input = new NotSpendlabelMessageOutput(Buffer.from("November 13, 2022 This coin has no claim to money, I like Rick And Morty and that's why I created it.", 'ascii'));

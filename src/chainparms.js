@@ -35,6 +35,7 @@ function RickcoinMainnet(callback) {
     let hash_algo = ramSwiftyHash;                                                                                  // Gibt den zu verwendeten Mining Algorithmus an
     let rickcoin = new Coin(8, "3eecf85c306b5c", 110700, 800);                                                      // Gibt den Coin an, welcher verwendet werden soll
     let start_pow_target = "0000ffff00000000000000000000000000000000000000000000000000000000";                      // Gibt Startschwierigkeit für das Mining an
+    let block_size = bigInt("2097152");                                                                             // Gibt die Maxiamle Größe eines Blocks an
 
     // Gibt die Netzwerkparameter an, welche verwendet werden um Verbindungen mit anderen Node herzustellen
     let transaction_header = "";
@@ -45,6 +46,7 @@ function RickcoinMainnet(callback) {
         // Speichert allgemeine Parameter ab
         "$":{
             consensus:'pow',
+            block_size:block_size,
             pow_hash_algo:hash_algo,
             block_header:block_header,
             block_time_ms:block_time_ms,
