@@ -10,6 +10,7 @@ const { ripemd160 } = require('@noble/hashes/ripemd160');
 const { scryptAsync } = require('@noble/hashes/scrypt');
 const HDKey = require('@ont-community/hdkey-secp256r1');
 const { sha256 } = require('@noble/hashes/sha256');
+const HDKeyED = require('micro-ed25519-hdkey');
 const secp = require('@noble/secp256k1');
 const bls = require('@noble/bls12-381');
 const ed = require('@noble/ed25519');
@@ -217,7 +218,8 @@ function bip32WordsToSeedF(lang_words) {
 
 // Wird verwendet um einen Master ED25519 Schlüssel aus einem Seed abzuleiten
 function getED25519MasterKeyFromSeed(seed) {
-
+    let hdkey = HDKey.fromMasterSeed(Buffer.from(seed, 'hex'));
+    return { pkey:hdkey.publicExtendedKey, privkey:hdkey.privateExtendedKey, hd:hdkey };
 };
 
 // Wird verwendet um einen Master SECP256K1 Schlüssel aus einem Seed abzuleiten
@@ -262,7 +264,7 @@ module.exports = {
 let test_words = genBip32WordsF();
 let seed = bip32WordsToSeedF(test_words);
 let secp256k1_master_keys = getSECP256K1MasterKeyFromSeed(seed);
+let ed25519_master_keys = getED25519MasterKeyFromSeed(seed);
 
-console.log(test_words)
-console.log(seed);
 console.log(secp256k1_master_keys);
+console.log(ed25519_master_keys);
