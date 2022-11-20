@@ -14,6 +14,7 @@ const HDKeyED = require('micro-ed25519-hdkey');
 const secp = require('@noble/secp256k1');
 const bls = require('@noble/bls12-381');
 const ed = require('@noble/ed25519');
+const axlsign = require('axlsign');
 const crypto = require('crypto');
 const bip39 = require('bip39');
 
