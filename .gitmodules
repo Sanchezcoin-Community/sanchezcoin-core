@@ -1,0 +1,3 @@
+[submodule "bip-schnorr-curve25519"]
+	path = bip-schnorr-curve25519
+	url = https://github.com/silentiumcode/bip-schnorr-curve25519

@@ -218,8 +218,8 @@ function bip32WordsToSeedF(lang_words) {
 
 // Wird verwendet um einen Master ED25519 Schlüssel aus einem Seed abzuleiten
 function getED25519MasterKeyFromSeed(seed) {
-    let hdkey = HDKey.fromMasterSeed(Buffer.from(seed, 'hex'));
-    return { pkey:hdkey.publicExtendedKey, privkey:hdkey.privateExtendedKey, hd:hdkey };
+    let hdkey = HDKeyED.HDKey.fromMasterSeed(seed);
+    return { pkey:hdkey.publicKeyRaw, privkey:hdkey.privateKey, hd:hdkey };
 };
 
 // Wird verwendet um einen Master SECP256K1 Schlüssel aus einem Seed abzuleiten
