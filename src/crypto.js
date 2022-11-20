@@ -228,11 +228,6 @@ function getSECP256K1MasterKeyFromSeed(seed) {
     return { pkey:hdkey.publicExtendedKey, privkey:hdkey.privateExtendedKey, hd:hdkey };
 };
 
-// Wird verwendet um einen Master BLS-128-384 Schlüssel aus einem Seed abzuleiten
-function getBLS128384MasterKeyFromSeed(seed) {
-
-};
-
 // Wird verwendet um eine Signatur zu erzeugen
 function signDigesF(digest_hex_value, private_key, crypto_algo) {
 
