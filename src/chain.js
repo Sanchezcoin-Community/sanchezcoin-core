@@ -210,6 +210,10 @@ class Blockchain {
 
     // Gibt die Mining Vorlage für den Aktuellen Block aus
     async getPoWBlockTemplate(reciver_pkey_or_pkey_hash) {
+        // Es wird geprüft ob es sich bei der Adresse um eine Adresse oder eine PlainKey Adresse handelt
+        if(typeof reciver_pkey_or_pkey_hash !== 'object') throw new Error('Invalid reciver address, is not a object');
+        if(reciver_pkey_or_pkey_hash.constructor.name !== 'HashAddress' && reciver_pkey_or_pkey_hash.constructor.name !== 'PlainKeyAddress') throw new Error('Invalid reciver address, unkown object type');
+
         // Das Aktuelle Consensusverfahren wird abgerufen
         let current_consens = this.nextBlockConsensus();
 
@@ -220,12 +224,16 @@ class Blockchain {
         let current_block_and_hight = this.cblock;
 
         // Die Transaktionen mit dem Höchsten Ertrag werden aus dem Mempool extrahiert und auf gültigkeit geprüft
-        let retrived_succs_transactions = await this.getBestTransactionsFromMemmpool(current_consens.block_size.minus("320"));
+        //let retrived_succs_transactions = await this.getBestTransactionsFromMemmpool(current_consens.block_size.minus("320"));
 
-        // Die Coinbase Transaktion für den Empfänger wird erstellt
+        // Das Coinbase Input wird erzeugt
         let new_input = new CoinbaseInput();
-        let next_block_hight = current_block_and_hight.hight.add(1);
+
+        // Es wird ein richtiger ausgang für den Adresstypen erzeugt
         let new_output = new UnspentOutput(reciver_pkey_or_pkey_hash, bigInt(this.coin.current_reward), bigInt("100"), bigInt("0"));
+
+        // Die Coinbase Transaktion wird erzeugt
+        let next_block_hight = current_block_and_hight.hight.add(1);
         let coinbase_tx = new CoinbaseTransaction(next_block_hight, [new_input], [new_output]);
 
         // Aus dem Target werden die Target Bits abgeleitet
@@ -239,7 +247,7 @@ class Blockchain {
     };
 
     // Gibt die Minting Vorlage für den Aktuellen Block aus
-    getPoSMintingBlockTemplate(minter_public_key, unspend_output_utxo) {
+    async getPoSMintingBlockTemplate(minter_public_key, unspend_output_utxo) {
         // Das Aktuelle Consensusverfahren wird abgerufen
         let current_consens = this.nextBlockConsensus();
 
