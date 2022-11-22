@@ -1,5 +1,5 @@
 const { app, BrowserWindow } = require('electron');
-const { createMainChain } = require('../node');
+const { createMainChain } = require('../src/node');
 const path = require('path');
 
 
