@@ -1,4 +1,4 @@
-const { Keccak, SHA3 } = require('sha3');
+const { sha3, keccak } = require('./crypto');
 const { bech32m} = require('bech32');
 const crc32 = require('crc/crc32');
 const base32 = require('base32');
@@ -45,15 +45,10 @@ class Address {
         let hex_block = this.getAddressHexBlock();
 
         // Es wird ein Keccak-512 Hash erstellt
-        let keccak_hash = new Keccak(512);
-        keccak_hash.update(Buffer.from(hex_block, 'hex').reverse());
-
-        // Es wird ein SHA3-256 Hash erzeugt
-        let sha3_256_hash = new SHA3(256);
-        sha3_256_hash.update(keccak_hash.digest().reverse());
+        let keccak_hash = keccak(512, hex_block);
 
         // Der Hash wird zurückgegeben
-        return sha3_256_hash.digest().reverse().toString('hex');
+        return sha3(256, keccak_hash);
     };
 
     // Gibt die Adresse als String aus
@@ -64,9 +59,7 @@ class Address {
 
     // Gibt den Hash der Bech32 Adresse aus
     computeAddressHash(header="rick") {
-        let adr_bech32_hash = new SHA3(256);
-        adr_bech32_hash.update(Buffer.from(this.toString(header).toLowerCase(), 'ascii'));
-        return adr_bech32_hash.digest('hex');
+        return sha3(this.this.toString(header).toLowerCase());
     };
 };
 
@@ -100,9 +93,7 @@ class PlainKeyAddress {
 
     // Gibt einen Hash der Fertigen Adresse aus
     computeAddressHash(header='rick') {
-        let adr_bech32_hash = new SHA3(256);
-        adr_bech32_hash.update(Buffer.from(this.toString(header).toLowerCase(), 'ascii'));
-        return adr_bech32_hash.digest('hex');
+        return sha3(256, this.toString(header).toLowerCase());
     };
 };
 
@@ -128,10 +119,7 @@ class PublicKeySignaturePair {
 
     // Gibt den Hash der Öffentlichen Schlüssel aus
     pkeyHash() {
-        let new_h = new SHA3(256);
-        let pre_str = `${this.crypto_alg.toUpperCase()}::${this.public_key.toLowerCase()}`;
-        new_h.update(Buffer.from(pre_str, 'utf8'));
-        return new_h.digest('hex').toLowerCase();
+        return sha3(256, `${this.crypto_alg.toUpperCase()}::${this.public_key.toLowerCase()}`);
     };
 };
 
@@ -161,10 +149,7 @@ class AddressSigBox {
 
 // Erzeugt einen Hash aus einem Öffentlichen Schlüssel
 function publicKeyToHash(algo, pkey) {
-    let new_h = new SHA3(256);
-    let pre_str = `${algo.toUpperCase()}::${pkey.toLowerCase()}`;
-    new_h.update(Buffer.from(pre_str, 'utf8'));
-    return new PublicKeyHashOnly(new_h.digest('hex').toLowerCase());
+    return new PublicKeyHashOnly(sha3(256, `${algo.toUpperCase()}::${pkey.toLowerCase()}`));
 };
 
 // Gibt an ob es sich um eine Hash Adresse oder eine PublicKey Adresse handelt
@@ -196,14 +181,8 @@ function isPkhAOrIsPPK(adr_str_value, header) {
     let public_key_b_box = new AddressSigBox(2, ...public_key_b);
     console.log('Bech32 Adress:       ', public_key_b_box.toAddress().toString());
 
-    let plain_public_key_ed = new PlainKeyAddress('ed', "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6");
+    let plain_public_key_ed = new PlainKeyAddress('c', "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6");
     console.log('Bech32 Pkey-Adress:  ', plain_public_key_ed.toString());
-
-    let plain_public_key_secp = new PlainKeyAddress('sp', "034646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff");
-    console.log('Bech32 Pkey-Adress:  ', plain_public_key_secp.toString());
-
-    let plain_public_key_bls = new PlainKeyAddress('bs', 'a427f64357561bffc7f21693e5fbe5436d9cfdda7683fb64747f781481265c950ed3250f127b156342073d7619ba102b');
-    console.log('Bech32 Pkey-Adress:  ', plain_public_key_bls.toString());
 })();
 
 
