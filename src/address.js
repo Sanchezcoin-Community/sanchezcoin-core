@@ -1,11 +1,19 @@
-const { sha3, keccak } = require('./crypto');
+const { sha3, keccak } = require('sanchez-crypto');
 const { bech32m} = require('bech32');
-const crc32 = require('crc/crc32');
-const base32 = require('base32');
 
 
-// Die Adresse 
-class Address {
+// Gibt die Möglichen Kryptographischen Verfahren für Adressen an
+const ADDRESS_CRYPTO_CURVE25519 = 1;
+const ADDRESS_CRYPTO_SECP256K1 = 2;
+
+// Speichert den Header für die Adresstypen und zugehörige verfahren ab
+const ADDRESS_HEADER_CONTRACT_HASH_ADDRESS = 'cn';
+const ADDRESS_HEADER_CURVE25519_ADDRESS = 'c';
+const ADDRESS_HEADER_SECP256K1_ADDRESS = 's';
+
+
+// Die Normale Adresse 
+class ConditionHashAddress {
     // Erzeugt ein neues Addressobjekt
     constructor(n, ...public_key_hashes) {
         this.public_key_hashes = public_key_hashes;
@@ -54,7 +62,12 @@ class Address {
     // Gibt die Adresse als String aus
     toString(header="rick") {
         let words = bech32m.toWords(Buffer.from(this.computeHash(), 'hex'));
-        return bech32m.encode(`${header}h`, words);
+        return bech32m.encode(`${header}${ADDRESS_HEADER_CONTRACT_HASH_ADDRESS}`, words);
+    };
+
+    // Gibt den Plainwert der Adresse aus
+    getPlainHexValue() {
+        return this.computeHash();
     };
 
     // Gibt den Hash der Bech32 Adresse aus
@@ -76,19 +89,22 @@ class PlainKeyAddress {
         // Der RAW Hexblock wird abgerufen
         let raw_bytes_hex_block = Buffer.from(this.pkey, 'hex');
 
-        // Der Header wird in Bytes umgewandelt
-        let header_bytes = Buffer.from(header.toLowerCase(), 'ascii');
-
-        // Aus dem Header und dem PublicKey wird eine Checksume erstellt
-        let compared_data = Buffer.from([ ...header_bytes, ...raw_bytes_hex_block]);
-        let chsum = crc32(compared_data).toString(16);
-        let bchsum = Buffer.from(chsum, 'hex');
-
-        // Der PublicKey wird mit base32 umgewandelt
-        let based_value = base32.encode(Buffer.from([ ...raw_bytes_hex_block, ...bchsum ]));
-
         // Die Finale Adresse wird erstellt
-        return `${header}p1${this.calgo}b${based_value}`
+        let words = bech32m.toWords(raw_bytes_hex_block);
+        if(this.calgo === ADDRESS_CRYPTO_CURVE25519) {
+            return bech32m.encode(`${header}${ADDRESS_HEADER_CURVE25519_ADDRESS}`, words);
+        }
+        else if(this.calgo === ADDRESS_CRYPTO_SECP256K1) {
+            return bech32m.encode(`${header}${ADDRESS_HEADER_SECP256K1_ADDRESS}`, words);
+        }
+        else {
+            throw new Error('Unkown crypto alg');
+        }
+    };
+
+    // Gibt den Plainwert der Adresse aus
+    getPlainHexValue() {
+        return this.pkey;
     };
 
     // Gibt einen Hash der Fertigen Adresse aus
@@ -97,7 +113,7 @@ class PlainKeyAddress {
     };
 };
 
-// Gibt einen Address HashOnlyWert 
+// Gibt einen Address HashOnlyWert an
 class PublicKeyHashOnly {
     constructor(address_hash) {
         this.address_hash = address_hash;
@@ -143,7 +159,7 @@ class AddressSigBox {
         });
 
         // Die Adresse wird nachgebildet
-        return new Address(this.needed, ...filtered_items);
+        return new ConditionHashAddress(this.needed, ...filtered_items);
     };
 };
 
@@ -167,24 +183,23 @@ function isPkhAOrIsPPK(adr_str_value, header) {
     let public_key_a = [
         new PublicKeyHashOnly("42a2be8a0221def13b6ba0665045ffca6a9f18754cb934e1f5c6a5f244eda684"),
         new PublicKeyHashOnly("1666509e0954795ba111c898ecd8ed2aafa051bf886aeea3653176c25b7290fb")
-        //publicKeyToHash("ed25519", "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6")
     ];
-
-    let public_key_a_box = new AddressSigBox(2, ...public_key_a);
-    console.log('Bech32 Adress:       ', public_key_a_box.toAddress().toString());
-
     let public_key_b = [
         new PublicKeyHashOnly("42a2be8a0221def13b6ba0665045ffca6a9f18754cb934e1f5c6a5f244eda684"),
         new PublicKeySignaturePair('207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6', 'e62e9842765ab06c3e2d55c5b2e18ab8f61934b13e457b9ae0fd5ebcba611249dc7ddd6a8e32a14ed3dac2bc288391715f2e5db747636c737cfd1fa870c40c0e', 'ed25519')
     ];
-
+    let public_key_a_box = new AddressSigBox(2, ...public_key_a);
     let public_key_b_box = new AddressSigBox(2, ...public_key_b);
+    console.log('Bech32 Adress:       ', public_key_a_box.toAddress().toString());
     console.log('Bech32 Adress:       ', public_key_b_box.toAddress().toString());
 
-    let plain_public_key_ed = new PlainKeyAddress('c', "207a067892821e25d770f1fba0c47c11ff4b813e54162ece9eb839e076231ab6");
+    // Es wird geprüft ob die Adressen übereinstimmen
+    if(public_key_a_box.toAddress().toString() !== public_key_b_box.toAddress().toString()) throw new Error('Unkown internal error')
+
+    // Es wird eine Curve25519 Adresse erzeugt
+    let plain_public_key_ed = new PlainKeyAddress(ADDRESS_CRYPTO_CURVE25519, "034646ae5047316b4230d0086c8acec687f00b1cd9d1dc634f6cb358ac0a9a8fff");
     console.log('Bech32 Pkey-Adress:  ', plain_public_key_ed.toString());
 })();
-
 
 // Das Objekt wird exportiert
 module.exports = {
@@ -193,5 +208,5 @@ module.exports = {
     publicKeyToHash:publicKeyToHash,
     isPkhAOrIsPPK:isPkhAOrIsPPK,
     AddressSigBox:AddressSigBox,
-    Address:Address,
-}; 
+    ConditionHashAddress:ConditionHashAddress,
+};

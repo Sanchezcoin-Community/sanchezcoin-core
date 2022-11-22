@@ -22,6 +22,9 @@
     "sha3": "^2.1.4",
     "sqlite3": "^5.1.2",
     "worker-farm": "^1.7.0",
-    "ws": "^8.9.0"
+    "ws": "^8.9.0",
+    "sanchez-crypto":"./src/crypto",
+    "sanchez-script":"./src/scriptvm",
+    "sanchez-gui":"./src/gui"
   }
 }

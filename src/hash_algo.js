@@ -1,4 +1,4 @@
-const cryptolib = require('./crypto');
+const cryptolib = require('sanchez-crypto');
 
 
 // Die Module werden exportiert
