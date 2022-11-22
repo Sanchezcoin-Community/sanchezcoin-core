@@ -4,7 +4,6 @@ const crc32 = require('crc/crc32');
 const base32 = require('base32');
 
 
-
 // Die Adresse 
 class Address {
     // Erzeugt ein neues Addressobjekt
