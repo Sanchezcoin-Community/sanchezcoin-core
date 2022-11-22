@@ -11,5 +11,8 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^21.2.3"
+  },
+  "dependencies": {
+    "sanchez-base":"../src"
   }
 }
