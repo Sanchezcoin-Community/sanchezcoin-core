@@ -1,12 +1,11 @@
-const op_codes = require('./opcodes');
-const lexer = require('./lexer');
+const { op_codes } = require('./opcodes');
 
 
 
 // Speichert alle Verfügbaren Chainstate Commands ab
 let chain_state_commands = {
-    unlocking_script_hash:[op_codes.cstate_current_block_hight],
-    current_b_hight:[op_codes.op_push_ulscrip],
+    unlocking_script_hash:[op_codes.cstate_unlock_script_hash],
+    current_b_hight:[op_codes.cstate_current_block_hight],
 };
 
 //Speichert alle Verfügabren Emit Funktionen ab
@@ -18,9 +17,17 @@ let emit_functions = {
         op_codes.op_push_false, op_codes.op_script_abort
     ],
     UNLOCK_OUTPUT:[
-        op_codes.op_algr_poor, op_codes.op_ref
+        op_codes.op_algr_poor, op_codes.op_unlock, op_codes.op_ref
     ]
 };
+
+// Definiert die verschiedenen If typen
+let if_types = {
+    IF_START:1,
+    ELSE_IF:2,
+    ELSE:3
+};
+
 
 
 // Gibt ein OpCode für eine Emit Funktion aus
@@ -29,7 +36,7 @@ async function get_emit_function_op_code(function_name) {
     if(Object.keys(emit_functions).includes(function_name) !== true) return false;
 
     // Es wird der Passende OP_Code ermittelt
-    let resolved_op_codes = [op_codes.op_is_emit];
+    let resolved_op_codes = [];
     for(let otem of emit_functions[function_name]) resolved_op_codes.push(otem);
 
     // Der OP_CODE wird zurückgegeben
@@ -64,11 +71,8 @@ async function is_next_hex_string(tokens) {
     // Die länge des Hexstrings wird ermittelt
     let hex_str_len = last_t_obj.value.toString(16).length.toString(16).padStart(2, '0');
 
-    // Der Finale String wird erstellt
-    let final_hx_value = `${op_codes.op_code_hex_value}${hex_str_len}${last_t_obj.value}`;
-
     // Es handelt sich um einen Hex String, dder Hexwert und die neue Tokenliste wird zurückgegeben
-    return { tokens:temp_token_lst, inner:final_hx_value };
+    return { tokens:temp_token_lst, inner:[op_codes.op_code_hex_value, hex_str_len, last_t_obj.value].join('') };
 };
 
 // Gibt an, ob als der Nächste Wert dem Stack eine Zahl ist
@@ -188,11 +192,8 @@ async function is_chain_state_value(tokens) {
     let op_code_retrive = await get_chain_state_op_code(last_t_obj.value);
     if(op_code_retrive === false) throw new Error('Op code not found');
 
-    // Der Finale Hex Wert wird erzeugt
-    let final_hex_value = `${op_codes.chain_state_value}${op_code_retrive}`.toLowerCase();
-
     // Die Daten werden zurückgegeben
-    return { tokens:temp_token_lst, inner:final_hex_value };;
+    return { tokens:temp_token_lst, inner:[op_codes.chain_state_value, op_code_retrive] };;
 };
 
 // Extrahiert einen Mathematischen Parrent
@@ -399,8 +400,11 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
         // Die Gesamtzahl der Eingaben wird in eine Hexadezimalzahl umgewandelt
         let hex_total_value_len = total_values.toString(16).padStart(2, '0');
 
+        // Gibt den Aktuellen String an
+        let current_parm_total = ((parsed_hex_value.join('').length > 0) ? parsed_hex_value.join('') : '');
+
         // Der Finale Hex String wird erstellt
-        let final_hex_string = `${op_codes.parren_fnc_cube}${hex_total_value_len}${parsed_hex_value.join("")}`.toLowerCase();
+        let final_hex_string = [op_codes.parren_fnc_cube, hex_total_value_len, current_parm_total].join('');
 
         // Die Daten werden zurückgegeben
         return { tokens:temp_token_lst, inner:final_hex_string };
@@ -569,8 +573,8 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
         }
 
         // Der String wird zusammengebaut und zurückgegeben
-        let str_template = [op_codes.op_if_block, check_condition.inner, left_value.inner, right_value.inner].join('');
-        return { tokens:temp_token_lst, inner:str_template };
+        let str_template = [check_condition.inner, ...left_value.inner, right_value.inner];
+        return { tokens:temp_token_lst, inner:str_template.join('') };
     };
 
     // Es wird gepüft ob es sich um ein IF Statement handelt
@@ -606,7 +610,7 @@ async function is_emit_function_call(tokens, parrn_inner=false) {
     }
 
     // Die Restlichen Tokens werden zurückgeben
-    return { tokens:temp_lst, inner:[r_op_code, parrent_cube.inner].join('') };
+    return { tokens:temp_lst, inner:[op_codes.op_is_emit, r_op_code, parrent_cube.inner].join('') };
 };
 
 // Gibt an ob als nächstes ein Codeblock kommt
@@ -663,7 +667,7 @@ async function next_is_code_block(tokens) {
 };
 
 // Gibt an, ob als nächstes ein IF Block kommt
-async function is_if_statement(tokens) {
+async function is_if_statement(tokens, elseif_block=if_types.IF_START) {
     // Es wird geprüft ob Mindestens 7 Elemente auf dem Stack liegen
     if(tokens.length < 7) return false;
 
@@ -681,7 +685,16 @@ async function is_if_statement(tokens) {
 
     // Es wird geprüft ob als nächstes ein Codeblock vorhanden ist
     let code_block = await next_is_code_block(temp_lst);
-    console.log(code_block)
+    if(parren_cube === false) throw new Error('Invalid script stack');
+
+    // Die Länge des Codebereiches wird ermittelt
+    let code_block_len = code_block.inner.length.toString(16).padStart(4, "0");
+
+    // Die IF Anweisung hat werder ein Elseif noch einen Elseblock, die Daten es IF_BLOCKS wird zurückgegeben
+    let pre_value_list = [op_codes.op_if, parren_cube.inner, code_block_len, code_block.inner];
+
+    // Die Daten werden zurückgegeben
+    return { tokens:code_block.tokens, inner:pre_value_list.join('') };
 };
 
 // Wird verwndet um die Skriptoken zu Paesen, Syntaxfehler oder Logikfehler werden hier entdeckt
@@ -711,7 +724,6 @@ async function script_token_parser(tokens, sub_block=false) {
         }
 
         // Es handelt sich um einen Unbeaknnten Funktionsaufruf
-        console.log(temp_stack_script);
         throw new Error('Invalid function call');
     }
 
@@ -720,20 +732,9 @@ async function script_token_parser(tokens, sub_block=false) {
 };
 
 
-// Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
-let locking_script = `
-unlock_output();
-`;
 
-// Wird verwendet um eine Ausgabe zu Entsperren und nachzuweisen dass man die Benötigen Bediungen erfüllt
-let unlocking_script = `
-add_verify_key_and_eq_verfiy_signature(
-    PublicKey(curve25519, 32c220482c68413fbf8290e3b1e49b0a85901cfcd62ab0738760568a2a6e8a57)
-);
-`;
-
-
-// Das Skript wird Gelext
-lexer(locking_script).then(async (r) => {
-    console.log((await script_token_parser(r)));
-});
+// Exportiert die Funktionen
+module.exports = async function(tokens) {
+    let script_tokens = await script_token_parser(tokens);
+    return script_tokens.inner;
+};

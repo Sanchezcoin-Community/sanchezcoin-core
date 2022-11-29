@@ -1,8 +1,8 @@
 import hashlib
 
 
-start_block_reward = 800
-reward_interval = 110700
+start_block_reward = 2500
+reward_interval = 210000*2
 periods = 1
 
 def max_money():
@@ -18,6 +18,5 @@ def max_money():
 
 # 179.769.313,486 Mortys
 mx = max_money()
-newer_method_string = "{:.8f}".format(mx / 100000000)
-print(newer_method_string, 'Mortys')
-print(mx)
+newer_method_string = "{:.8f}".format( round(float(mx)) / 100000000)
+print(round(float(newer_method_string))/1000000000, 'mrd Sanchez')
