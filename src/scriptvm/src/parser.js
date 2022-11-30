@@ -40,6 +40,11 @@ let emit_functions = {
     ],
 };
 
+// Speichert alle Steurebefehle ab
+let control_commands = {
+
+};
+
 // Definiert die verschiedenen If typen
 let if_types = {
     IF_START:'IF',

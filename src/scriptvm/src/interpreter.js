@@ -51,8 +51,6 @@ const condscript_interpreter = async(locking_script, unlocking_script, c_block_h
     // Speichert spizielle Zustände des Aktuellen Skriptes ab
     let states = null;
 
-    // Die Optionalen Daten werden geprüft
-
     // Wird ausgeführt um zu überprüfen ob es sich um ein CHAIN_STATE Wert handelt
     async function next_is_inter_chain_state(hex_str_list, script_type=null) {
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
@@ -256,7 +254,7 @@ const condscript_interpreter = async(locking_script, unlocking_script, c_block_h
                 states.unlocked = true;
             }
             // Es wird geprüft ob die Signaturen geprüft werden sollen
-            else if(current_item === op_codes.op_verify_sig) {
+            else if(current_item === op_codes.op_check_sig) {
                 // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
                 current_item = copyed_item.shift();
                 if(current_item !== op_codes.parren_fnc_cube) throw new Error('Invalid script');
@@ -319,6 +317,22 @@ const condscript_interpreter = async(locking_script, unlocking_script, c_block_h
                 // Der Öffentliche Schlüssel wird auf die berechtigten Liste gepackt
                 verifyed_unlock_public_keys.push(public_key_declaration.value);
                 states.needs_sigs++;
+            }
+            // Legtfest, wieviele Signaturen notwendig sind
+            else if(current_item === op_codes.op_set_n_of_m) {
+
+            }
+            // Blockiert NFT Transaktionen
+            else if(current_item === op_codes.block_nft_transfer) {
+
+            }
+            // Es wird geprüft ob das Skript abgebrochen werden soll
+            else if(current_item === op_codes.op_script_abort) {
+
+            }
+            // Fügt ein False dem Aktuellen Stack hinzu
+            else if(current_item === op_codes.op_push_false) {
+
             }
             // Fügt erst einen Öffentlichen Schlüssel hinzu und führt dann eine Signatur prüffung durch
             else if(current_item === op_codes.op_add_pk_sverify) {

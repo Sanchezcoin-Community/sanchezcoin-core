@@ -9,12 +9,16 @@ let is_number_regex = (/^\d+$/);
 
 // Definiert die Verfügbaren Keywörter
 let key_words = {
-    "if":{ type:"CONDITION", name:"IF" },
-    "else":{ type:"CONDITION", name:"ELSE" },
-    "elseif":{ type:"CONDITION", name:"ELSEIF" },
-    "PublicKey":{ type:"PUBLIC_KEY", name:"PUBLIC_KEY" },
-    "secp256k1":{ type:"CRYPTO_ALGORITHM", name:"SECP256K1_CRYPTO_ALGORITHM" },
     "curve25519":{ type:"CRYPTO_ALGORITHM", name:"CURVE25519_CRYPTO_ALGORITHM" },
+    "secp256k1":{ type:"CRYPTO_ALGORITHM", name:"SECP256K1_CRYPTO_ALGORITHM" },
+    "bls11381":{ type:"CONDITION", name:"BLS11381_CRYPTO_ALGORITHM" },
+    "swiftyH":{ type:"CONDITION", name:"HASH_SWIFTYH_256" },
+    "PublicKey":{ type:"PUBLIC_KEY", name:"PUBLIC_KEY" },
+    "sha256d":{ type:"CONDITION", name:"HASH_SHA256D" },
+    "sha3":{ type:"CONDITION", name:"SHA3_256" },
+    "elseif":{ type:"CONDITION", name:"ELSEIF" },
+    "else":{ type:"CONDITION", name:"ELSE" },
+    "if":{ type:"CONDITION", name:"IF" },
 };
 
 // Definiert alle Verfügabren Funktionen 
@@ -23,7 +27,9 @@ let def_functions = {
     "add_verify_key": { type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY" },
     "abort": { type:"EMIT_FUNCTION", name:"ABORT_SKRIPT_RETURN_FALSE" },
     "verify_sig": { type:"EMIT_FUNCTION", name:"VERIFY_SIGNATURES" },
-    "unlock": { type:"EMIT_FUNCTION", name:"UNLOCK_SCRIPT" },
+    "block_nft": { type:"EMIT_FUNCTION", name:"BLOCK_NFT_TRANSFER" },
+    "set_n_of_m": { type:"EMIT_FUNCTION", name:"SET_N_OF_M" }, 
+    "unlock": { type:"EMIT_FUNCTION", name:"UNLOCK_SCRIPT" }, 
 };
 
 // Definiert die Festgelegeten Token
