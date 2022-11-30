@@ -5,20 +5,22 @@ const { op_codes } = require('./opcodes');
 const lexer = require('./lexer');
 
 
+
+// Gibt ein True an, dieses True wird nur Zurückgegeben wenn die Signaturen korrekt geprüft wurden
+const SIG_CHECK_TRUE = 0;
+
 // Speichert die Möglichen Skripttypen ab
 const script_types = {
     LOCKING:0,
     UNLOCKING:1
-}
+};
 
 // Speichert die Standardwerte für ein Skript ab
 const DEFAULT_STATES = {
-    output_is_unlocked:false,
-    finally_proof:false,
-    aborted:false,
-    invalid:false
+    verify_sig_checked:0,
+    needs_sigs:0,
+    unlocked:false,
 };
-
 
 // Erzeugt einen SHA256 Hash
 function sha256d(content) {  
@@ -33,12 +35,12 @@ function is_validate_hex_str(hex_str) {
 };
 
 // Wird ausgeführt um ein einfaches Skript auszuführen
-const condscript_interpreter = async(locking_script, unlocking_script, c_block_hight=0, scriptSigs=[]) => {
+const condscript_interpreter = async(locking_script, unlocking_script, c_block_hight=0, scriptSigs=[], ...optdata) => {
     // Es wird geprüft ob es sich bei den Skripten um Hexwerte handelt
     if(is_validate_hex_str(locking_script) !== true) throw new Error('Invalid script data');
 
     // Es wird ein Hash aus dem Eingabe, sowie ausgabe Skript erstellt
-    let unlocking_script_hash = sha256d(unlocking_script);
+    let unlocking_script_hash = sha256d(unlocking_script), locking_script_hash = sha256d(locking_script);
 
     // Speichert alle PublicKeys ab, welche berechtigt sind mittels Signatur die Skripte zu überprüfen
     let verifyed_unlock_public_keys = [];
@@ -47,7 +49,9 @@ const condscript_interpreter = async(locking_script, unlocking_script, c_block_h
     let interpr_data_stack = [];
 
     // Speichert spizielle Zustände des Aktuellen Skriptes ab
-    let states = DEFAULT_STATES, needed_sigs = 0;
+    let states = null;
+
+    // Die Optionalen Daten werden geprüft
 
     // Wird ausgeführt um zu überprüfen ob es sich um ein CHAIN_STATE Wert handelt
     async function next_is_inter_chain_state(hex_str_list, script_type=null) {
@@ -228,40 +232,17 @@ const condscript_interpreter = async(locking_script, unlocking_script, c_block_h
         // Das Item wird Kopiert
         let copyed_item = hex_str_lst.slice();
 
-        // Es wird Signalisiert dass das es ich um einen Verifizierungsvorgang handelt
-        states.finally_proof = true;
-
         // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
         let extracted_item = copyed_item.shift();
         if(extracted_item !== op_codes.op_is_emit) return false;
 
         // Die Einzelnen Einträge auf dem Stack werden abgearbeitet
-        let reverse_operations = false, n_oper_call = null;
         while(copyed_item.length > 0) {
             // Das Aktuelle Item wird abgerufen
             let current_item = copyed_item.shift();
 
-            // Es wird geprüft ob es sich um einen 'op_algr_poor' handelt
-            if(current_item === op_codes.op_algr_poor) {
-                let call_opr = async () => { states.finally_proof = true; return null; };
-                if(reverse_operations === true && n_oper_call === null) n_oper_call = call_opr
-                else call_opr();
-                continue;
-            }
-
             // Es wird geprüft ob der Ausgang entsperrt werden soll
             if(current_item === op_codes.op_unlock) {
-                let call_opr = async () => { states.output_is_unlocked = true; return null; };
-                if(reverse_operations === true && n_oper_call === null) n_oper_call = call_opr
-                else call_opr();
-                continue;
-            }
-
-            // Es wird geprüft ob der Vorgnag beendet werden soll
-            if(current_item === op_codes.op_ref) {
-                // Es wird geprüft ob beretis ein Reverse Vorgang aktiviert wurde
-                if(reverse_operations === true) throw new Error('Invalid script');
-
                 // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
                 current_item = copyed_item.shift();
                 if(current_item !== op_codes.parren_fnc_cube) throw new Error('Invalid script');
@@ -270,64 +251,54 @@ const condscript_interpreter = async(locking_script, unlocking_script, c_block_h
                 current_item = copyed_item.shift();
                 if(current_item !== '00') throw new Error('Invalid script stack');
 
-                // Die Schleife wird abgebrochen
-                return { hex_str_list:[] };
+                // Die Ausgabe wird freigegeben
+                interpr_data_stack.push(SIG_CHECK_TRUE);
+                states.unlocked = true;
             }
-
-            // Es wird geprüft ob es sich um einen Reverse Vorgang handelt
-            if(current_item === op_codes.op_n_reserve) {
-                // Es wird geprüft ob beretis ein Reverse Vorgang aktiviert wurde
-                if(reverse_operations === true) throw new Error('Invalid script');
-
-                reverse_operations = true;
-                continue;
-            }
-
             // Es wird geprüft ob die Signaturen geprüft werden sollen
-            if(current_item === op_codes.op_verify_sig) {
-                let call_opr = async () => {
-                    // Speichert die Gesamtzahl aller
-                    let total_checks = 0;
+            else if(current_item === op_codes.op_verify_sig) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.parren_fnc_cube) throw new Error('Invalid script');
 
-                    // Es wird geprüft ob der PublicKey in der ScriptSig Liste vorhanden ist und ob die Signatur korrekt ist
-                    for(let script_sigs of scriptSigs) {
-                        let found_pkey = false;
-                        for(let allowed_pkeys of verifyed_unlock_public_keys) {
-                            if(script_sigs.pkey === scriptSigs.pkey) {
-                                // Es wird geprüft ob die Signatur korrekt ist
-                                found_pkey = true;
-                                total_checks++;
-                                break;
-                            }
+                // Es wird geprüft ob 0 Daten angegeben wurden
+                current_item = copyed_item.shift();
+                if(current_item !== '00') throw new Error('Invalid script stack');
 
-                            // Es wird geprüft ob ein PublicKey gefunden wurde, wenn ja wird dieser Vorgang übersprungen
-                            if(found_pkey === true) break;
+                // Speichert die Gesamtzahl aller
+                let total_checks = 1;
+
+                // Es wird geprüft ob der PublicKey in der ScriptSig Liste vorhanden ist und ob die Signatur korrekt ist
+                for(let script_sigs of scriptSigs) {
+                    let found_pkey = false;
+                    for(let allowed_pkeys of verifyed_unlock_public_keys) {
+                        if(script_sigs.pkey === scriptSigs.pkey) {
+                            // Es wird geprüft ob die Signatur korrekt ist
+                            found_pkey = true;
+                            total_checks++;
+                            break;
                         }
+
+                        // Es wird geprüft ob ein PublicKey gefunden wurde, wenn ja wird dieser Vorgang übersprungen
+                        if(found_pkey === true) break;
                     }
-
-                    // Es wird geprüft ob Mindestens X Prüfungen durchgeführt wurden, wenn nicht wird das Skript abgebrochen
-                    if(total_checks !== needed_sigs) {
-                        states.aborted = true;
-                        states.invalid = true;
-                        return false;
-                    }
-
-                    // Die Operation wurde erfolreich durchgeführt
-                    return true;
-                };
-
-                // Es wird geprüft ob die Aufgabe sofort aufgesführt werden soll
-                if(reverse_operations === true && n_oper_call === null) n_oper_call = call_opr;
-                else {
-                    if((await call_opr()) !== true) return { hex_str_list:[] };
                 }
 
-                // Das Nächste Element wird abgeitet
-                continue;
-            }
+                // Es wird geprüft ob Mindestens X Prüfungen durchgeführt wurden, wenn nicht wird das Skript abgebrochen
+                if(total_checks !== states.needs_sigs) return false;
 
+                // Es wird Signalisiert das eine Signaturprüfung durchgeführt wurde
+                states.verify_sig_checked++;
+
+                // Das Skript wird als Entsperrt Markiert
+                states.unlocked = true;
+
+                // Das Skript ist erfolgreich durchgeführt wurden
+                interpr_data_stack.push(SIG_CHECK_TRUE);
+                return { hex_str_list:[] };
+            }
             // Fügt einen neuen Berechtigen Schlüssel in die Verifyer liste hinzu
-            if(current_item === op_codes.op_add_verify_key) {
+            else if(current_item === op_codes.op_add_verify_key) {
                 // Es wird geprüft ob es sich um einen Parren Inner handelt
                 current_item = copyed_item.shift();
 
@@ -345,26 +316,73 @@ const condscript_interpreter = async(locking_script, unlocking_script, c_block_h
                 if(public_key_declaration === false) throw new Error('Invalid script');
                 copyed_item = public_key_declaration.hex_str_lst;
 
-                // Wird ausgeführt wenn die Funktion ausgeführt wurd
-                let call_opr = async () => {
-                    verifyed_unlock_public_keys.push(public_key_declaration.value);
-                    needed_sigs++;
-                };
-
-                // Es wird geprüft ob die Aufgabe sofort aufgesführt werden soll
-                if(reverse_operations === true && n_oper_call === null) n_oper_call = call_opr;
-                else if(reverse_operations === true && n_oper_call !== null) {
-                    await call_opr();
-                    await n_oper_call();
-                }
-                else {
-                    if((await call_opr()) !== true) return { hex_str_list:[] };
-                }
-                continue;
+                // Der Öffentliche Schlüssel wird auf die berechtigten Liste gepackt
+                verifyed_unlock_public_keys.push(public_key_declaration.value);
+                states.needs_sigs++;
             }
+            // Fügt erst einen Öffentlichen Schlüssel hinzu und führt dann eine Signatur prüffung durch
+            else if(current_item === op_codes.op_add_pk_sverify) {
+                /* Die Öffentlichen Schlüssel werden hinzugefügt */
 
-            // Es handelt sich um ein ungültiges Skript
-            throw new Error('Invalid script');
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                current_item = copyed_item.shift();
+
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                if(current_item !== op_codes.parren_fnc_cube) throw new Error('Invalid script');
+
+                // Die Gesamtzahl aller Parameter wird abgerufen
+                let total_items = parseInt(copyed_item.shift(), 16);
+
+                // Es wird geprüft ob 1 Argumente vorhanden sind
+                if(total_items !== 1) throw new Error('Invalid script');
+
+                // Es wird geprüft ob als nächsts ein Öffentlicher Schlüssel kommt
+                let public_key_declaration = await next_read_public_key_defination(copyed_item, script_type);
+                if(public_key_declaration === false) throw new Error('Invalid script');
+                copyed_item = public_key_declaration.hex_str_lst;
+
+                // Der Öffentliche Schlüssel wird auf die berechtigten Liste gepackt
+                verifyed_unlock_public_keys.push(public_key_declaration.value);
+                states.needs_sigs++;
+
+                /* Die Signaturen werden geprüft */
+
+                // Speichert die Gesamtzahl aller
+                let total_checks = 1;
+
+                // Es wird geprüft ob der PublicKey in der ScriptSig Liste vorhanden ist und ob die Signatur korrekt ist
+                for(let script_sigs of scriptSigs) {
+                    let found_pkey = false;
+                    for(let allowed_pkeys of verifyed_unlock_public_keys) {
+                        if(script_sigs.pkey === scriptSigs.pkey) {
+                            // Es wird geprüft ob die Signatur korrekt ist
+                            found_pkey = true;
+                            total_checks++;
+                            break;
+                        }
+
+                        // Es wird geprüft ob ein PublicKey gefunden wurde, wenn ja wird dieser Vorgang übersprungen
+                        if(found_pkey === true) break;
+                    }
+                }
+
+                // Es wird geprüft ob Mindestens X Prüfungen durchgeführt wurden, wenn nicht wird das Skript abgebrochen
+                if(total_checks !== states.needs_sigs) return false;
+
+                // Es wird Signalisiert das eine Signaturprüfung durchgeführt wurde
+                states.verify_sig_checked++;
+
+                // Das Skript wird als Entsperrt Markiert
+                states.unlocked = true;
+
+                // Das Skript ist erfolgreich durchgeführt wurden
+                interpr_data_stack.push(SIG_CHECK_TRUE);
+                return { hex_str_list:[] };
+            }
+            // Es konnte kein gültiger Befehler gefunden werden
+            else {
+                throw new Error('Invalid script');
+            }
         }
 
         // Die Schleife wird abgebrochen
@@ -401,24 +419,68 @@ const condscript_interpreter = async(locking_script, unlocking_script, c_block_h
         return { hex_str_list:splited_hex_string };
     };
 
-    // Das Locking Script wird eingelesen
-    //await interpr_hex_string(locking_script, false, script_types.LOCKING);
+    // Diese Funktion führt Input sowie Output Script parallel voneinander aus
+    async function main_ioscript() {
+        // Die Standardwerte werden gesetzt
+        states = { ...DEFAULT_STATES };
 
-    // Die Statusdaten werden zwischengesepeichert
-    //let locking_state = { ...states };
-    //states = DEFAULT_STATES;
+        // Gibt an, gegen wieiviele Regeln verstoßen wurde
+        let rule_cheatings = 0;
 
-    // Das Unlocking Script wird ausgeführt
-    await interpr_hex_string(unlocking_script, false, script_types.UNLOCKING);
+        // Das Unlocking Script wird ausgeführt
+        await interpr_hex_string(unlocking_script, false, script_types.UNLOCKING);
+        let unlocking_state = { ...states };
+        states = {  }; states = { ...DEFAULT_STATES };
 
-    console.log(states, unlocking_script_hash)
+        // Es wird geprüft ob der Erste Eintrag des Y Stacks ein True ist
+        if(interpr_data_stack.length >= 1) {
+            let stack_result = interpr_data_stack.shift();
+            if(stack_result !== SIG_CHECK_TRUE) rule_cheatings++;
+        }
+        else {
+            rule_cheatings++;
+        }
+
+        // Es wird geprüft ob bereits gegen eine Regel verstoßen wurde, wenn ja ist das Skript ungültig
+        if(rule_cheatings !== 0) {
+            console.log('INVALID_SCRIPT', rule_cheatings, interpr_data_stack);
+        }
+
+        // Das Locking Script wird eingelesen
+        await interpr_hex_string(locking_script, false, script_types.LOCKING);
+        let locking_state = { ...states };
+        states = {  }; states = { ...DEFAULT_STATES };
+
+        // Es wird geprüft ob auf dem Y Stack ein True liegt
+        if(interpr_data_stack.length === 1) {
+            if(interpr_data_stack[0] !== SIG_CHECK_TRUE) rule_cheatings++;
+        }
+        else {
+            rule_cheatings++;
+        }
+
+        // Das Finale Objekt wird zurückgegeben
+        return {
+            unlocking_script_result:unlocking_state.unlocked,
+            locking_script_result:locking_state.unlocked,
+            total_unlocked: ((rule_cheatings === 0) ?  (unlocking_state.unlocked === true && locking_state.unlocked === true) : false),
+            hashes: {
+                unlock_script:unlocking_script_hash,
+                locking_script:locking_script_hash
+            },
+            pkeys:verifyed_unlock_public_keys
+        }
+    };
+
+    // Führt beide Skripte aus und gibt die Ergebnisse zurück
+    return (await main_ioscript());
 };
 
 
 // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
 let locking_script = `
-if(#unlocking_script_hash == 94aec4018fba90de7f509a16c5234d563913979e952269b78e787b7107f34972) {
-    unlock_output();
+if(#unlocking_script_hash == 49391212bcf6a4b6fad075b44caefc74465979d0afe5298095d32f14679bf2a9) {
+    unlock();
 }
 `;
 
@@ -432,7 +494,10 @@ add_verify_key_and_eq_verfiy_signature(
 
 
 // Das Skript wird Gelext
-lexer(unlocking_script).then(async (r) => {
-    let p_unlock_script = await script_token_parser(r);
-    await condscript_interpreter("32c220482c68413fbf8290e3b1e49b0a85901cfcd62ab0738760568a2a6e8a57", p_unlock_script);
+lexer(unlocking_script).then(async (script) => {
+    let p_unlock_script = await script_token_parser(script);
+    let p_lock_script = await lexer(locking_script);
+    p_lock_script = await script_token_parser(p_lock_script);
+    let test_result = await condscript_interpreter(p_lock_script, p_unlock_script);
+    console.log(test_result)
 });

@@ -20,10 +20,10 @@ class HexString extends ValueObject {
 
 
 
-function compare(obj_a, obj_a) {
+function compare(obj_a, obj_b) {
     // Es wird geprüft ob die Datentypen zulässig sind
-    if(obj_a.dtypes.includes(obj_a.type) !== true) return false;
-    return obj_a.value === obj_a.value;
+    if(obj_a.dtypes.includes(obj_b.type) !== true) return false;
+    return obj_a.value === obj_b.value;
 }
 
 // Exportiert die Klassen

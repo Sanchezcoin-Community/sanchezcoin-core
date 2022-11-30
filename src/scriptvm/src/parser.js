@@ -5,27 +5,46 @@ const { op_codes } = require('./opcodes');
 // Speichert alle Verfügbaren Chainstate Commands ab
 let chain_state_commands = {
     unlocking_script_hash:[op_codes.cstate_unlock_script_hash],
+    locking_script_hash:[op_codes.cstate_lock_script_hash],
     current_b_hight:[op_codes.cstate_current_block_hight],
+    current_b_consensus:[op_codes.cstate_current_block_consens],
+    next_b_consensus:[op_codes.cstate_next_block_consens],
+    current_pow_diff:[op_codes.cstate_current_pow_diff],
+    current_posm_diff:[op_codes.cstate_current_posm_diff],
+    last_block_hash:[op_codes.cstate_last_block_hash],
+    unlock_script_sig:[op_codes.cstate_unlock_scriptsig_pubkey]
 };
 
 //Speichert alle Verfügabren Emit Funktionen ab
 let emit_functions = {
     ADD_PUBLIC_VERIFY_KEY_AND_VERIFY_SIGNATURES:[
-        op_codes.op_n_reserve, op_codes.op_verify_sig, op_codes.op_add_verify_key
+       op_codes.op_add_pk_sverify
     ],
     ABORT_SKRIPT_RETURN_FALSE:[
         op_codes.op_push_false, op_codes.op_script_abort
     ],
-    UNLOCK_OUTPUT:[
-        op_codes.op_algr_poor, op_codes.op_unlock, op_codes.op_ref
-    ]
+    ADD_PUBLIC_VERIFY_KEY:[
+        op_codes.op_add_verify_key
+    ],
+    BLOCK_NFT_TRANSFER:[
+        op_codes.block_nft_transfer
+    ],
+    VERIFY_SIGNATURES:[
+        op_codes.op_check_sig
+    ],
+    UNLOCK_SCRIPT:[
+        op_codes.op_unlock
+    ],
+    SET_N_OF_M:[
+        op_codes.op_set_n_of_m
+    ],
 };
 
 // Definiert die verschiedenen If typen
 let if_types = {
-    IF_START:1,
-    ELSE_IF:2,
-    ELSE:3
+    IF_START:'IF',
+    ELSE_IF:'ELSEIF',
+    ELSE:'ELSE'
 };
 
 
@@ -88,27 +107,27 @@ async function is_next_a_number(tokens) {
     if(last_t_obj.type !== 'VALUE' || last_t_obj.name !== 'NUMBER') return false;
 
     // Es wird geprüft ob es sich um ein 8 Bit Integer handelt
-    if(BigInt('0xFF') <= last_t_obj.value) {
+    if(BigInt('0xFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(2, '0');
         return { tokens:temp_token_lst, inner:`${op_codes.op_uint_8}${hex_value}` };
     }
-    else if(BigInt('0xFFFF') <= last_t_obj.value) {
+    else if(BigInt('0xFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(4, '0');
         return { tokens:temp_token_lst, inner:`${op_codes.op_uint_16}${hex_value}` };
     }
-    else if(BigInt('0xFFFFFFFF') <= last_t_obj.value) {
+    else if(BigInt('0xFFFFFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(8, '0');
         return { tokens:temp_token_lst, inner:`${op_codes.op_uint_32}${hex_value}` };
     }
-    else if(BigInt('0x7FFFFFFFFFFFFFFF') <= last_t_obj.value) {
+    else if(BigInt('0x7FFFFFFFFFFFFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(16, '0');
         return { tokens:temp_token_lst, inner:`${op_codes.op_uint_64}${hex_value}` };
     }
-    else if(BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') <= last_t_obj.value) {
+    else if(BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(32, '0');
         return { tokens:temp_token_lst, inner:`${op_codes.op_uint_128}${hex_value}` };
     }
-    else if(BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') <= last_t_obj.value) {
+    else if(BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(64, '0');
         return { tokens:temp_token_lst, inner:`${op_codes.op_uint_256}${hex_value}` };
     }
@@ -239,7 +258,7 @@ async function is_if_condition(tokens) {
         return { tokens:temp_token_lst, inner:op_codes.op_nmatch };
     }
     else {
-        throw new Error('Invalid script stack');
+        return false;
     }
 };
 
@@ -433,7 +452,7 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
                 if(left_value === null && right_value === null && check_condition === null) {
                     left_value = inner_result;
                 }
-                else if(left_value !== null && right_value === null && check_condition === null) {
+                else if(left_value !== null && right_value === null && check_condition !== null) {
                     right_value = inner_result;
                 }
                 else {
@@ -475,7 +494,7 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
                 if(left_value === null && right_value === null && check_condition === null) {
                     left_value = inner_result;
                 }
-                else if(left_value !== null && right_value === null && check_condition === null) {
+                else if(left_value !== null && right_value === null && check_condition !== null) {
                     right_value = inner_result;
                 }
                 else {
@@ -496,7 +515,7 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
                 if(left_value === null && right_value === null && check_condition === null) {
                     left_value = inner_result;
                 }
-                else if(left_value !== null && right_value === null && check_condition === null) {
+                else if(left_value !== null && right_value === null && check_condition !== null) {
                     right_value = inner_result;
                 }
                 else {
@@ -517,10 +536,11 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
                 if(left_value === null && right_value === null && check_condition === null) {
                     left_value = inner_result;
                 }
-                else if(left_value !== null && right_value === null && check_condition === null) {
+                else if(left_value !== null && right_value === null && check_condition !== null) {
                     right_value = inner_result;
                 }
                 else {
+                    console.log(check_condition)
                     throw new Error('Invalid stack script');
                 }
 
@@ -538,7 +558,7 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
                 if(left_value === null && right_value === null && check_condition === null) {
                     left_value = inner_result;
                 }
-                else if(left_value !== null && right_value === null && check_condition === null) {
+                else if(left_value !== null && right_value === null && check_condition !== null) {
                     right_value = inner_result;
                 }
                 else {
@@ -569,6 +589,7 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
             }
 
             // Es handelt sich um ein Fehleraftes Skript
+            console.log(inner_d_copy)
             throw new Error(`Invalid script stack`);
         }
 
@@ -668,33 +689,78 @@ async function next_is_code_block(tokens) {
 
 // Gibt an, ob als nächstes ein IF Block kommt
 async function is_if_statement(tokens, elseif_block=if_types.IF_START) {
-    // Es wird geprüft ob Mindestens 7 Elemente auf dem Stack liegen
-    if(tokens.length < 7) return false;
+    // Es wird geprüft ob es sich um einen IF_BLOCK handelt
+    if(elseif_block === if_types.IF_START || elseif_block === if_types.ELSE_IF) {
+        if(tokens.length < 7) return false;
+    }
+    else if(elseif_block === if_types.ELSE) {
+        if(tokens.length < 3) return false;
+    }
+    else {
+        throw new Error('Invalid script')
+    }
 
     // Es wird eine Temporäre Liste angelegt
     let temp_lst = tokens.slice();
 
     // Es wird geprüft ob der Nächste Eintrag auf dem Stack ein IF_STATEMNT ist
     let next_element = temp_lst.shift();
-    if(next_element.type !== 'CONDITION' || next_element.name !== 'IF') return false;
+    if(next_element.type !== 'CONDITION' || next_element.name !== elseif_block) return false;
 
     // Es wird geprüft ob als nächstes ein PARREN Cube kommt
-    let parren_cube = await is_parrent_cube(temp_lst, true);
-    if(parren_cube === false) throw new Error('Invalid script stack');
-    temp_lst = parren_cube.tokens;
+    let parren_cube = null;
+    if(elseif_block === if_types.IF_START || elseif_block === if_types.ELSE_IF) {
+        parren_cube = await is_parrent_cube(temp_lst, true);
+        if(parren_cube === false) throw new Error('Invalid script stack');
+        temp_lst = parren_cube.tokens;
+    }
 
     // Es wird geprüft ob als nächstes ein Codeblock vorhanden ist
     let code_block = await next_is_code_block(temp_lst);
-    if(parren_cube === false) throw new Error('Invalid script stack');
+    if(code_block === false) throw new Error('Invalid script stack');
+    temp_lst = code_block.tokens;
 
     // Die Länge des Codebereiches wird ermittelt
     let code_block_len = code_block.inner.length.toString(16).padStart(4, "0");
 
+    // Es wird geprüft ob als nächstes ein Else Block kommt
+    let next_is_else_block = [];
+    if(elseif_block === if_types.IF_START) {
+        // Die Schleife wird ausgeführt bis keine ELSE_IF Anweisung mehr folgt
+        while(temp_lst.length > 0) {
+            let else_if_check = await is_if_statement(temp_lst, if_types.ELSE_IF);
+            if(else_if_check !== false) {
+                temp_lst = else_if_check.tokens;
+                next_is_else_block.push(else_if_check.inner);
+            }
+            else {
+                break;
+            }
+        }
+
+        // Es wird geprüft ob es sich um ein IF_STATEMENT handelt
+        let else_check = await is_if_statement(temp_lst, if_types.ELSE);
+        if(else_check !== false) {
+            temp_lst = else_check.tokens;
+            next_is_else_block.push(else_check.inner);
+        }
+    }
+
     // Die IF Anweisung hat werder ein Elseif noch einen Elseblock, die Daten es IF_BLOCKS wird zurückgegeben
-    let pre_value_list = [op_codes.op_if, parren_cube.inner, code_block_len, code_block.inner];
+    let pre_value_list = null;
+    if(elseif_block === if_types.IF_START) {
+        pre_value_list = [op_codes.op_if, parren_cube.inner, code_block_len, code_block.inner, ...next_is_else_block];
+    }
+    else if(elseif_block === if_types.ELSE_IF) {
+        pre_value_list = [op_codes.op_elif, parren_cube.inner, code_block_len, code_block.inner, ...next_is_else_block];
+    }
+    else if(elseif_block === if_types.ELSE) {
+        pre_value_list = [op_codes.op_else, code_block_len, code_block.inner];
+    }
+    else throw new Error('Invalid script tag');
 
     // Die Daten werden zurückgegeben
-    return { tokens:code_block.tokens, inner:pre_value_list.join('') };
+    return { tokens:temp_lst, inner:pre_value_list.join('') };
 };
 
 // Wird verwndet um die Skriptoken zu Paesen, Syntaxfehler oder Logikfehler werden hier entdeckt

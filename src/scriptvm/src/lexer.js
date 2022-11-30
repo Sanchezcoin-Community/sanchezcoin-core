@@ -19,31 +19,11 @@ let key_words = {
 
 // Definiert alle Verfügabren Funktionen 
 let def_functions = {
-    /* 
-        Diese Funktion überprüft eine Signatur
-    */
-    "verify_sig":{ type:"EMIT_FUNCTION", name:"VERIFY_SIGNATURES" },
-
-    /* 
-        Diese Funktion fügt einen Öffentlichen Schlüssel,
-        durch das Hinzufügen des Öffentlichen Schlüssel wird dieser berechtigt eine Ausgabe zu verwenden
-    */
-    "add_verify_key":{ type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY" },
-
-    /* 
-        Diese Funktion Kombiniert add_verify_key + verify_sig
-    */
-    "add_verify_key_and_eq_verfiy_signature":{ type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY_AND_VERIFY_SIGNATURES" },
-
-    /* 
-        Diese Funktion bricht den Aktuellen Vorgang ab und Signalisiert somit dass das Skript ungültig ist
-    */
-    "abort":{ type:"EMIT_FUNCTION", name:"ABORT_SKRIPT_RETURN_FALSE" },
-
-    /* 
-        Diese Funktion bricht den Aktuellen Vorgang ab und Signalisiert somit dass das Skript ungültig ist
-    */
-    unlock_output:{ type:"EMIT_FUNCTION", name:"UNLOCK_OUTPUT" },
+    "add_verify_key_and_eq_verfiy_signature": { type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY_AND_VERIFY_SIGNATURES" },
+    "add_verify_key": { type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY" },
+    "abort": { type:"EMIT_FUNCTION", name:"ABORT_SKRIPT_RETURN_FALSE" },
+    "verify_sig": { type:"EMIT_FUNCTION", name:"VERIFY_SIGNATURES" },
+    "unlock": { type:"EMIT_FUNCTION", name:"UNLOCK_SCRIPT" },
 };
 
 // Definiert die Festgelegeten Token
@@ -74,7 +54,6 @@ let tokens = {
     '"':{ type:"BRACKET", name:"DOUBLEQUOTES" },
     ' ':{ type:"BRACKET", name:"SPACE" },
 };
-
 
 // Diese Funktion, gibt an, ob es sich um einen Hex String handelt
 function is_hex_str(str_value) {
@@ -109,14 +88,11 @@ async function lex_conditions_script(str_script) {
                     // Es wird geprüft ob die Zahl in Form als String die Mindestgröße überschreitet
                     if(c_prev.length > 78) throw new Error('Number value is to big');
 
-                    // Es wird geprüft ob es sich um eine Zulässige Zahl handelt
-                    if(Number.isInteger(c_prev) !== true) throw new Error('Number value is invalid');
-
                     // Es wird geprüft ob die Maximalgröße von Zahlen überschritten wurde
                     if(BigInt(c_prev) > BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")) throw new Error();
 
                     // Der wird hinzugefügt
-                    current_c_list.push({ type:'VALUE', name:'NUMBER', value:bigInt(c_prev) })
+                    current_c_list.push({ type:'VALUE', name:'NUMBER', value:BigInt(c_prev) })
                 }
                 else {
                     // Es wird geprüft ob es sich um ein KEYWORD handelt
@@ -171,7 +147,6 @@ async function lex_conditions_script(str_script) {
     // Die Tokens werden zurückgegeben
     return cleaned_c_list;
 };
-
 
 // Die Funktion wird Exportiert
 module.exports = lex_conditions_script;
