@@ -12,7 +12,8 @@ let chain_state_commands = {
     current_pow_diff:[op_codes.cstate_current_pow_diff],
     current_posm_diff:[op_codes.cstate_current_posm_diff],
     last_block_hash:[op_codes.cstate_last_block_hash],
-    unlock_script_sig:[op_codes.cstate_unlock_scriptsig_pubkey]
+    unlock_script_sig:[op_codes.cstate_unlock_scriptsig_pubkey],
+    total_signatures:[op_codes.cstate_total_signatures]
 };
 
 //Speichert alle Verfügabren Emit Funktionen ab
@@ -35,21 +36,21 @@ let emit_functions = {
     UNLOCK_SCRIPT:[
         op_codes.op_unlock
     ],
+    EXIT_SCRIPT:[
+        op_codes.op_exit
+    ],
     SET_N_OF_M:[
         op_codes.op_set_n_of_m
     ],
-};
-
-// Speichert alle Steurebefehle ab
-let control_commands = {
-
 };
 
 // Definiert die verschiedenen If typen
 let if_types = {
     IF_START:'IF',
     ELSE_IF:'ELSEIF',
-    ELSE:'ELSE'
+    ELSE:'ELSE',
+    TRUE:'TRUE',
+    FALSE: 'FALSE'
 };
 
 
@@ -114,30 +115,54 @@ async function is_next_a_number(tokens) {
     // Es wird geprüft ob es sich um ein 8 Bit Integer handelt
     if(BigInt('0xFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(2, '0');
-        return { tokens:temp_token_lst, inner:`${op_codes.op_uint_8}${hex_value}` };
+        return { tokens:temp_token_lst, inner:[op_codes.op_uint_8, hex_value].join('') };
     }
     else if(BigInt('0xFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(4, '0');
-        return { tokens:temp_token_lst, inner:`${op_codes.op_uint_16}${hex_value}` };
+        return { tokens:temp_token_lst, inner:[op_codes.op_uint_16, hex_value].join('') };
     }
     else if(BigInt('0xFFFFFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(8, '0');
-        return { tokens:temp_token_lst, inner:`${op_codes.op_uint_32}${hex_value}` };
+        return { tokens:temp_token_lst, inner:[op_codes.op_uint_32, hex_value].join('') };
     }
     else if(BigInt('0x7FFFFFFFFFFFFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(16, '0');
-        return { tokens:temp_token_lst, inner:`${op_codes.op_uint_64}${hex_value}` };
+        return { tokens:temp_token_lst, inner:[op_codes.op_uint_64, hex_value].join('') };
     }
     else if(BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(32, '0');
-        return { tokens:temp_token_lst, inner:`${op_codes.op_uint_128}${hex_value}` };
+        return { tokens:temp_token_lst, inner:[op_codes.op_uint_128, hex_value].join('') };
     }
     else if(BigInt('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') >= last_t_obj.value) {
         let hex_value = last_t_obj.value.toString(16).padStart(64, '0');
-        return { tokens:temp_token_lst, inner:`${op_codes.op_uint_256}${hex_value}` };
+        return { tokens:temp_token_lst, inner:[op_codes.op_uint_256, hex_value].join('') };
     }
     else {
         throw new Error('Invalid number');
+    }
+};
+
+// Gibt on ob es sich um einen Boolean Wert handelt
+async function is_next_a_bool(tokens) {
+    // Es wird geprüft ob Mindestens 1 Wert im Stack vorhanden sind
+    if(tokens.length < 1) return false;
+
+    // Speichert ein Temporärers Tokens Objelt ab
+    let temp_token_lst = tokens.slice();
+
+    // Es wird geprüft ob es sich um ein Bool handelt
+    let last_t_obj = temp_token_lst.shift();
+    if(last_t_obj.type !== 'BOOL') return false;
+
+    // Der Type des Bools wird ermittelt
+    if(last_t_obj.name === 'TRUE') {
+        return { tokens:temp_token_lst, inner:op_codes.true };
+    }
+    else if(last_t_obj.name === 'FALSE') {
+        return { tokens:temp_token_lst, inner:op_codes.false };
+    }
+    else {
+        throw new Error('Invalid script');
     }
 };
 
@@ -417,6 +442,25 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
                 continue;
             }
 
+            // Wird geprüft ob es sich um ein Bool handelt
+            inner_result = await is_next_a_bool(inner_d_copy);
+            if(inner_result !== false) {
+                // Die Daten werden geupdated
+                parsed_hex_value.push(inner_result.inner);
+                inner_d_copy = inner_result.tokens;
+                total_values++;
+
+                // Es wird geprüft als nächstes ein Item kommt
+                if(inner_d_copy.length > 0) {
+                    // Es wird geprüft ob das nächse Item ein komma ist
+                    let t_obj = inner_d_copy.shift();
+                    if(t_obj.type !== 'BRACKET' || t_obj.name !== 'COMMA') throw new Error('Invalid data');
+                }
+
+                // Die Nächste Runde der Schleife wird durchgeführt
+                continue;
+            }
+
             // Es handelt sich um ein Fehleraftes Skript
             throw new Error(`Invalid script stack`);
         }
@@ -567,6 +611,28 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
                     right_value = inner_result;
                 }
                 else {
+                    throw new Error('Invalid stack script');
+                }
+
+                // Die Daten werden geupdated
+                inner_d_copy = inner_result.tokens;
+
+                // Die Nächste Runde der Schleife wird durchgeführt
+                continue;
+            }
+
+            // Wird geprüft ob es sich um ein Bool handelt
+            inner_result = await is_next_a_bool(inner_d_copy);
+            if(inner_result !== false) {
+                // Es wird geprüft ob es sich um den Linken oder den Rechten wert handelt
+                if(left_value === null && right_value === null && check_condition === null) {
+                    left_value = inner_result;
+                }
+                else if(left_value !== null && right_value === null && check_condition !== null) {
+                    right_value = inner_result;
+                }
+                else {
+                    console.log(check_condition)
                     throw new Error('Invalid stack script');
                 }
 

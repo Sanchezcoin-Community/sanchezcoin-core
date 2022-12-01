@@ -18,7 +18,9 @@ let key_words = {
     "sha3":{ type:"CONDITION", name:"SHA3_256" },
     "elseif":{ type:"CONDITION", name:"ELSEIF" },
     "else":{ type:"CONDITION", name:"ELSE" },
+    "false":{ type:"BOOL", name:"FALSE" },
     "if":{ type:"CONDITION", name:"IF" },
+    "true":{ type:"BOOL", name:"TRUE" },
 };
 
 // Definiert alle Verfügabren Funktionen 
@@ -30,6 +32,7 @@ let def_functions = {
     "block_nft": { type:"EMIT_FUNCTION", name:"BLOCK_NFT_TRANSFER" },
     "set_n_of_m": { type:"EMIT_FUNCTION", name:"SET_N_OF_M" }, 
     "unlock": { type:"EMIT_FUNCTION", name:"UNLOCK_SCRIPT" }, 
+    "exit": { type:"EMIT_FUNCTION", name:"EXIT_SCRIPT" }, 
 };
 
 // Definiert die Festgelegeten Token
