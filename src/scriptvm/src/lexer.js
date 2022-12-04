@@ -12,10 +12,9 @@ let key_words = {
     "curve25519":{ type:"CRYPTO_ALGORITHM", name:"CURVE25519_CRYPTO_ALGORITHM" },
     "secp256k1":{ type:"CRYPTO_ALGORITHM", name:"SECP256K1_CRYPTO_ALGORITHM" },
     "bls11381":{ type:"CONDITION", name:"BLS11381_CRYPTO_ALGORITHM" },
-    "swiftyH":{ type:"CONDITION", name:"HASH_SWIFTYH_256" },
     "PublicKey":{ type:"PUBLIC_KEY", name:"PUBLIC_KEY" },
-    "sha256d":{ type:"CONDITION", name:"HASH_SHA256D" },
-    "sha3":{ type:"CONDITION", name:"SHA3_256" },
+    "BtcAddress":{ type:"ADRESS", name:"BTC_ADDRESS" },
+    "EthAddress":{ type:"ADRESS", name:"ETH_ADDRESS" },
     "elseif":{ type:"CONDITION", name:"ELSEIF" },
     "else":{ type:"CONDITION", name:"ELSE" },
     "false":{ type:"BOOL", name:"FALSE" },
@@ -30,9 +29,13 @@ let def_functions = {
     "abort": { type:"EMIT_FUNCTION", name:"ABORT_SKRIPT_RETURN_FALSE" },
     "verify_sig": { type:"EMIT_FUNCTION", name:"VERIFY_SIGNATURES" },
     "block_nft": { type:"EMIT_FUNCTION", name:"BLOCK_NFT_TRANSFER" },
-    "set_n_of_m": { type:"EMIT_FUNCTION", name:"SET_N_OF_M" }, 
+    "use_one_signer": { type:"VALUE_OUTPUT", name:"USE_ONE_SIGNER" },
+    "swiftyH":{ type:"VALUE_OUTPUT", name:"HASH_SWIFTYH_256" },
+    "set_n_of_m": { type:"EMIT_FUNCTION", name:"SET_N_OF_M" },
     "unlock": { type:"EMIT_FUNCTION", name:"UNLOCK_SCRIPT" }, 
+    "sha256d":{ type:"VALUE_OUTPUT", name:"HASH_SHA256D" },
     "exit": { type:"EMIT_FUNCTION", name:"EXIT_SCRIPT" }, 
+    "sha3": { type:"VALUE_OUTPUT", name:"SHA3_256" },
 };
 
 // Definiert die Festgelegeten Token

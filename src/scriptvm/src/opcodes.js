@@ -32,9 +32,6 @@ let crypto = {
     curve25519:                             (31).toString(16).padStart(2, '0'),             // Informiert den Interpeter dass es sich um einen Curve25519 PublicKey handelt
     secp256k1:                              (32).toString(16).padStart(2, '0'),             // Informiert den Interprert dass es sich um einen Secp256k1 PublicKey handelt
     bls11381:                               (33).toString(16).padStart(2, '0'),             // Gibt an das als nächstes ein BLS11-381 Schlüssel kommt
-    sha256d:                                (34).toString(16).padStart(2, '0'),             // Erzeugt einen SHA256d Hash
-    swiftyH:                                (35).toString(16).padStart(2, '0'),             // Erzeugt einen Swifty256 Hash
-    sha3:                                   (36).toString(16).padStart(2, '0'),             // Erzeugt einen SHA3_256 Hash
 };
 
 // IF Codes
@@ -54,6 +51,15 @@ let if_code = {
 let nft_token = {
     block_nft_transfer:                     (46).toString(16).padStart(2, '0'),             // Unterbindet das Transferieren von NFTS
 };
+
+// Gibt an ob es sich um eine
+let value_functions = {
+    op_value_function:                      (100).toString(16).padStart(2, '0'),
+    op_is_one_signer:                       (101).toString(16).padStart(2, '0'),
+    sha256d:                                (102).toString(16).padStart(2, '0'),             // Erzeugt einen SHA256d Hash
+    swiftyH:                                (103).toString(16).padStart(2, '0'),             // Erzeugt einen Swifty256 Hash
+    sha3:                                   (104).toString(16).padStart(2, '0'),             // Erzeugt einen SHA3_256 Hash
+}
 
 // Blockchain Statuse
 let chain_states = {
@@ -78,6 +84,7 @@ module.exports = {
         ...crypto,
         ...if_code,
         ...chain_states,
-        ...nft_token 
+        ...nft_token,
+        ...value_functions
     }
 };

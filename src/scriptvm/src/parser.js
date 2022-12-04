@@ -22,7 +22,7 @@ let emit_functions = {
        op_codes.op_add_pk_sverify
     ],
     ABORT_SKRIPT_RETURN_FALSE:[
-        op_codes.op_push_false, op_codes.op_script_abort
+        op_codes.op_script_abort
     ],
     ADD_PUBLIC_VERIFY_KEY:[
         op_codes.op_add_verify_key
@@ -44,6 +44,16 @@ let emit_functions = {
     ],
 };
 
+// Speichert alle Value Funktionen ab
+let value_functions = {
+    USE_ONE_SIGNER:[
+        op_codes.op_is_one_signer
+    ],
+    HASH_SHA256D:[
+        op_codes.sha256d
+    ]
+};
+
 // Definiert die verschiedenen If typen
 let if_types = {
     IF_START:'IF',
@@ -53,7 +63,26 @@ let if_types = {
     FALSE: 'FALSE'
 };
 
+// Gibt die Verschiedenen Value Funktionstypen an
+let value_io_function_types = {
+    VALUE_FUNCTION:0,
+    EMIT_FUNCTION:1,
+    IF_STATE:2
+};
 
+
+// Gibt den OpCode für eine Value Funktion an
+async function get_value_function_op_code(function_name) {
+    // Es wird geprüft ob es sich um einen gültigen Chainstate command hadnelt
+    if(Object.keys(value_functions).includes(function_name) !== true) return false;
+
+    // Es wird der Passende OP_Code ermittelt
+    let resolved_op_codes = [];
+    for(let otem of value_functions[function_name]) resolved_op_codes.push(otem);
+
+    // Der OP_CODE wird zurückgegeben
+    return resolved_op_codes.join('');
+};
 
 // Gibt ein OpCode für eine Emit Funktion aus
 async function get_emit_function_op_code(function_name) {
@@ -250,6 +279,31 @@ async function is_math_parrent_cube(tokens) {
     return false;
 };
 
+// Wird verwendet um eine Value Funktion auszulesen
+async function is_next_value_function(tokens) {
+    // Es wird geprüft ob Mindestens 4 Elemente auf dem Stack liegen
+    if(tokens.length < 4) return false;
+
+    // Es wird eine Temporäre Liste angelegt
+    let temp_lst = tokens.slice();
+
+    // Es wird geprüft ob der Nächste Eintrag auf dem Stack ein EMIT_FUNCTION Aufruf ist
+    let next_element = temp_lst.shift();
+    if(next_element.type !== 'VALUE_OUTPUT') return false;
+
+    // Es wird versucht den OP_CODE für die EMIT Funtion zu ermitteln
+    let r_op_code = await get_value_function_op_code(next_element.name);
+    if(r_op_code === false) throw new Error('Invalid value function');
+
+    // Es wird geprüft ob als nächstes ein Parrentcube gibt
+    let parrent_cube = await is_parrent_cube(temp_lst, value_io_function_types.EMIT_FUNCTION);
+    if(parrent_cube === false) throw new Error('Invalid script')
+    temp_lst = parrent_cube.tokens;
+
+    // Die Restlichen Tokens werden zurückgeben
+    return { tokens:temp_lst, inner:[op_codes.op_value_function, r_op_code, parrent_cube.inner].join('') };
+};
+
 // Gibt an, ob es sich um eine Mathematische Formell handelt
 async function is_math_code(tokens) {
     return false;
@@ -293,7 +347,7 @@ async function is_if_condition(tokens) {
 };
 
 // Extrahiert ein Parrent Cube
-async function is_parrent_cube(tokens, is_if_statement=false) {
+async function is_parrent_cube(tokens, function_type=value_io_function_types.EMIT_FUNCTION) {
     // Es wird geprüft ob Mindestens 2 Items auf dem Stack liegen
     if(tokens.length < 2) return false;
 
@@ -444,6 +498,25 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
 
             // Wird geprüft ob es sich um ein Bool handelt
             inner_result = await is_next_a_bool(inner_d_copy);
+            if(inner_result !== false) {
+                // Die Daten werden geupdated
+                parsed_hex_value.push(inner_result.inner);
+                inner_d_copy = inner_result.tokens;
+                total_values++;
+
+                // Es wird geprüft als nächstes ein Item kommt
+                if(inner_d_copy.length > 0) {
+                    // Es wird geprüft ob das nächse Item ein komma ist
+                    let t_obj = inner_d_copy.shift();
+                    if(t_obj.type !== 'BRACKET' || t_obj.name !== 'COMMA') throw new Error('Invalid data');
+                }
+
+                // Die Nächste Runde der Schleife wird durchgeführt
+                continue;
+            }
+
+            // Wird geprüft ob es sich um eine Value Funktion handelt
+            inner_result = await is_next_value_function(inner_d_copy);
             if(inner_result !== false) {
                 // Die Daten werden geupdated
                 parsed_hex_value.push(inner_result.inner);
@@ -643,6 +716,28 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
                 continue;
             }
 
+            // Wird geprüft ob es sich um eine Value Funktion handelt
+            inner_result = await is_next_value_function(inner_d_copy);
+            if(inner_result !== false) {
+                // Es wird geprüft ob es sich um den Linken oder den Rechten wert handelt
+                if(left_value === null && right_value === null && check_condition === null) {
+                    left_value = inner_result;
+                }
+                else if(left_value !== null && right_value === null && check_condition !== null) {
+                    right_value = inner_result;
+                }
+                else {
+                    console.log(check_condition)
+                    throw new Error('Invalid stack script');
+                }
+
+                // Die Daten werden geupdated
+                inner_d_copy = inner_result.tokens;
+
+                // Die Nächste Runde der Schleife wird durchgeführt
+                continue;
+            }
+
             // Es wird geprüft ob es sich um eine IF-Kondition handelt
             inner_result = await is_if_condition(inner_d_copy);
             if(inner_result !== false) {
@@ -670,7 +765,7 @@ async function is_parrent_cube(tokens, is_if_statement=false) {
     };
 
     // Es wird gepüft ob es sich um ein IF Statement handelt
-    if(is_if_statement === false) return (await f_parren_cube());
+    if(function_type === value_io_function_types.EMIT_FUNCTION || function_type === value_io_function_types.VALUE_FUNCTION) return (await f_parren_cube());
     else return (await if_parren_cube());
 };
 
@@ -691,7 +786,7 @@ async function is_emit_function_call(tokens, parrn_inner=false) {
     if(r_op_code === false) throw new Error('Invalid emit function');
 
     // Es wird geprüft ob als nächstes ein Parrentcube gibt
-    let parrent_cube = await is_parrent_cube(temp_lst);
+    let parrent_cube = await is_parrent_cube(temp_lst, value_io_function_types.EMIT_FUNCTION);
     if(parrent_cube === false) throw new Error('Invalid script')
     temp_lst = parrent_cube.tokens;
 
@@ -781,7 +876,7 @@ async function is_if_statement(tokens, elseif_block=if_types.IF_START) {
     // Es wird geprüft ob als nächstes ein PARREN Cube kommt
     let parren_cube = null;
     if(elseif_block === if_types.IF_START || elseif_block === if_types.ELSE_IF) {
-        parren_cube = await is_parrent_cube(temp_lst, true);
+        parren_cube = await is_parrent_cube(temp_lst, value_io_function_types.IF_STATE);
         if(parren_cube === false) throw new Error('Invalid script stack');
         temp_lst = parren_cube.tokens;
     }

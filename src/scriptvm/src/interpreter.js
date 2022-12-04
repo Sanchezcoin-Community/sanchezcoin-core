@@ -1,4 +1,4 @@
-const { ChainStateValue, HexString, NumberValue, BoolValue, compareValues } = require('./obj_types');
+const { ChainStateValue, HexString, NumberValue, BoolValue, HashValue, compareValues } = require('./obj_types');
 const script_token_parser = require('./parser');
 const { createHash } = require('node:crypto');
 const { op_codes } = require('./opcodes');
@@ -20,6 +20,7 @@ const DEFAULT_STATES = {
     verify_sig_checked:BigInt(0),
     needs_sigs:BigInt(0),
     unlocked:false,
+    exit:false
 };
 
 // Erzeugt einen SHA256 Hash
@@ -68,49 +69,40 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Gibt den Hash des Unlock Scripts aus
         script_stack_entry = copyed_item.shift();
         if(script_stack_entry === op_codes.cstate_unlock_script_hash) {
-            y_stack_array.push(new ChainStateValue(unlocking_script_hash));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt den Hash des Locking Skripts aus
         else if(script_stack_entry === op_codes.cstate_lock_script_hash) {
-            y_stack_array.push(new ChainStateValue(locking_script_hash));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(locking_script_hash) };
         }
         // Gibt die Aktuelle Blockhöhe an
         else if(script_stack_entry === op_codes.cstate_current_block_hight) {
-            y_stack_array.push(new ChainStateValue(BigInt(c_block_hight)));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(c_block_hight) };
         }
         // Gibt den Hash des letzten Blocks aus
         else if(script_stack_entry === op_codes.cstate_last_block_hash) {
-            y_stack_array.push(new ChainStateValue(unlocking_script_hash));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt das Konsensusverfahren des Aktuellen Blocks an
         else if(script_stack_entry === op_codes.cstate_current_block_consens) {
-            y_stack_array.push(new ChainStateValue(unlocking_script_hash));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt das Konsensusverfahren für den nächsten Block an
         else if(script_stack_entry === op_codes.cstate_next_block_consens) {
-            y_stack_array.push(new ChainStateValue(unlocking_script_hash));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt die Aktuelle Mining Schwierigkeit an
         else if(script_stack_entry === op_codes.cstate_current_pow_diff) {
-            y_stack_array.push(new ChainStateValue(unlocking_script_hash));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt die Aktuelle Staking Schwierigkeit an
         else if(script_stack_entry === op_codes.cstate_current_posm_diff) {
-            y_stack_array.push(new ChainStateValue(unlocking_script_hash));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt die Anzahl der Signaturen aus
         else if(script_stack_entry === op_codes.cstate_total_signatures) {
             let total_bint = BigInt(scriptSigs.length);
-            y_stack_array.push(new ChainStateValue(total_bint));
-            return copyed_item;
+            return { hex_str_list:copyed_item, value:new ChainStateValue(total_bint) };
         }
         // Gibt die gesamtzahlen aller Signaturen an
         else throw new Error('Invalid script')
@@ -144,11 +136,8 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         while(hex_str.length !== hex_str_len) { hex_str = hex_str + copyed_item.shift(); }
         if(hex_str.length !== hex_str_len) throw new Error('Invalid script stack');
 
-        // Der Hexstring wird in das Y Stack gepusht
-        y_stack_array.push(new HexString(hex_str));
-
         // Die neue Daten Liste wird zurückgegeben
-        return copyed_item;
+        return { hex_str_list:copyed_item, value:new HexString(hex_str) };
     };
 
     // Diese Funktion wird verwendet um eine Zahl einzulesen
@@ -226,6 +215,140 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         }
     };
 
+    // Wird verwendet um ParrentCube Werte auszuwerten
+    async function next_read_parren_cube(hex_str_lst, script_type) {
+        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
+        if(hex_str_lst.length < 2) return false;
+
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_lst.slice();
+
+        // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
+        let extracted_item = copyed_item.shift();
+        if(extracted_item !== op_codes.parren_fnc_cube) return false;
+
+        // Die Anzahl der Verfügbaren Parameter werden extrahiert
+        let total_parameters = parseInt(`0x${copyed_item.shift()}`);
+
+        // Diese Funktion prüft ob der nächste Wert ein Chainstate, Nummer, String oder Hexwert ist
+        const loop_arround_function = async() => {
+            // Prüft ob es sich um einen Chainstate Wert handelt
+            let chain_state_value = await next_is_inter_chain_state(copyed_item, script_type);
+            if(chain_state_value !== false) {
+                copyed_item = chain_state_value.hex_str_list;
+                return chain_state_value.value;
+            }
+
+            // Prüft ob es sich um einen
+            let intepr_hex_value = await next_is_inter_hex_str(copyed_item, script_type);
+            if(intepr_hex_value !== false) {
+                copyed_item = intepr_hex_value.hex_str_list;
+                return intepr_hex_value.value; 
+            }
+
+            // Prüft ob es sich um eine Nummer handelt
+            let intepr_number_value = await next_read_number(copyed_item);
+            if(intepr_number_value !== false) {
+                copyed_item = intepr_number_value.hex_str_list;
+                return intepr_number_value.int_value; 
+            }
+
+            // Prüft ob es sich um ein Boolean Handelt
+            let interpr_bool_value = await next_read_bool(copyed_item);
+            if(interpr_bool_value !== false) {
+                copyed_item = interpr_bool_value.hex_str_list;
+                return interpr_bool_value.bool_value; 
+            }
+
+            // Es wird geprüft ob es sich um eine Value Funktion handelt
+            let interpr_value_function = await next_read_value_function(copyed_item, script_type);
+            if(interpr_value_function !== false) {
+                copyed_item = interpr_value_function.hex_str_list;
+                return interpr_value_function.value; 
+            }
+
+            // Es handelt sich um eine Unbeaknnte aufgabe
+            throw new Error('Invalid script');
+        };
+
+        // Die Einzelnen Parameter werden ausgewertet
+        let readed_parameters = [];
+        while(readed_parameters.length !== total_parameters) {
+            let arround_functions = await loop_arround_function();
+            readed_parameters.push(arround_functions);
+        }
+
+        // Gibt die Ürbirgen Daten zurück
+        return { hex_str_list:copyed_item, items:readed_parameters};
+    };
+
+    // Diese Funktion wird verwendet um eine Value Funktion auszuführen
+    async function next_read_value_function(hex_str_lst, script_type=null, return_value=false) {
+        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
+        if(hex_str_lst.length < 3) return false;
+
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_lst.slice();
+
+        // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
+        let extracted_item = copyed_item.shift();
+        if(extracted_item !== op_codes.op_value_function) return false;
+
+        // Der Aktuelle Wert wird abgerufen
+        let current_item = copyed_item.shift();
+
+        // Wird verwendet um die Parren Cube Werte einzulesen
+        let readed_parren_cube = await next_read_parren_cube(copyed_item, script_type);
+        if(readed_parren_cube === false) throw new Error('Invalid script'); 
+        copyed_item = readed_parren_cube.hex_str_list;
+
+        // Es wird geprüft um was für eine Funktion es sich handelt
+        if(current_item === op_codes.op_is_one_signer) {
+            // Es wird geprüft ob keine Werte in dem Parrn Cube vorhanden sind
+            if(readed_parren_cube.items.length !== 0) throw new Error('Invalid script');
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new BoolValue(scriptSigs.length === 1) };
+        }
+        // Es wird geprüft ob es sich um eine SHA256d Funktion handelt
+        else if(current_item === op_codes.sha256d) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(copyed_item.length < 1) throw new Error('Invalid script');
+
+            // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
+            let final_value_hash = sha256d(readed_parren_cube.items.map((value) => value.value).join(''));
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
+        }
+        // Es wird geprüft ob es sich um eine SHA3 Funktion handelt
+        else if(current_item === op_codes.sha3) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(copyed_item.length < 1) throw new Error('Invalid script');
+
+            // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
+            let final_value_hash = sha256d(readed_parren_cube.items.map((value) => value.value).join(''));
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
+        }
+        // Es wird geprüft ob es sich um einen SwiftyHash handelt
+        else if(current_item === op_codes.swiftyH) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(copyed_item.length < 1) throw new Error('Invalid script');
+
+            // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
+            let final_value_hash = sha256d(readed_parren_cube.items.map((value) => value.value).join(''));
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
+        }
+        // Es konnte kein gültiger Befehler gefunden werden
+        else {
+            throw new Error('Invalid script');
+        }
+    };
+
     // Diese Funktion wird verwendet um ein Bool einzulesen
     async function next_read_bool(hex_str_list) {
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
@@ -252,21 +375,52 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     };
 
     // Diese Funktion wird verwendet um ein ELSE Block auszulesen
-    async function next_is_else_block(hex_str_list, script_type=null) {
+    async function next_is_else_block(hex_str_list, script_type=null, erase=false) {
+        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
+        if(hex_str_list.length < 3) return false;
 
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_list.slice();
+
+        // Der Nächste Eintrag vom SkriptStack (S) genommen und ausgewertet
+        let script_stack_entry = copyed_item.shift();
+
+        // Es wird geprüft, um was für einen ChainState wert es sich handelt
+        if(script_stack_entry !== op_codes.op_else) return false;
+
+        // Die Länge des Codeblocks wird ermittelt
+        let code_block_len = parseInt([copyed_item.shift(), copyed_item.shift()].join(''), 16);
+
+        // Die Nächsten X Zeichen werden extrahiert
+        let x_chars = '';
+        while(x_chars.length != code_block_len) { x_chars = x_chars + copyed_item.shift(); }
+
+        // Die Daten werden Interpretiert
+        if(erase === false) {
+            let resva_lst = await interpr_hex_string(x_chars, true, script_type);
+            if(resva_lst === false) throw new Error('Invalid script');
+        }
+
+        // Die Übrigen Daten werden zurückgegeben
+        return { hex_str_list:copyed_item };
     };
 
     // Die Funktion wird ausgeführt wenn es sich um ein IF Statemant handelt
-    async function next_inter_if_function(hex_str_lst, script_type=null, is_else_if=false) {
+    async function next_inter_if_function(hex_str_lst, script_type=null, is_else_if=false, erase=false) {
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
-        if(hex_str_lst.length < 2) return false;
+        if(hex_str_lst.length < 4) return false;
 
         // Das Item wird Kopiert
         let copyed_item = hex_str_lst.slice();
 
         // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
         let extracted_item = copyed_item.shift();
-        if(extracted_item !== op_codes.op_if) return false; 
+        if(is_else_if === true) {
+            if(extracted_item !== op_codes.op_elif) return false;
+        }
+        else {
+            if(extracted_item !== op_codes.op_if) return false;
+        }
 
         // Es wird geprüft um was für eine Anweisung es sich handelt
         let if_conditions = copyed_item.shift();
@@ -278,11 +432,19 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         const loop_f = async() => {
             // Prüft ob es sich um einen Chainstate Wert handelt
             let chain_state_value = await next_is_inter_chain_state(copyed_item, script_type);
-            if(chain_state_value !== false) { copyed_item = chain_state_value; return; }
+            if(chain_state_value !== false) {
+                y_stack_array.push(chain_state_value.value);
+                copyed_item = chain_state_value.hex_str_list;
+                return; 
+            }
 
             // Prüft ob es sich um einen
             let intepr_hex_value = await next_is_inter_hex_str(copyed_item, script_type);
-            if(intepr_hex_value !== false) { copyed_item = intepr_hex_value; return; }
+            if(intepr_hex_value !== false) {
+                y_stack_array.push(intepr_hex_value.value);
+                copyed_item = intepr_hex_value.hex_str_list;
+                return; 
+            }
 
             // Prüft ob es sich um eine Nummer handelt
             let intepr_number_value = await next_read_number(copyed_item);
@@ -300,6 +462,14 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
                 return; 
             }
 
+            // Es wird geprüft ob es sich um eine Value Funktion handelt
+            let interpr_value_function = await next_read_value_function(copyed_item, script_type);
+            if(interpr_value_function !== false) {
+                y_stack_array.push(interpr_value_function.value);
+                copyed_item = interpr_value_function.hex_str_list;
+                return; 
+            }
+
             // Es handelt sich um eine Unbeaknnte aufgabe
             throw new Error('Invalid script');
         };
@@ -309,7 +479,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Es wird geprüft ob 2 Werte auf dem Y Stack liegen
         if(y_stack_array.length !== 2) {
-            console.log('ERROR', script_type, y_stack_array);
+            console.log('ERROR', y_stack_array);
             throw new Error('Invalid script');
         }
 
@@ -343,38 +513,39 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Es wird geprüft ob der Block ausgeführt werden soll
         if(script_stack_result === true) {
-            // Der Codeblock wird ausgeführt
-            let resva_lst = await interpr_hex_string(x_chars, true);
+            let resva_lst = await interpr_hex_string(x_chars, true, script_type);
             if(resva_lst === false) throw new Error('Invalid script');
+            return { hex_str_list:resva_lst.hex_str_list, was_used:true, direct:false };
+        }
 
-            // Die neue Liste wird zurückgegeben
-            return { hex_str_list:resva_lst.hex_str_list };
+        // Es wird geprüft ob es sich um einen ELSE_IF Block handelt
+        if(is_else_if === true) {
+            return { hex_str_list:copyed_item, was_used:false, direct:false };
         }
 
         // Die Schleife wird solange ausgeführt, bis kein ELSE_IF mehr kommt oder ein ELSE kommt oder nichts von beiden
         while(copyed_item.length > 0) {
             // Es wird geprüft ob es sich um einen ELSE_IF Statement handelt
-            let else_block_checks = await next_inter_if_function(copyed_item, script_type, true);
+            let else_block_checks = await next_inter_if_function(copyed_item, script_type, true, ((script_stack_result === true) ? true : false));
             if(else_block_checks !== false) {
-
-                // Die Nächsten Elemente werden vom Stack geprüft
+                copyed_item = else_block_checks.hex_str_list;
+                script_stack_result = true;
                 continue;
             }
 
             // Es wird geprüft ob es sich um ein ELSE Statement handelt
-            else_block_checks = await next_is_else_block(copyed_item, script_type);
+            else_block_checks = await next_is_else_block(copyed_item, script_type, ((script_stack_result === true) ? true : false));
             if(else_block_checks !== false) {
-                
+                copyed_item = else_block_checks.hex_str_list;
+                script_stack_result = true;
             }
 
             // Die Schleife wird beendet, keine der beiden Funktionen war zutreffend
             break;
         };
 
-        console.log('ARR', )
-
         // Gibt die Ergebnisse zurück
-        return { hex_str_list:[] };
+        return { hex_str_list:copyed_item, was_used:true, direct:false };
     };
 
     // Diese Funktion wird ausgeführt um definerite Öffentliche Schlüssel einzuelesen
@@ -404,6 +575,19 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         else {
             throw new Error('Invalid script');
         }
+    };
+
+    // Diese Funktion wird ausgeführt um definierte Adressen von Bitcoin oder Ethereum einzulesen
+    async function next_read_blockchain_address_defination(hex_str_lst, script_type=null) {
+        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
+        if(hex_str_lst.length < 2) return false;
+
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_lst.slice();
+
+        // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
+        let extracted_item = copyed_item.shift();
+        if(extracted_item !== op_codes.public_key_defination) return false;
     };
 
     // Wird verwendet um Zusammenhängende Daten zu Extrahieren
@@ -586,6 +770,35 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item };
         }
+        // Beendet die ausführung des gesamten Skriptes
+        else if(current_item === op_codes.op_exit) {
+            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+            current_item = copyed_item.shift();
+            if(current_item !== op_codes.parren_fnc_cube) { console.log('Invalid script 3'); return { hex_str_list:[] }; }
+
+            // Es wird geprüft ob 0 Daten angegeben wurden
+            current_item = copyed_item.shift();
+            if(current_item !== '00') { console.log('Invalid script 4'); return { hex_str_list:[] }; }
+
+            // Es wird Signalisiert dass das Skript beendet werden soll
+            states.exit = true;
+
+            // Das Skript ist erfolgreich durchgeführt wurden
+            return { hex_str_list:[] };
+        }
+        // Wird ausgeführt wenn das Skript fehlerhaft abgebrochen werden soll
+        else if(current_item === op_codes.op_script_abort) {
+            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+            current_item = copyed_item.shift();
+            if(current_item !== op_codes.parren_fnc_cube) { console.log('Invalid script 3'); return { hex_str_list:[] }; }
+
+            // Es wird geprüft ob 0 Daten angegeben wurden
+            current_item = copyed_item.shift();
+            if(current_item !== '00') { console.log('Invalid script 4'); return { hex_str_list:[] }; }
+
+            // Das Skript ist erfolgreich durchgeführt wurden
+            return { hex_str_list:[] };
+        }
         // Es konnte kein gültiger Befehler gefunden werden
         else {
             throw new Error('Invalid script');
@@ -594,11 +807,18 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
     // Führt ein Hex String aus
     async function interpr_hex_string(hex_string, sub_call=false, script_type=null) {
+        // Es wird geprüft ob es sich um einen String handelt
+        if(typeof hex_string !== 'string') throw new Error('Invalid data');
+        if(hex_string.length < 2) return { hex_str_list:[] };
+
         // Der String wird in 2 Zeichen aufgedrennt
         let splited_hex_string = hex_string.toLowerCase().match(/.{2}/g);
 
         // Das Stack wird abgearbeitet bis er leer ist
         while(splited_hex_string.length > 0) {
+            // Es wird geprüft ob das Skript beendet wurde
+            if(states.exit === true) break;
+
             // Es wird geprüft ob es sich um einen EMIT Funktionsaufruf handelt
             let sitc_intrpr = await next_inter_if_function(splited_hex_string, script_type);
             if(sitc_intrpr !== false) {
@@ -606,12 +826,18 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
                 continue;
             }
 
+            // Es wird geprüft ob das Skript beendet wurde
+            if(states.exit === true) break;
+
             // Es wird geprüft ob es sich um einen EMIT Call handelt
             sitc_intrpr = await next_inter_emit_call(splited_hex_string, script_type);
             if(sitc_intrpr !== false) {
                 splited_hex_string = sitc_intrpr.hex_str_list;
                 continue;
             }
+
+            // Es wird geprüft ob das Skript beendet wurde
+            if(states.exit === true) break;
 
             // Es handelt sich um ein ungültes Skript
             console.log(splited_hex_string)
@@ -683,10 +909,17 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
 // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
 let locking_script = `
-if(#total_signatures == 1) {
+if(#unlocking_script_hash == 2292c301c0e755aea47d74594098d8600946721c1311dcb54470637ffccbd6db) {
     unlock();
+    exit();
 }
-elseif(#unlocking_script_hash == 2292c301c0e755aea47d74594098d8600946721c1311dcb54470637ffccbd6d4) {
+else {
+    exit();
+}
+`
+
+let locking_script_a = `
+if(sha256d(bbdd0eea7ea53876dbe37abadf790956d29d2e17b92b3c81625a0d00424553a9) == 384b1332be6666c48dc8b106797b6d6014939df07d6cd8ba369da415520ba3a9) {
     unlock();
 }
 `
@@ -710,7 +943,7 @@ unlock();
 // Das Skript wird Gelext
 lexer(unlocking_script2).then(async (script) => {
     let p_unlock_script = await script_token_parser(script);
-    let p_lock_script = await lexer(locking_script);
+    let p_lock_script = await lexer(locking_script_a);
     p_lock_script = await script_token_parser(p_lock_script);
     let test_result = await hexed_script_interpreter(p_lock_script, p_unlock_script);
     console.log(test_result)
