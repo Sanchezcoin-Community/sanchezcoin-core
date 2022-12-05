@@ -1,9 +1,7 @@
-const { ChainStateValue, HexString, NumberValue, BoolValue, HashValue, compareValues } = require('./obj_types');
-const script_token_parser = require('./parser');
+const { ChainStateValue, HexString, NumberValue, BoolValue, HashValue, NullValue, compareValues } = require('./obj_types');
+const blockchain_crypto = require('blckcrypto');
 const { createHash } = require('node:crypto');
 const { op_codes } = require('./opcodes');
-const lexer = require('./lexer');
-
 
 
 // Gibt ein True an, dieses True wird nur Zurückgegeben wenn die Signaturen korrekt geprüft wurden
@@ -20,6 +18,7 @@ const DEFAULT_STATES = {
     verify_sig_checked:BigInt(0),
     needs_sigs:BigInt(0),
     unlocked:false,
+    aborted:false,
     exit:false
 };
 
@@ -51,6 +50,11 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
     // Speichert spizielle Zustände des Aktuellen Skriptes ab
     let states = { ...DEFAULT_STATES };
+
+    // Wird ausgeführt wenn das Skript aufgrund eines Fehlers abgebrochen werden soll
+    function close_by_error(exception_text) {
+        states.aborted = true;
+    }
 
     // Wird ausgeführt um zu überprüfen ob es sich um ein CHAIN_STATE Wert handelt
     async function next_is_inter_chain_state(hex_str_list, script_type=null) {
@@ -276,7 +280,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         while(readed_parameters.length !== total_parameters) {
             let arround_functions = await loop_arround_function();
             readed_parameters.push(arround_functions);
-        }
+        };
 
         // Gibt die Ürbirgen Daten zurück
         return { hex_str_list:copyed_item, items:readed_parameters};
@@ -313,10 +317,10 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Es wird geprüft ob es sich um eine SHA256d Funktion handelt
         else if(current_item === op_codes.sha256d) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
-            if(copyed_item.length < 1) throw new Error('Invalid script');
+            if(readed_parren_cube.items.length < 1) throw new Error('Invalid script');
 
             // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
-            let final_value_hash = sha256d(readed_parren_cube.items.map((value) => value.value).join(''));
+            let final_value_hash = blockchain_crypto.sha2d(256, ...readed_parren_cube.items.map((value) => value.value));
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
@@ -324,10 +328,10 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Es wird geprüft ob es sich um eine SHA3 Funktion handelt
         else if(current_item === op_codes.sha3) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
-            if(copyed_item.length < 1) throw new Error('Invalid script');
+            if(readed_parren_cube.items.length < 1) throw new Error('Invalid script');
 
             // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
-            let final_value_hash = sha256d(readed_parren_cube.items.map((value) => value.value).join(''));
+            let final_value_hash = blockchain_crypto.sha3(256, ...readed_parren_cube.items.map((value) => value.value));
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
@@ -335,13 +339,30 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Es wird geprüft ob es sich um einen SwiftyHash handelt
         else if(current_item === op_codes.swiftyH) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
-            if(copyed_item.length < 1) throw new Error('Invalid script');
+            if(readed_parren_cube.items.length < 1) throw new Error('Invalid script');
 
             // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
-            let final_value_hash = sha256d(readed_parren_cube.items.map((value) => value.value).join(''));
+            let final_value_hash = blockchain_crypto.swiftyHash(256, ...readed_parren_cube.items.map((value) => value.value));
 
             // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
+            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'swiftyhash256') };
+        }
+        // Wird verwendet um den letzten Eintrag vom Y Stack zurückzugeben
+        else if(current_item === op_codes.pop_from_y) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length < 1) throw new Error('Invalid script');
+
+            // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
+            if(y_stack_array.length === 0) {
+                // Gibt an das das Skript abgebrochen wurde
+                close_by_error('No data on Y Stack');
+
+                // Gibt leere daten zurück
+                return { hex_str_list:[], value:(new NullValue()) };
+            }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:y_stack_array.shift() };
         }
         // Es konnte kein gültiger Befehler gefunden werden
         else {
@@ -478,13 +499,13 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         await loop_f(); await loop_f();
 
         // Es wird geprüft ob 2 Werte auf dem Y Stack liegen
-        if(y_stack_array.length !== 2) {
+        if(y_stack_array.length < 2) {
             console.log('ERROR', y_stack_array);
             throw new Error('Invalid script');
         }
 
         // Die Items auf dem Stack werden extrahiert
-        let item_a = y_stack_array.shift(), item_b = y_stack_array.shift();
+        let item_a = y_stack_array.pop(), item_b = y_stack_array.pop();
 
         // Es wird geprüft, welche Operation durchgeführt werden soll
         let script_stack_result = false;
@@ -575,19 +596,6 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         else {
             throw new Error('Invalid script');
         }
-    };
-
-    // Diese Funktion wird ausgeführt um definierte Adressen von Bitcoin oder Ethereum einzulesen
-    async function next_read_blockchain_address_defination(hex_str_lst, script_type=null) {
-        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
-        if(hex_str_lst.length < 2) return false;
-
-        // Das Item wird Kopiert
-        let copyed_item = hex_str_lst.slice();
-
-        // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
-        let extracted_item = copyed_item.shift();
-        if(extracted_item !== op_codes.public_key_defination) return false;
     };
 
     // Wird verwendet um Zusammenhängende Daten zu Extrahieren
@@ -799,6 +807,19 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             // Das Skript ist erfolgreich durchgeführt wurden
             return { hex_str_list:[] };
         }
+        // Wird ausgeführt um einen Wert auf das Skript zu legen
+        else if(current_item === op_codes.op_push_to_y) {
+            // Es wird versucht die ParrenCube werte auszulesen
+            let push_function_parren = await next_read_parren_cube(copyed_item, script_type);
+            if(push_function_parren === false) throw new Error('Invalid script');
+            if(push_function_parren.items < 1) throw new Error('Invalid script');
+
+            // Es wird versucht dein Eintrag auf das Stack zu legen
+            for(let citem of push_function_parren.items) y_stack_array.push(citem);
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:push_function_parren.hex_str_list };
+        }
         // Es konnte kein gültiger Befehler gefunden werden
         else {
             throw new Error('Invalid script');
@@ -863,16 +884,22 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Es wird geprüft ob der Erste Eintrag des Y Stacks ein True ist
         if(y_stack_array.length >= 1) {
-            let stack_result = y_stack_array.shift();
-            if(stack_result !== SIG_CHECK_TRUE) rule_cheatings++;
+            if(y_stack_array[0] === SIG_CHECK_TRUE) y_stack_array.pop();
+            else rule_cheatings++;
         }
         else {
             rule_cheatings++;
         }
 
         // Es wird geprüft ob bereits gegen eine Regel verstoßen wurde, wenn ja ist das Skript ungültig
-        if(rule_cheatings !== 0) {
-            console.log('INVALID_SCRIPT', rule_cheatings, y_stack_array);
+        if(rule_cheatings !== 0) return {
+            hashes: { unlock_script:unlocking_script_hash, locking_script:locking_script_hash },
+            unlocking_script_result:unlocking_state.unlocked,
+            locking_script_result: false,
+            total_unlocked: false,
+            needed_sigs:'unkown',
+            state:'aborted',
+            pkeys:[]
         }
 
         // Das Locking Script wird eingelesen
@@ -890,14 +917,12 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Das Finale Objekt wird zurückgegeben
         return {
+            hashes: { unlock_script:unlocking_script_hash, locking_script:locking_script_hash },
             unlocking_script_result:unlocking_state.unlocked,
             locking_script_result:locking_state.unlocked,
             total_unlocked: ((rule_cheatings === 0) ?  (unlocking_state.unlocked === true && locking_state.unlocked === true) : false),
             needed_sigs:unlocking_state.needs_sigs,
-            hashes: {
-                unlock_script:unlocking_script_hash,
-                locking_script:locking_script_hash
-            },
+            state:'unkown',
             pkeys:allowed_public_key_array
         }
     };
@@ -907,44 +932,5 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 };
 
 
-// Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
-let locking_script = `
-if(#unlocking_script_hash == 2292c301c0e755aea47d74594098d8600946721c1311dcb54470637ffccbd6db) {
-    unlock();
-    exit();
-}
-else {
-    exit();
-}
-`
-
-let locking_script_a = `
-if(sha256d(bbdd0eea7ea53876dbe37abadf790956d29d2e17b92b3c81625a0d00424553a9) == 384b1332be6666c48dc8b106797b6d6014939df07d6cd8ba369da415520ba3a9) {
-    unlock();
-}
-`
-
-// Wird verwendet um eine Ausgabe zu Entsperren und nachzuweisen dass man die Benötigen Bediungen erfüllt
-let unlocking_script = `
-add_verify_key_and_eq_verfiy_signature(
-    PublicKey(curve25519, 32c220482c68413fbf8290e3b1e49b0a85901cfcd62ab0738760568a2a6e8a57)
-);
-`
-
-// MultiSig Skript
-let unlocking_script2 = `
-add_verify_key(PublicKey(curve25519, 32c220482c68413fbf8290e3b1e49b0a85901cfcd62ab0738760568a2a6e8a57));
-add_verify_key(PublicKey(curve25519, 50679e3ed1de04949eeccb928ba8b9495aa0613fe17ef127463f98f28def3db3));
-set_n_of_m(1);
-verify_sig();
-unlock();
-`
-
-// Das Skript wird Gelext
-lexer(unlocking_script2).then(async (script) => {
-    let p_unlock_script = await script_token_parser(script);
-    let p_lock_script = await lexer(locking_script_a);
-    p_lock_script = await script_token_parser(p_lock_script);
-    let test_result = await hexed_script_interpreter(p_lock_script, p_unlock_script);
-    console.log(test_result)
-});
+// Exportiert den Interpreter
+module.exports = hexed_script_interpreter;

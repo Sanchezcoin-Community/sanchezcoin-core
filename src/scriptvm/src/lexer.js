@@ -32,6 +32,8 @@ let def_functions = {
     "use_one_signer": { type:"VALUE_OUTPUT", name:"USE_ONE_SIGNER" },
     "swiftyH":{ type:"VALUE_OUTPUT", name:"HASH_SWIFTYH_256" },
     "set_n_of_m": { type:"EMIT_FUNCTION", name:"SET_N_OF_M" },
+    "pop_from_y": { type:"VALUE_OUTPUT", name:"POP_FROM_Y" },
+    "push_to_y": { type:"EMIT_FUNCTION", name:"PUSH_TO_Y_STACK" },
     "unlock": { type:"EMIT_FUNCTION", name:"UNLOCK_SCRIPT" }, 
     "sha256d":{ type:"VALUE_OUTPUT", name:"HASH_SHA256D" },
     "exit": { type:"EMIT_FUNCTION", name:"EXIT_SCRIPT" }, 

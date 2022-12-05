@@ -30,6 +30,9 @@ let emit_functions = {
     BLOCK_NFT_TRANSFER:[
         op_codes.block_nft_transfer
     ],
+    PUSH_TO_Y_STACK:[
+        op_codes.op_push_to_y
+    ],
     VERIFY_SIGNATURES:[
         op_codes.op_check_sig
     ],
@@ -51,6 +54,15 @@ let value_functions = {
     ],
     HASH_SHA256D:[
         op_codes.sha256d
+    ],
+    HASH_SWIFTYH_256:[
+        op_codes.swiftyH
+    ],
+    SHA3_256:[
+        op_codes.sha3
+    ],
+    POP_FROM_Y:[
+        op_codes.pop_from_y
     ]
 };
 
@@ -250,6 +262,27 @@ async function is_pkey_declaration(tokens) {
     return { tokens:temp_token_lst, inner:final_hex_script };
 };
 
+// Gibt an ob als nächstes eine Ethereum oder Bitcoin Adresse kommt
+async function is_address_declaration(tokens) {
+    // Es wird geprüft ob Mindestens 5 Werte im Stack vorhanden sind
+    if(tokens.length < 5) return false;
+
+    // Speichert ein Temporärers Tokens Objelt ab
+    let temp_token_lst = tokens.slice();
+
+    // Es wird geprüft ob es sich um einen PublicKey handelt
+    let last_t_obj = temp_token_lst.shift();
+    if(last_t_obj.type !== 'ADDRESS') return false;
+
+    // Es wird geprüft ob als nächstes ein LPAREN Vorhanden ist
+    last_t_obj = temp_token_lst.shift();
+    if(last_t_obj.type !== 'BRACKET' || last_t_obj.name !== 'LPAREN') throw new Error('Invalid data');
+
+    // Es wird geprüft ob es sich um eine Bitcoin Adresse handelt
+
+    // Es wird geprüft ob es sich um eine Ethereum Adresse handelt
+};
+
 // Gibt an ob als Nächstes ein CHAIN_SATE_VALUE Kommt
 async function is_chain_state_value(tokens) {
     // Es wird geprüft ob Mindestens 2 Werte im Stack vorhanden sind
@@ -279,6 +312,11 @@ async function is_math_parrent_cube(tokens) {
     return false;
 };
 
+// Gibt an, ob es sich um eine Mathematische Formell handelt
+async function is_math_code(tokens) {
+    return false;
+};
+
 // Wird verwendet um eine Value Funktion auszulesen
 async function is_next_value_function(tokens) {
     // Es wird geprüft ob Mindestens 4 Elemente auf dem Stack liegen
@@ -302,11 +340,6 @@ async function is_next_value_function(tokens) {
 
     // Die Restlichen Tokens werden zurückgeben
     return { tokens:temp_lst, inner:[op_codes.op_value_function, r_op_code, parrent_cube.inner].join('') };
-};
-
-// Gibt an, ob es sich um eine Mathematische Formell handelt
-async function is_math_code(tokens) {
-    return false;
 };
 
 // Gibt an, ob es sich um eine IF Confition handelt

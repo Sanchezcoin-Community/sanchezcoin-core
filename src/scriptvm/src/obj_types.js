@@ -37,6 +37,12 @@ class HashValue extends ValueObject {
     }
 }
 
+class NullValue extends ValueObject {
+    constructor() {
+        super(null, "null", ['cst', 'hxstr', 'num', 'bool', 'hashv']);
+    }
+}
+
 function compare(obj_a, obj_b) {
     if(obj_a.dtypes.includes(obj_b.type) !== true) return false;
     return obj_a.value === obj_b.value;
@@ -47,6 +53,7 @@ function compare(obj_a, obj_b) {
 module.exports = {
     ChainStateValue:ChainStateValue,
     BoolValue:BoolValue,
+    NullValue:NullValue,
     NumberValue:NumberValue,
     compareValues:compare,
     HexString:HexString,

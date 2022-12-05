@@ -6,6 +6,7 @@ let op_codes = {
     op_script_abort:                        (4).toString(16).padStart(2, '0'),              // Sinalisiert dem Interpreter dass der Vorgagn abgrochen werden kann
     op_push_false:                          (5).toString(16).padStart(2, '0'),              // Fügt ein False auf das Verify Stack
     op_set_n_of_m:                          (6).toString(16).padStart(2, '0'),              // Legt fest, wieviele Signaturen benötigt werden um das Skript zu entsperren
+    op_push_to_y:                           (108).toString(16).padStart(2, '0'),            // Gibt an dass ein Wert auf den Y Stack gelegt werden soll
     op_verify_ss:                           (7).toString(16).padStart(2, '0'),              // Bricht das Skript ab, wenn sich auf dem Stack noch mehr als 1 Element befindet
     op_is_emit:                             (8).toString(16).padStart(2, '0'),              // Informiert den Interprert dass die Nächste Funtkion eine EMIT Funktion ist
     op_unlock:                              (9).toString(16).padStart(2, '0'),              // Signalisiert dass der Verwenete ausgang verwendet werden kann
@@ -52,14 +53,21 @@ let nft_token = {
     block_nft_transfer:                     (46).toString(16).padStart(2, '0'),             // Unterbindet das Transferieren von NFTS
 };
 
+// Operation Codes
+let another_chain_addresses = {
+
+};
+
 // Gibt an ob es sich um eine
 let value_functions = {
     op_value_function:                      (100).toString(16).padStart(2, '0'),
     op_is_one_signer:                       (101).toString(16).padStart(2, '0'),
-    sha256d:                                (102).toString(16).padStart(2, '0'),             // Erzeugt einen SHA256d Hash
-    swiftyH:                                (103).toString(16).padStart(2, '0'),             // Erzeugt einen Swifty256 Hash
-    sha3:                                   (104).toString(16).padStart(2, '0'),             // Erzeugt einen SHA3_256 Hash
-}
+    op_verify_sig:                          (102).toString(16).padStart(2, '0'),
+    pop_from_y:                             (103).toString(16).padStart(2, '0'),
+    sha256d:                                (104).toString(16).padStart(2, '0'),
+    swiftyH:                                (105).toString(16).padStart(2, '0'),
+    sha3:                                   (106).toString(16).padStart(2, '0'),
+};
 
 // Blockchain Statuse
 let chain_states = {
@@ -85,6 +93,6 @@ module.exports = {
         ...if_code,
         ...chain_states,
         ...nft_token,
-        ...value_functions
+        ...value_functions,
     }
 };
