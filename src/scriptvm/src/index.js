@@ -18,7 +18,6 @@ else {
 let unlocking_script = `
 add_verify_key( PublicKey(secp256k1, 384b1332be6666c48dc8b106797b6d6014939df07d6cd8ba369da415520ba3a2) );
 add_verify_key( PublicKey(bls12381, 86b50179774296419b7e8375118823ddb06940d9a28ea045ab418c7ecbe6da84d416cb55406eec6393db97ac26e38bd4) );
-add_verify_key( BtcAddress(bc1q42lja79elem0anu8q8s3h2n687re9jax556pcc) );
 set_n_of_m(1);
 verify_sig();
 `

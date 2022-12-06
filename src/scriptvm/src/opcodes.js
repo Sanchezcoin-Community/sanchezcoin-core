@@ -59,12 +59,13 @@ let nft_token = {
 // Gibt an ob es sich um eine
 let value_functions = {
     op_value_function:                      (100).toString(16).padStart(2, '0'),
-    op_is_one_signer:                       (101).toString(16).padStart(2, '0'),
-    op_verify_sig:                          (102).toString(16).padStart(2, '0'),
-    pop_from_y:                             (103).toString(16).padStart(2, '0'),
-    sha256d:                                (104).toString(16).padStart(2, '0'),
-    swiftyH:                                (105).toString(16).padStart(2, '0'),
-    sha3:                                   (106).toString(16).padStart(2, '0'),
+    op_total_signers:                       (101).toString(16).padStart(2, '0'),
+    op_is_one_signer:                       (102).toString(16).padStart(2, '0'),
+    op_verify_sig:                          (103).toString(16).padStart(2, '0'),
+    pop_from_y:                             (104).toString(16).padStart(2, '0'),
+    sha256d:                                (105).toString(16).padStart(2, '0'),
+    swiftyH:                                (106).toString(16).padStart(2, '0'),
+    sha3:                                   (107).toString(16).padStart(2, '0'),
 };
 
 // Blockchain Statuse

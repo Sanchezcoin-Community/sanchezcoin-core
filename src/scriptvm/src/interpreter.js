@@ -18,6 +18,7 @@ const script_types = {
 // Speichert die Standardwerte für ein Skript ab
 const DEFAULT_STATES = {
     verify_sig_checked:BigInt(0),
+    script_sig_is_closed:false,
     needs_sigs:BigInt(0),
     unlocked:false,
     aborted:false,
@@ -39,10 +40,10 @@ function is_validate_hex_str(hex_str) {
 // Wird ausgeführt um ein einfaches Skript auszuführen
 const hexed_script_interpreter = async(locking_script, unlocking_script, c_block_hight=0, script_sigs=[], input_fq_hashes=[], output_fq_hashes=[], script_hight=0, ...optdata) => {
     // Es wird geprüft ob es sich bei den Skripten um Hexwerte handelt
-    if(is_validate_hex_str(locking_script) !== true) throw new Error('Invalid script data');
+    if(is_validate_hex_str(locking_script) !== true || is_validate_hex_str(unlocking_script) !== true) throw new Error('Invalid script data');
 
     // Es wird ein Hash aus dem Eingabe, sowie ausgabe Skript erstellt
-    let unlocking_script_hash = sha256d(unlocking_script), locking_script_hash = sha256d(locking_script);
+    let unlocking_script_hash = sha256d(unlocking_script), locking_script_hash = sha256d(locking_script), last_block_hash = "";
 
     // Speichert alle PublicKeys ab, welche berechtigt sind mittels Signatur die Skripte zu überprüfen
     let allowed_public_key_array = [];
@@ -178,8 +179,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         }
         // Gibt die Anzahl der Signaturen aus
         else if(script_stack_entry === op_codes.cstate_total_signatures) {
-            let total_bint = BigInt(script_sigs.length);
-            return { hex_str_list:copyed_item, value:new ChainStateValue(total_bint) };
+            return { hex_str_list:copyed_item, value:new ChainStateValue(BigInt(script_sigs.length)) };
         }
         // Gibt die gesamtzahlen aller Signaturen an
         else {
@@ -412,6 +412,8 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             close_by_error('INVALID_PARREN_CUBE_VALUE');
             return false; 
         }
+
+        // Der Aktuelle Code wird geupdated
         copyed_item = readed_parren_cube.hex_str_list;
 
         // Es wird geprüft um was für eine Funktion es sich handelt
@@ -465,6 +467,30 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:y_stack_array.shift() };
+        }
+        // Wird verwendet um die Gesamtzahl aller Signaturen auszugeben
+        else if(current_item === op_codes.op_total_signers) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length !== 0) { close_by_error('TOTAL_SIGNERS_DONT_NEED_PARAMETERS'); return false; }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new NumberValue(BigInt(allowed_public_key_array.length)) };
+        }
+        // Wird verwendet um den Aktuellen Blockhash auszugeben
+        else if(current_item === op_codes.cstate_last_block_hash) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length !== 0) { close_by_error('LAST_BLOCK_HASH_DONT_NEED_PARAMETERS'); return false; }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new HashValue(last_block_hash, 'sha256d') };
+        }
+        // Wird verwendet um die Aktuelle Block Schwierigkeit auszugeben
+        else if(current_item === op_codes.cstate_current_pow_diff) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_POW_DIFF_DONT_NEED_PARAMETERS'); return false; }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new NumberValue(last_block_hash) };
         }
         // Es konnte kein gültiger Befehler gefunden werden
         else {
@@ -1148,4 +1174,3 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
 // Exportiert den Interpreter
 module.exports = hexed_script_interpreter;
-

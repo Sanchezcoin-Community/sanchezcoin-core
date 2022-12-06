@@ -51,6 +51,24 @@ let emit_functions = {
 
 // Speichert alle Value Funktionen ab
 let value_functions = {
+    UNLOCKING_SCRIPT_HASH:[
+        op_codes.cstate_unlock_script_hash
+    ],
+    LOCKING_SCRIPT_HASH:[
+        op_codes.cstate_lock_script_hash
+    ],
+    CURRENT_BLOCK_HIGHT:[
+        op_codes.cstate_current_block_hight
+    ],
+    CURRENT_POW_DIFF:[
+        op_codes.cstate_current_pow_diff
+    ],
+    CURRENT_LAST_BLOCK_HASH:[
+        op_codes.cstate_last_block_hash
+    ],
+    GET_TOTAL_SIGNERS:[
+        op_codes.op_total_signers
+    ],
     USE_ONE_SIGNER:[
         op_codes.op_is_one_signer
     ],

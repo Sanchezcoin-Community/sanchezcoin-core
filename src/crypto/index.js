@@ -17,18 +17,18 @@ const bip39 = require('bip39');
 // Wird verwendet um eingabe Werte zu einem String Block zu erstellen
 const inputs_to_string_block = (...items) => items.map((value) => {
     if(typeof value === 'bigint' || typeof value === 'number') {
-        return value.toString(16);
+        return value.toString(16).toLowerCase();
     }
     else if(typeof value === 'string') {
         return value;
     }
     else if(typeof value === 'boolean') {
         let i = value ? 1 : 0;
-        return i.toString(16);
+        return i.toString(16).toLowerCase();
     }
     else if(typeof value === 'object') {
         if(Buffer.isBuffer(value) === true) {
-            return Buffer.from(value).toString('hex');
+            return Buffer.from(value).toString('hex').toLowerCase();
         }
         else {
             throw new Error('Invalid data input')
