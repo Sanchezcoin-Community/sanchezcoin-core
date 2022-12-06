@@ -9,7 +9,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "blckcrypto":"../crypto"
+    "bech32": "^2.0.0",
+    "bitcoin-address-validation": "^2.2.1",
+    "blckcrypto": "../crypto",
+    "web3": "^1.8.1"
   }
 }
-

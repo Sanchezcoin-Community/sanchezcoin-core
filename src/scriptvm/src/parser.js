@@ -1,5 +1,7 @@
+const { validate, getAddressInfo } = require('bitcoin-address-validation');
 const { op_codes } = require('./opcodes');
-
+let { bech32 } = require('bech32');
+const web3 = require('web3');
 
 
 // Speichert alle Verfügbaren Chainstate Commands ab
@@ -224,9 +226,9 @@ async function is_pkey_declaration(tokens) {
     if(last_t_obj.type !== 'BRACKET' || last_t_obj.name !== 'LPAREN') throw new Error('Invalid data');
 
     // Es wird geprüft ob es sich um einen gültigen Algorithms handelt
-    last_t_obj = temp_token_lst.shift();
-    if(last_t_obj.type !== 'CRYPTO_ALGORITHM') throw new Error('Invalid data');
-    if(last_t_obj.name !== 'CURVE25519_CRYPTO_ALGORITHM' && last_t_obj.name !== 'SECP256K1_CRYPTO_ALGORITHM') throw new Error('Invalid data');
+    let algo_last = temp_token_lst.shift();
+    if(algo_last.type !== 'CRYPTO_ALGORITHM') throw new Error('Invalid data');
+    if(algo_last.name !== 'CURVE25519_CRYPTO_ALGORITHM' && algo_last.name !== 'SECP256K1_CRYPTO_ALGORITHM' && algo_last.name !== 'BLS12381_CRYPTO_ALGORITHM') throw new Error('Invalid data');
 
     // Es wird geprüft ob als Nächstes ein Komma kommt
     last_t_obj = temp_token_lst.shift();
@@ -242,30 +244,28 @@ async function is_pkey_declaration(tokens) {
     if(last_t_obj.type !== 'BRACKET' || last_t_obj.name !== 'RPAREN') throw new Error('Invalid data');
 
     // Es wird geprüft ob die Länge des Verwendeten Schlüssels korrekt ist
-    let crypto_methode = null;
-    if(last_t_obj.name !== 'CURVE25519_CRYPTO_ALGORITHM') {
+    if(algo_last.name === 'CURVE25519_CRYPTO_ALGORITHM') {
         if(hexed_value.length !== 64) throw new Error('Invalid public key');
-        crypto_methode = op_codes.curve25519;
+        return { tokens:temp_token_lst, inner:[op_codes.public_key_defination, op_codes.curve25519, hexed_value].join('').toLowerCase() };
     }
-    else if(last_t_obj.name !== 'SECP256K1_CRYPTO_ALGORITHM') {
+    else if(algo_last.name === 'SECP256K1_CRYPTO_ALGORITHM') {
         if(hexed_value.length !== 64) throw new Error('Invalid public key');
-        crypto_methode = op_codes.secp256k1;
+        return { tokens:temp_token_lst, inner:[op_codes.public_key_defination, op_codes.secp256k1_schnorr, hexed_value].join('').toLowerCase() };
+    }
+    else if(algo_last.name === 'BLS12381_CRYPTO_ALGORITHM') {
+        if(hexed_value.length !== 96) throw new Error('Invalid public key');
+        return { tokens:temp_token_lst, inner:[op_codes.public_key_defination, op_codes.bls12381, hexed_value].join('').toLowerCase() };
     }
     else {
+        console.log(last_t_obj)
         throw new Error('Invalid data');
     }
-
-    // Der Finale wert wird erstellt
-    let final_hex_script = `${op_codes.public_key_defination}${crypto_methode}${hexed_value}`.toLowerCase();
-
-    // Die Daten werden zurückgegeben
-    return { tokens:temp_token_lst, inner:final_hex_script };
 };
 
 // Gibt an ob als nächstes eine Ethereum oder Bitcoin Adresse kommt
 async function is_address_declaration(tokens) {
     // Es wird geprüft ob Mindestens 5 Werte im Stack vorhanden sind
-    if(tokens.length < 5) return false;
+    if(tokens.length < 3) return false;
 
     // Speichert ein Temporärers Tokens Objelt ab
     let temp_token_lst = tokens.slice();
@@ -278,9 +278,35 @@ async function is_address_declaration(tokens) {
     last_t_obj = temp_token_lst.shift();
     if(last_t_obj.type !== 'BRACKET' || last_t_obj.name !== 'LPAREN') throw new Error('Invalid data');
 
-    // Es wird geprüft ob es sich um eine Bitcoin Adresse handelt
+    // Es wird geprüft ob es sich um einen String handelt
+    last_t_obj = temp_token_lst.shift();
+    if(last_t_obj.type !== 'VALUE' || last_t_obj.name !== 'STRING') throw new Error('Invalid data');
 
-    // Es wird geprüft ob es sich um eine Ethereum Adresse handelt
+    // Es wird geprüft ob die Daten mit einem RPAREN enden
+    let rparren_check = temp_token_lst.shift();
+    if(rparren_check.type !== 'BRACKET' || rparren_check.name !== 'RPAREN') throw new Error('Invalid data');
+
+    // Es wird geprüft ob es sich um eine Bitcoin Adresse handelt
+    if(validate(last_t_obj.value) === true) {
+        // Die Informationen der Adresse werden abgerufen
+        let address_informations = getAddressInfo(last_t_obj.value);
+
+        // Es wird geprüft ob es sich um eine Zulässige Adresse handelt
+        if(address_informations.type === 'p2wpkh') {
+            let hex_plain_address = Buffer.from(bech32.decode(last_t_obj.value).words).toString('hex');
+            return { tokens:temp_token_lst, inner:[op_codes.address_defination, op_codes.op_btc_address_32, hex_plain_address].join('').toLowerCase() };
+        }
+        else {
+            throw new Error()
+        }
+    }
+    else if(web3.utils.isAddress(last_t_obj.value) === true) {
+        return { tokens:temp_token_lst, inner:[op_codes.address_defination, op_codes.op_eth_address, last_t_obj.value.replace('0x', '')].join('').toLowerCase() };
+    }
+    else {
+        console.log(web3.utils)
+        throw new Error('Invalid address data');
+    }
 };
 
 // Gibt an ob als Nächstes ein CHAIN_SATE_VALUE Kommt
@@ -453,6 +479,25 @@ async function is_parrent_cube(tokens, function_type=value_io_function_types.EMI
                 continue;
             }
 
+            // Es wird geprüft ob es sich um einen Öffentlichen Schlüssel handelt
+            inner_result = await is_address_declaration(inner_d_copy);
+            if(inner_result !== false) {
+                // Die Daten werden geupdated
+                parsed_hex_value.push(inner_result.inner);
+                inner_d_copy = inner_result.tokens;
+                total_values++;
+
+                // Es wird geprüft als nächstes ein Item kommt
+                if(inner_d_copy.length > 0) {
+                    // Es wird geprüft ob das nächse Item ein komma ist
+                    let t_obj = inner_d_copy.shift();
+                    if(t_obj.type !== 'BRACKET' || t_obj.name !== 'COMMA') throw new Error('Invalid data');
+                }
+
+                // Die Nächste Runde der Schleife wird durchgeführt
+                continue;
+            }
+
             // Es wird geprüft ob es sich um einen Hexwert handelt
             inner_result = await is_next_hex_string(inner_d_copy);
             if(inner_result !== false) {
@@ -602,6 +647,27 @@ async function is_parrent_cube(tokens, function_type=value_io_function_types.EMI
         while(inner_d_copy.length > 0) {
             // Es wird geprüft ob ein Öffentlicher Schlüssel definiert wird
             let inner_result = await is_pkey_declaration(inner_d_copy);
+            if(inner_result !== false) {
+                // Es wird geprüft ob es sich um den Linken oder den Rechten wert handelt
+                if(left_value === null && right_value === null && check_condition === null) {
+                    left_value = inner_result;
+                }
+                else if(left_value !== null && right_value === null && check_condition !== null) {
+                    right_value = inner_result;
+                }
+                else {
+                    throw new Error('Invalid stack script');
+                }
+
+                // Die Daten werden geupdated
+                inner_d_copy = inner_result.tokens;
+
+                // Die Nächste Runde der Schleife wird durchgeführt
+                continue;
+            }
+
+            // Es wird geprüft ob es sich um einen Öffentlichen Schlüssel handelt
+            inner_result = await is_address_declaration(inner_d_copy);
             if(inner_result !== false) {
                 // Es wird geprüft ob es sich um den Linken oder den Rechten wert handelt
                 if(left_value === null && right_value === null && check_condition === null) {

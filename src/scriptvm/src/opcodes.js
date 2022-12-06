@@ -26,13 +26,16 @@ let int_dtype = {
 // Kryptoverfahren
 let crypto = {
     public_key_defination:                  (26).toString(16).padStart(2, '0'),             // Informiert den Interpreter dass als nächstes ein Öffentlicher Schlüssel defineirt wird
+    address_defination:                     (49).toString(16).padStart(2, '0'),
+    secp256k1_schnorr:                      (32).toString(16).padStart(2, '0'),             // Informiert den Interprert dass es sich um einen Secp256k1 PublicKey handelt
+    op_btc_address_32:                      (47).toString(16).padStart(2, '0'),             // Unterbindet das Transferieren von NFTS
     op_add_verify_key:                      (27).toString(16).padStart(2, '0'),             // Weist den Interpreter an einen neuen Öffentlichen Schlüssel auf die Überprüfungslsite zu setzen
     op_add_pk_sverify:                      (28).toString(16).padStart(2, '0'),             // Fügt einen Öffentlichen Schlüssel hinzu und überprüft die Signaturen
     op_verify_otpsig:                       (29).toString(16).padStart(2, '0'),             // Weist den Interpert an dass es sich um eine Signatur handelt
+    op_eth_address:                         (48).toString(16).padStart(2, '0'),
     op_check_sig:                           (30).toString(16).padStart(2, '0'),             // Wird in einem Locking Skript verwendet um die Signaturen zu überüfen
     curve25519:                             (31).toString(16).padStart(2, '0'),             // Informiert den Interpeter dass es sich um einen Curve25519 PublicKey handelt
-    secp256k1:                              (32).toString(16).padStart(2, '0'),             // Informiert den Interprert dass es sich um einen Secp256k1 PublicKey handelt
-    bls11381:                               (33).toString(16).padStart(2, '0'),             // Gibt an das als nächstes ein BLS11-381 Schlüssel kommt
+    bls12381:                               (33).toString(16).padStart(2, '0'),             // Gibt an das als nächstes ein BLS11-381 Schlüssel kommt
 };
 
 // IF Codes
@@ -51,11 +54,6 @@ let if_code = {
 // NFT Opcodes
 let nft_token = {
     block_nft_transfer:                     (46).toString(16).padStart(2, '0'),             // Unterbindet das Transferieren von NFTS
-};
-
-// Operation Codes
-let another_chain_addresses = {
-
 };
 
 // Gibt an ob es sich um eine

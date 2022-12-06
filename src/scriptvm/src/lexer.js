@@ -11,10 +11,10 @@ let is_number_regex = (/^\d+$/);
 let key_words = {
     "curve25519":{ type:"CRYPTO_ALGORITHM", name:"CURVE25519_CRYPTO_ALGORITHM" },
     "secp256k1":{ type:"CRYPTO_ALGORITHM", name:"SECP256K1_CRYPTO_ALGORITHM" },
-    "bls11381":{ type:"CONDITION", name:"BLS11381_CRYPTO_ALGORITHM" },
+    "bls12381":{ type:"CRYPTO_ALGORITHM", name:"BLS12381_CRYPTO_ALGORITHM" },
     "PublicKey":{ type:"PUBLIC_KEY", name:"PUBLIC_KEY" },
-    "BtcAddress":{ type:"ADRESS", name:"BTC_ADDRESS" },
-    "EthAddress":{ type:"ADRESS", name:"ETH_ADDRESS" },
+    "BtcAddress":{ type:"ADDRESS", name:"BTC_ADDRESS" },
+    "EthAddress":{ type:"ADDRESS", name:"ETH_ADDRESS" },
     "elseif":{ type:"CONDITION", name:"ELSEIF" },
     "else":{ type:"CONDITION", name:"ELSE" },
     "false":{ type:"BOOL", name:"FALSE" },
