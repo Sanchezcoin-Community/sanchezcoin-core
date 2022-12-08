@@ -22,9 +22,7 @@ Sanchezcoin is a community-driven cryptocurrency that was inspired by Rick Sanch
 <b>Symbol:</b> SANC [𝙎]<br>
 
 ## ConditionsScript 💬
-Condition script is a simple script used to lock or unlock transactions.
-
-[Read more here.](https://github.com/Sanchezcoin-Community/sanchezcoin-core/blob/main/src/scriptvm/README.md)
+Condition script is a simple script used to lock or unlock transactions. [Read more](https://github.com/Sanchezcoin-Community/sanchezcoin-core/blob/main/src/scriptvm/docs/README.md)
 
 ## swiftyHash256 🧩
 swiftHash256 Uses SHA3, Keccak and AES-256-CBC to guarantee initial ASIC resistance.
