@@ -37,13 +37,26 @@ function is_validate_hex_str(hex_str) {
     catch(e) { return false; }
 };
 
+// Wird verwendet um eine Value Object Liste auszugeben
+const extract_obj_values = (items) => items.map((value) => {
+    if(value.constructor.name === 'ChainStateValue') { return value.value; }
+    else if(value.constructor.name === 'NumberValue') { return value.value; }
+    else if(value.constructor.name === 'HexString') { return value.value; }
+    else if(value.constructor.name === 'BoolValue') { return value.value; }
+    else if(value.constructor.name === 'HashValue') { return value.value; }
+    else if(value.constructor.name === 'NullValue') { return '00'; }
+    else {
+        throw new Error('Unallowed Item')
+    }
+});
+
 // Wird ausgeführt um ein einfaches Skript auszuführen
 const hexed_script_interpreter = async(locking_script, unlocking_script, c_block_hight=0, script_sigs=[], input_fq_hashes=[], output_fq_hashes=[], script_hight=0, ...optdata) => {
     // Es wird geprüft ob es sich bei den Skripten um Hexwerte handelt
     if(is_validate_hex_str(locking_script) !== true || is_validate_hex_str(unlocking_script) !== true) throw new Error('Invalid script data');
 
     // Es wird ein Hash aus dem Eingabe, sowie ausgabe Skript erstellt
-    let unlocking_script_hash = sha256d(unlocking_script), locking_script_hash = sha256d(locking_script), last_block_hash = "";
+    let unlocking_script_hash = sha256d(unlocking_script), locking_script_hash = sha256d(locking_script), last_block_hash = "", current_block_diff = "";
 
     // Speichert alle PublicKeys ab, welche berechtigt sind mittels Signatur die Skripte zu überprüfen
     let allowed_public_key_array = [];
@@ -337,35 +350,35 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             let chain_state_value = await next_is_inter_chain_state(copyed_item, script_type);
             if(chain_state_value !== false) {
                 copyed_item = chain_state_value.hex_str_list;
-                return chain_state_value.value;
+                return chain_state_value;
             }
 
             // Prüft ob es sich um einen
             let intepr_hex_value = await next_is_inter_hex_str(copyed_item, script_type);
             if(intepr_hex_value !== false) {
                 copyed_item = intepr_hex_value.hex_str_list;
-                return intepr_hex_value.value; 
+                return intepr_hex_value; 
             }
 
             // Prüft ob es sich um eine Nummer handelt
             let intepr_number_value = await next_read_number(copyed_item);
             if(intepr_number_value !== false) {
                 copyed_item = intepr_number_value.hex_str_list;
-                return intepr_number_value.int_value; 
+                return intepr_number_value; 
             }
 
             // Prüft ob es sich um ein Boolean Handelt
             let interpr_bool_value = await next_read_bool(copyed_item);
             if(interpr_bool_value !== false) {
                 copyed_item = interpr_bool_value.hex_str_list;
-                return interpr_bool_value.bool_value; 
+                return interpr_bool_value; 
             }
 
             // Es wird geprüft ob es sich um eine Value Funktion handelt
             let interpr_value_function = await next_read_value_function(copyed_item, script_type);
             if(interpr_value_function !== false) {
                 copyed_item = interpr_value_function.hex_str_list;
-                return interpr_value_function.value; 
+                return interpr_value_function; 
             }
 
             // Es handelt sich um eine Unbeaknnte aufgabe
@@ -430,7 +443,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             if(readed_parren_cube.items.length < 1) { close_by_error('SHA256D_FUNCTION_NEED_MINIMUM_ONE_VALUE'); return false; }
 
             // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
-            let final_value_hash = blockchain_crypto.sha2d(256, ...readed_parren_cube.items.map((value) => value.value));
+            let final_value_hash = blockchain_crypto.sha2d(256, ...extract_obj_values(readed_parren_cube.items));
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
@@ -441,7 +454,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             if(readed_parren_cube.items.length < 1) { close_by_error('SHA3_256_NEED_MINIMUM_ONE_PARAMETER'); return false; }
 
             // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
-            let final_value_hash = blockchain_crypto.sha3(256, ...readed_parren_cube.items.map((value) => value.value));
+            let final_value_hash = blockchain_crypto.sha3(256, ...extract_obj_values(readed_parren_cube.items));
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
@@ -452,7 +465,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             if(readed_parren_cube.items.length < 1) { close_by_error('SWIFTYH_256_NEED_MINIMUM_ONE_PARAMETER'); return false; }
 
             // Die Einzelnen Werte werden zu einem Wer zusammen geführt und gehasht
-            let final_value_hash = blockchain_crypto.swiftyHash(256, ...readed_parren_cube.items.map((value) => value.value));
+            let final_value_hash = blockchain_crypto.swiftyHash(256, ...extract_obj_values(readed_parren_cube.items));
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'swiftyhash256') };
@@ -487,15 +500,15 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Wird verwendet um die Aktuelle Block Schwierigkeit auszugeben
         else if(current_item === op_codes.cstate_current_pow_diff) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
-            if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_POW_DIFF_DONT_NEED_PARAMETERS'); return false; }
+            if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_BLOCK_DIFF_DONT_NEED_PARAMETERS'); return false; }
 
             // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item, value:new NumberValue(last_block_hash) };
+            return { hex_str_list:copyed_item, value:new NumberValue(current_block_diff) };
         }
         // Wird verwendet um den Hash des Locking Scripts auszugeben
         else if(current_item === op_codes.cstate_lock_script_hash) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
-            if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_POW_DIFF_DONT_NEED_PARAMETERS'); return false; }
+            if(readed_parren_cube.items.length !== 0) { close_by_error('GET_CURRENT_LOCKING_SCRIPT_HASH_DONT_NEED_PARAMETERS'); return false; }
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new ChainStateValue(locking_script_hash) };
@@ -503,10 +516,26 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Wird verwendet um den Hash des Locking Scripts auszugeben
         else if(current_item === op_codes.cstate_unlock_script_hash) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
-            if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_POW_DIFF_DONT_NEED_PARAMETERS'); return false; }
+            if(readed_parren_cube.items.length !== 0) { close_by_error('GET_CURRENT_UNLOCKING_SCRIPT_HASH_DONT_NEED_PARAMETERS'); return false; }
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
+        }
+        // Wird verwendet um die Aktuelle Block Höhe auszugeben
+        else if(current_item === op_codes.cstate_current_block_hight) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length !== 0) { close_by_error('GET_CURRENT_BLOCK_HIGHT_DONT_NEED_PARAMETERS'); return false; }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight) };
+        }
+        // Wird verwndet um eine Spizielle Signatur zu überprüfen
+        else if(current_item === op_codes.op_value_verify_sig) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length !== 3) { close_by_error('VERIFY_SPERIFC_SIGNATURE_NEED_3_PARAMETERS'); return false; }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight) };
         }
         // Es konnte kein gültiger Befehler gefunden werden
         else {
@@ -1085,6 +1114,9 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Es wird geprüft ob es sich um einen String handelt
         if(typeof hex_string !== 'string') throw new Error('Invalid data');
         if(hex_string.length < 2) return { hex_str_list:[] };
+
+        // Es wird geprüft ob das Stack die Maximalgröße von 1024 Einträgen übersteigt
+        if(hex_string.length > 1024) throw new Error('Invalid data');
 
         // Der String wird in 2 Zeichen aufgedrennt
         let splited_hex_string = hex_string.toLowerCase().match(/.{2}/g);
