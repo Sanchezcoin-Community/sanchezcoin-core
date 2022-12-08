@@ -6,8 +6,9 @@ const lexer = require('./lexer');
 
 // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
 let locking_script = `
-if(#unlocking_script_hash == 3b1705fb09c2bd35a732539828f5b3f6157a137d7a4a85e83062c54ca0b9ea02) {
+if(get_unlocking_script_hash() == 16f61f2b94917199ba12a91f139eb0466be5b3442826741d09ccbb6f1f69cfb0) {
     unlock();
+    exit();
 }
 `
 
@@ -17,6 +18,7 @@ add_verify_key( PublicKey(secp256k1, 384b1332be6666c48dc8b106797b6d6014939df07d6
 add_verify_key( PublicKey(bls12381, 86b50179774296419b7e8375118823ddb06940d9a28ea045ab418c7ecbe6da84d416cb55406eec6393db97ac26e38bd4) );
 set_n_of_m(1);
 verify_sig();
+exit();
 `
 
 // Speichert die Verfügbaren Signaturen ab

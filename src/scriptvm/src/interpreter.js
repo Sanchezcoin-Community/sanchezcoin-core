@@ -62,7 +62,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
     // Gibt an ob die Ausführung des Skriptes abgebrochen wurde
     function script_running_aborted() {
-        if(states.exit === true || states.aborted === true || states.unlocked === true) return true;
+        if(states.exit === true || states.aborted === true) return true;
         else return false;
     };
 
@@ -469,7 +469,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:y_stack_array.shift() };
         }
         // Wird verwendet um die Gesamtzahl aller Signaturen auszugeben
-        else if(current_item === op_codes.op_total_signers) {
+        else if(current_item === op_codes.cstate_total_signatures) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length !== 0) { close_by_error('TOTAL_SIGNERS_DONT_NEED_PARAMETERS'); return false; }
 
@@ -491,6 +491,22 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new NumberValue(last_block_hash) };
+        }
+        // Wird verwendet um den Hash des Locking Scripts auszugeben
+        else if(current_item === op_codes.cstate_lock_script_hash) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_POW_DIFF_DONT_NEED_PARAMETERS'); return false; }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new ChainStateValue(locking_script_hash) };
+        }
+        // Wird verwendet um den Hash des Locking Scripts auszugeben
+        else if(current_item === op_codes.cstate_unlock_script_hash) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_POW_DIFF_DONT_NEED_PARAMETERS'); return false; }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Es konnte kein gültiger Befehler gefunden werden
         else {

@@ -51,6 +51,9 @@ let emit_functions = {
 
 // Speichert alle Value Funktionen ab
 let value_functions = {
+    VERIFY_SIGNATURE_IS:[
+        op_codes.op_value_verify_sig
+    ],
     UNLOCKING_SCRIPT_HASH:[
         op_codes.cstate_unlock_script_hash
     ],
@@ -67,7 +70,7 @@ let value_functions = {
         op_codes.cstate_last_block_hash
     ],
     GET_TOTAL_SIGNERS:[
-        op_codes.op_total_signers
+        op_codes.cstate_total_signatures
     ],
     USE_ONE_SIGNER:[
         op_codes.op_is_one_signer

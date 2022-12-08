@@ -25,10 +25,13 @@ let key_words = {
 // Definiert alle Verfügabren Funktionen 
 let def_functions = {
     "add_verify_key_and_eq_verfiy_signature": { type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY_AND_VERIFY_SIGNATURES" },
+    "get_unlocking_script_hash": { type:"VALUE_OUTPUT", name:"UNLOCKING_SCRIPT_HASH" },
+    "get_locking_script_hash": { type:"VALUE_OUTPUT", name:"LOCKING_SCRIPT_HASH" },
     "get_last_block_hash": { type:"VALUE_OUTPUT", name:"CURRENT_LAST_BLOCK_HASH" },
     "get_current_block_hight": { type:"VALUE_OUTPUT", name:"CURRENT_BLOCK_HIGHT" },
     "get_current_block_diff": { type:"VALUE_OUTPUT", name:"CURRENT_POW_DIFF" },
     "add_verify_key": { type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY" },
+    "verify_spfc_sig": { type:"VALUE_OUTPUT", name:"VERIFY_SIGNATURE_IS" },
     "get_total_signers": { type:"VALUE_OUTPUT", name:"GET_TOTAL_SIGNERS" },
     "abort": { type:"EMIT_FUNCTION", name:"ABORT_SKRIPT_RETURN_FALSE" },
     "verify_sig": { type:"EMIT_FUNCTION", name:"VERIFY_SIGNATURES" },
