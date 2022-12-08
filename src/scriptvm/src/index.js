@@ -9,9 +9,6 @@ let locking_script = `
 if(#unlocking_script_hash == 3b1705fb09c2bd35a732539828f5b3f6157a137d7a4a85e83062c54ca0b9ea02) {
     unlock();
 }
-else {
-    exit();
-}
 `
 
 // Wird verwendet um eine Ausgabe zu Entsperren und nachzuweisen dass man die Benötigen Bediungen erfüllt
