@@ -1,7 +1,4 @@
-# Functional overview
-
-
-## Emit functions
+# Emit functions
 Emit functions are able to push data onto the Y stack. If an Emit function does not return True, the script is aborted at this point.
 
 ### add_verify_key_and_eq_verfiy_signature(pkey:PublicKey) -> emit
@@ -45,7 +42,7 @@ Exits the script gracefully, no more status changes are made, the script exits a
 
 </br>
 
-## Value functions
+# Value functions
 Value functions are used to return a specific value, they cannot push values onto the stack.
 
 
