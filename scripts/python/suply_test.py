@@ -21,4 +21,5 @@ def max_money():
 # 179.769.313,486 Mortys
 mx = max_money()
 newer_method_string = "{:.8f}".format( round(float(mx)) / 100000000)
-print(round(float(newer_method_string))/1000000000, 'mrd Sanchez')
+rc = float(newer_method_string)/1000000000
+print(rc, 'mrd Sanchez')
