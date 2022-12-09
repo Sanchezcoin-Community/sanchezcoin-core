@@ -1,6 +1,5 @@
 const { ChainStateValue, HexString, NumberValue, BoolValue, HashValue, NullValue, compareValues } = require('./obj_types');
 const blockchain_crypto = require('blckcrypto');
-const { createHash } = require('node:crypto');
 const { op_codes } = require('./opcodes');
 let { bech32 } = require('bech32');
 const web3 = require('web3');
@@ -23,12 +22,6 @@ const DEFAULT_STATES = {
     unlocked:false,
     aborted:false,
     exit:false
-};
-
-// Erzeugt einen SHA256 Hash
-function sha256d(content) {  
-    let hashd = createHash('sha256').update(Buffer.from(content, 'ascii')).digest().reverse();
-    return createHash('sha256').update(hashd).digest().reverse().toString('hex');
 };
 
 // Wird verwendet um zu überprüfen ob es sich um einen gültigen Hexstring handelt

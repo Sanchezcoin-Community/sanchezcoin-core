@@ -115,11 +115,11 @@ Exits the script gracefully, no more status changes are made, the script exits a
 > Returns the hash of the last block.
 
 
-### **get_current_block_hight() -> uint256:**
+### **get_current_block_hight() -> vint:**
 > Returns the current block height.
 
 
-### **get_current_block_diff() -> uint256:**
+### **get_current_block_diff() -> vint:**
 > Returns the current block difficulty.
 
 
@@ -131,7 +131,7 @@ Exits the script gracefully, no more status changes are made, the script exits a
 > Returns a boolean indicating whether the signature is correct.
 
 
-### **get_total_signers() -> int:**
+### **get_total_signers() -> vint:**
 > This function returns the total number of all signatures.
 
 
