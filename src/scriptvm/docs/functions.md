@@ -22,7 +22,7 @@ After the key has been added, it is checked whether the signature of the added k
 
 ### **add_verify_key(pkey) -> emit:**
 This function adds a public key to the `VerifyerWhiteList`.<br>
-If a key is already in the `VerifyerWhiteList`, the script is aborted with a false.
+If the key is already in the VerifyWhiteList, the script terminates with false.
 #### **Parameters:**
 - pkey = This is either a public key or an address
 #### **Functional Rules:**
@@ -72,7 +72,7 @@ This function adds an arbitrary value to the stack.
 
 ### **set_n_of_m(int_value) -> emit:**
 Determines how many signatures are required at least to unlock this script.<br>
-If less than 1 signature or more than signatures are used, the script is marked as invalid and aborted.
+If less than 1 signature or more than 16 signatures are used, the script is marked invalid and aborted.
 #### **Parameters:**
 - int_value = Specifies the required number of signatures required
 #### **Functional Rules:**
