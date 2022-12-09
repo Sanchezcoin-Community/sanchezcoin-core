@@ -1,3 +1,6 @@
+# General
+`It should be noted that if an error occurs, the script will be marked as faulty and aborted. This applies to emit as well as value functions.`
+
 # Emit functions
 Emit functions are able to push data onto the Y stack. If an Emit function does not return True, the script is aborted at this point.
 
