@@ -1,8 +1,8 @@
 const { validate, getAddressInfo } = require('bitcoin-address-validation');
+const blockchain_crypto = require('blckcrypto');
 const op_codes = require('./opcodes');
 let { bech32 } = require('bech32');
 const web3 = require('web3');
-
 
 // Speichert alle Verfügbaren Chainstate Commands ab
 let chain_state_commands = {
@@ -104,7 +104,6 @@ let value_io_function_types = {
     EMIT_FUNCTION:1,
     IF_STATE:2
 };
-
 
 // Gibt den OpCode für eine Value Funktion an
 async function get_value_function_op_code(function_name) {
@@ -1083,10 +1082,14 @@ async function script_token_parser(tokens, sub_block=false) {
     return { tokens:temp_stack_script, inner:extracted_hex_strings.join('') };
 };
 
-
-
 // Exportiert die Funktionen
 module.exports = async function(tokens) {
+    // Die Tokens werden geparst
     let script_tokens = await script_token_parser(tokens);
-    return script_tokens.inner;
+
+    // Es wird ein Hash aus dem Skript erstellt
+    let script_hash = blockchain_crypto.sha3(256, script_tokens.inner);
+
+    // Die Daten werden zurückgegeben
+    return { hex_script:script_tokens.inner, hash:script_hash };
 };

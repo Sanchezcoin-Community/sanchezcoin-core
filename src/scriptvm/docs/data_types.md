@@ -64,7 +64,7 @@ Example:
 ### **hash:**
 Used by the script VM to return a hash value.
 
-### **vint:**
+### **vmnumber:**
 Used by the script VM to specify a number.
 
 ### **bool:**

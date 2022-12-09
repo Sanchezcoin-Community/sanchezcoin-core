@@ -199,19 +199,17 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
         if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
 
-        // Es wird geprüft ob das Skript abgebrochen wurde
+        // Es wird geprüft ob das Skript abgebrochen oder beendet wurde
         if(script_running_aborted() === true) return false;
 
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
         if(hex_str_list.length < 3) return false;
 
-        // Das Item wird Kopiert
+        // Das Stack Array wird kopiert
         let copyed_item = hex_str_list.slice();
 
-        // Der Nächste Eintrag vom SkriptStack (S) genommen und ausgewertet
+        // Der Nächste Eintrag vom Stack wird genommen und geprüft, es wird geprüft, um was für einen ChainState wert es sich handelt
         let script_stack_entry = copyed_item.shift();
-
-        // Es wird geprüft, um was für einen ChainState wert es sich handelt
         if(script_stack_entry !== op_codes.op_code_hex_value) return false;
 
         // Die Größe des Hexwertes wird abgerufen
@@ -450,7 +448,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             let final_value_hash = blockchain_crypto.sha3(256, ...extract_obj_values(readed_parren_cube.items));
 
             // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d') };
+            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha3_256') };
         }
         // Es wird geprüft ob es sich um einen SwiftyHash handelt
         else if(current_item === op_codes.swiftyH) {
@@ -461,7 +459,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             let final_value_hash = blockchain_crypto.swiftyHash(256, ...extract_obj_values(readed_parren_cube.items));
 
             // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'swiftyhash256') };
+            return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'swiftyh_256') };
         }
         // Wird verwendet um den letzten Eintrag vom Y Stack zurückzugeben
         else if(current_item === op_codes.pop_from_y) {
@@ -496,7 +494,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_BLOCK_DIFF_DONT_NEED_PARAMETERS'); return false; }
 
             // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item, value:new NumberValue(current_block_diff) };
+            return { hex_str_list:copyed_item, value:new NumberValue(BigInt(current_block_diff)) };
         }
         // Wird verwendet um den Hash des Locking Scripts auszugeben
         else if(current_item === op_codes.op_lock_script_hash) {
@@ -528,7 +526,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             if(readed_parren_cube.items.length !== 3) { close_by_error('VERIFY_SPERIFC_SIGNATURE_NEED_3_PARAMETERS'); return false; }
 
             // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight) };
+            return { hex_str_list:copyed_item, value:new NullValue() };
         }
         // Es konnte kein gültiger Befehler gefunden werden
         else {
