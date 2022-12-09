@@ -56,7 +56,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     if(is_validate_hex_str(locking_script) !== true || is_validate_hex_str(unlocking_script) !== true) throw new Error('Invalid script data');
 
     // Es wird ein Hash aus dem Eingabe, sowie ausgabe Skript erstellt
-    let unlocking_script_hash = sha256d(unlocking_script), locking_script_hash = sha256d(locking_script), last_block_hash = "", current_block_diff = "";
+    let unlocking_script_hash = blockchain_crypto.sha3(256, unlocking_script), locking_script_hash = blockchain_crypto.sha3(256, locking_script), last_block_hash = "", current_block_diff = "";
 
     // Speichert alle PublicKeys ab, welche berechtigt sind mittels Signatur die Skripte zu überprüfen
     let allowed_public_key_array = [];

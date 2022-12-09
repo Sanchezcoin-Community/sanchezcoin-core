@@ -6,7 +6,7 @@ const lexer = require('./lexer');
 
 // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
 let locking_script = `
-if(get_unlocking_script_hash() == 16f61f2b94917199ba12a91f139eb0466be5b3442826741d09ccbb6f1f69cfb0) {
+if(get_unlocking_script_hash() == 2ab2f00252d1a1cf7f30fa109d41796429ba88ef18bb20515fe7808a59ee109b) {
     unlock();
     exit();
 }
