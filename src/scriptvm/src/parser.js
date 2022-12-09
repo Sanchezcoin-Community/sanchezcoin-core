@@ -6,16 +6,16 @@ const web3 = require('web3');
 
 // Speichert alle Verfügbaren Chainstate Commands ab
 let chain_state_commands = {
-    unlocking_script_hash:[op_codes.cstate_unlock_script_hash],
-    locking_script_hash:[op_codes.cstate_lock_script_hash],
-    current_b_hight:[op_codes.cstate_current_block_hight],
-    current_b_consensus:[op_codes.cstate_current_block_consens],
-    next_b_consensus:[op_codes.cstate_next_block_consens],
-    current_pow_diff:[op_codes.cstate_current_pow_diff],
-    current_posm_diff:[op_codes.cstate_current_posm_diff],
-    last_block_hash:[op_codes.cstate_last_block_hash],
-    unlock_script_sig:[op_codes.cstate_unlock_scriptsig_pubkey],
-    total_signatures:[op_codes.cstate_total_signatures]
+    unlocking_script_hash:[op_codes.op_unlock_script_hash],
+    locking_script_hash:[op_codes.op_lock_script_hash],
+    current_b_hight:[op_codes.op_current_block_hight],
+    current_b_consensus:[op_codes.op_current_block_consens],
+    next_b_consensus:[op_codes.op_next_block_consens],
+    current_pow_diff:[op_codes.op_current_pow_diff],
+    current_posm_diff:[op_codes.op_current_posm_diff],
+    last_block_hash:[op_codes.op_last_block_hash],
+    unlock_script_sig:[op_codes.op_unlock_scriptsig_pubkey],
+    total_signatures:[op_codes.op_total_signatures]
 };
 
 //Speichert alle Verfügabren Emit Funktionen ab
@@ -27,10 +27,10 @@ let emit_functions = {
         op_codes.op_script_abort
     ],
     ADD_PUBLIC_VERIFY_KEY:[
-        op_codes.op_add_verify_key
+        op_codes.op_op_add_verify_key
     ],
-    BLOCK_NFT_TRANSFER:[
-        op_codes.block_nft_transfer
+    op_block_nft_transfer:[
+        op_codes.op_block_nft_transfer
     ],
     PUSH_TO_Y_STACK:[
         op_codes.op_push_to_y
@@ -55,22 +55,22 @@ let value_functions = {
         op_codes.op_value_verify_sig
     ],
     UNLOCKING_SCRIPT_HASH:[
-        op_codes.cstate_unlock_script_hash
+        op_codes.op_unlock_script_hash
     ],
     LOCKING_SCRIPT_HASH:[
-        op_codes.cstate_lock_script_hash
+        op_codes.op_lock_script_hash
     ],
     CURRENT_BLOCK_HIGHT:[
-        op_codes.cstate_current_block_hight
+        op_codes.op_current_block_hight
     ],
     CURRENT_POW_DIFF:[
-        op_codes.cstate_current_pow_diff
+        op_codes.op_current_pow_diff
     ],
     CURRENT_LAST_BLOCK_HASH:[
-        op_codes.cstate_last_block_hash
+        op_codes.op_last_block_hash
     ],
     GET_TOTAL_SIGNERS:[
-        op_codes.cstate_total_signatures
+        op_codes.op_total_signatures
     ],
     USE_ONE_SIGNER:[
         op_codes.op_is_one_signer
@@ -267,15 +267,15 @@ async function is_pkey_declaration(tokens) {
     // Es wird geprüft ob die Länge des Verwendeten Schlüssels korrekt ist
     if(algo_last.name === 'CURVE25519_CRYPTO_ALGORITHM') {
         if(hexed_value.length !== 64) throw new Error('Invalid public key');
-        return { tokens:temp_token_lst, inner:[op_codes.public_key_defination, op_codes.curve25519, hexed_value].join('').toLowerCase() };
+        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.curve25519, hexed_value].join('').toLowerCase() };
     }
     else if(algo_last.name === 'SECP256K1_CRYPTO_ALGORITHM') {
         if(hexed_value.length !== 64) throw new Error('Invalid public key');
-        return { tokens:temp_token_lst, inner:[op_codes.public_key_defination, op_codes.secp256k1_schnorr, hexed_value].join('').toLowerCase() };
+        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.secp256k1_schnorr, hexed_value].join('').toLowerCase() };
     }
     else if(algo_last.name === 'BLS12381_CRYPTO_ALGORITHM') {
         if(hexed_value.length !== 96) throw new Error('Invalid public key');
-        return { tokens:temp_token_lst, inner:[op_codes.public_key_defination, op_codes.bls12381, hexed_value].join('').toLowerCase() };
+        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.bls12381, hexed_value].join('').toLowerCase() };
     }
     else {
         console.log(last_t_obj)
@@ -315,14 +315,14 @@ async function is_address_declaration(tokens) {
         // Es wird geprüft ob es sich um eine Zulässige Adresse handelt
         if(address_informations.type === 'p2wpkh') {
             let hex_plain_address = Buffer.from(bech32.decode(last_t_obj.value).words).toString('hex');
-            return { tokens:temp_token_lst, inner:[op_codes.address_defination, op_codes.op_btc_address_32, hex_plain_address].join('').toLowerCase() };
+            return { tokens:temp_token_lst, inner:[op_codes.op_address_defination, op_codes.op_btc_address_32, hex_plain_address].join('').toLowerCase() };
         }
         else {
             throw new Error()
         }
     }
     else if(web3.utils.isAddress(last_t_obj.value) === true) {
-        return { tokens:temp_token_lst, inner:[op_codes.address_defination, op_codes.op_eth_address, last_t_obj.value.replace('0x', '')].join('').toLowerCase() };
+        return { tokens:temp_token_lst, inner:[op_codes.op_address_defination, op_codes.op_eth_address, last_t_obj.value.replace('0x', '')].join('').toLowerCase() };
     }
     else {
         console.log(web3.utils)

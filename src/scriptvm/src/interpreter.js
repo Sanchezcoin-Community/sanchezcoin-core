@@ -152,39 +152,39 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Gibt den Hash des Unlock Scripts aus
         script_stack_entry = copyed_item.shift();
-        if(script_stack_entry === op_codes.cstate_unlock_script_hash) {
+        if(script_stack_entry === op_codes.op_unlock_script_hash) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt den Hash des Locking Skripts aus
-        else if(script_stack_entry === op_codes.cstate_lock_script_hash) {
+        else if(script_stack_entry === op_codes.op_lock_script_hash) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(locking_script_hash) };
         }
         // Gibt die Aktuelle Blockhöhe an
-        else if(script_stack_entry === op_codes.cstate_current_block_hight) {
+        else if(script_stack_entry === op_codes.op_current_block_hight) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(c_block_hight) };
         }
         // Gibt den Hash des letzten Blocks aus
-        else if(script_stack_entry === op_codes.cstate_last_block_hash) {
+        else if(script_stack_entry === op_codes.op_last_block_hash) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt das Konsensusverfahren des Aktuellen Blocks an
-        else if(script_stack_entry === op_codes.cstate_current_block_consens) {
+        else if(script_stack_entry === op_codes.op_current_block_consens) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt das Konsensusverfahren für den nächsten Block an
-        else if(script_stack_entry === op_codes.cstate_next_block_consens) {
+        else if(script_stack_entry === op_codes.op_next_block_consens) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt die Aktuelle Mining Schwierigkeit an
-        else if(script_stack_entry === op_codes.cstate_current_pow_diff) {
+        else if(script_stack_entry === op_codes.op_current_pow_diff) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt die Aktuelle Staking Schwierigkeit an
-        else if(script_stack_entry === op_codes.cstate_current_posm_diff) {
+        else if(script_stack_entry === op_codes.op_current_posm_diff) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Gibt die Anzahl der Signaturen aus
-        else if(script_stack_entry === op_codes.cstate_total_signatures) {
+        else if(script_stack_entry === op_codes.op_total_signatures) {
             return { hex_str_list:copyed_item, value:new ChainStateValue(BigInt(script_sigs.length)) };
         }
         // Gibt die gesamtzahlen aller Signaturen an
@@ -475,7 +475,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:y_stack_array.shift() };
         }
         // Wird verwendet um die Gesamtzahl aller Signaturen auszugeben
-        else if(current_item === op_codes.cstate_total_signatures) {
+        else if(current_item === op_codes.op_total_signatures) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length !== 0) { close_by_error('TOTAL_SIGNERS_DONT_NEED_PARAMETERS'); return false; }
 
@@ -483,7 +483,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new NumberValue(BigInt(allowed_public_key_array.length)) };
         }
         // Wird verwendet um den Aktuellen Blockhash auszugeben
-        else if(current_item === op_codes.cstate_last_block_hash) {
+        else if(current_item === op_codes.op_last_block_hash) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length !== 0) { close_by_error('LAST_BLOCK_HASH_DONT_NEED_PARAMETERS'); return false; }
 
@@ -491,7 +491,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new HashValue(last_block_hash, 'sha256d') };
         }
         // Wird verwendet um die Aktuelle Block Schwierigkeit auszugeben
-        else if(current_item === op_codes.cstate_current_pow_diff) {
+        else if(current_item === op_codes.op_current_pow_diff) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length !== 0) { close_by_error('CURRENT_BLOCK_DIFF_DONT_NEED_PARAMETERS'); return false; }
 
@@ -499,7 +499,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new NumberValue(current_block_diff) };
         }
         // Wird verwendet um den Hash des Locking Scripts auszugeben
-        else if(current_item === op_codes.cstate_lock_script_hash) {
+        else if(current_item === op_codes.op_lock_script_hash) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length !== 0) { close_by_error('GET_CURRENT_LOCKING_SCRIPT_HASH_DONT_NEED_PARAMETERS'); return false; }
 
@@ -507,7 +507,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new ChainStateValue(locking_script_hash) };
         }
         // Wird verwendet um den Hash des Locking Scripts auszugeben
-        else if(current_item === op_codes.cstate_unlock_script_hash) {
+        else if(current_item === op_codes.op_unlock_script_hash) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length !== 0) { close_by_error('GET_CURRENT_UNLOCKING_SCRIPT_HASH_DONT_NEED_PARAMETERS'); return false; }
 
@@ -515,7 +515,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new ChainStateValue(unlocking_script_hash) };
         }
         // Wird verwendet um die Aktuelle Block Höhe auszugeben
-        else if(current_item === op_codes.cstate_current_block_hight) {
+        else if(current_item === op_codes.op_current_block_hight) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length !== 0) { close_by_error('GET_CURRENT_BLOCK_HIGHT_DONT_NEED_PARAMETERS'); return false; }
 
@@ -791,7 +791,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
         let extracted_item = copyed_item.shift();
-        if(extracted_item !== op_codes.public_key_defination) return false;
+        if(extracted_item !== op_codes.op_public_key_defination) return false;
 
         // Es wird geprüft ob danach ein zulässiger Alrorithmns kommt
         extracted_item = copyed_item.shift();
@@ -831,7 +831,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
         let extracted_item = copyed_item.shift();
-        if(extracted_item !== op_codes.address_defination) return false;
+        if(extracted_item !== op_codes.op_address_defination) return false;
 
         // Es wird geprüft ob danach ein zulässiger Alrorithmns kommt
         extracted_item = copyed_item.shift();
@@ -884,6 +884,12 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         add_verify_key: async(pkey_obj) => {
             allowed_public_key_array.push(pkey_obj);
             return true;
+        },
+        // Makiert das aktulelle Skript als Entsperrt
+        unlock_script: () => {
+            y_stack_array.push(SIG_CHECK_TRUE);
+            states.unlocked = true;
+            return true;
         }
     };
 
@@ -918,9 +924,8 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             current_item = copyed_item.shift();
             if(current_item !== '00') { console.log('Invalid script 2'); return { hex_str_list:[] }; }
 
-            // Die Ausgabe wird freigegeben
-            y_stack_array.push(SIG_CHECK_TRUE);
-            states.unlocked = true;
+            // Es wird versucht die Ein / Ausgabe zu entsperrent
+            if(emit_vm_functions.unlock_script() !== true) { close_by_error('SCRIPT_UNLOCKING_ERROR'); return false; }
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item };
@@ -941,15 +946,14 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
                 return { hex_str_list:[] }; 
             }
 
-            // Das Skript wird als Entsperrt Markiert
-            y_stack_array.push(SIG_CHECK_TRUE);
-            states.unlocked = true;
+            // Es wird versucht die Ein / Ausgabe zu entsperrent
+            if(emit_vm_functions.unlock_script() !== true) { close_by_error('SCRIPT_UNLOCKING_ERROR'); return false; }
 
             // Das Skript ist erfolgreich durchgeführt wurden
             return { hex_str_list:copyed_item };
         }
         // Fügt einen neuen Berechtigen Schlüssel in die Verifyer liste hinzu
-        else if(current_item === op_codes.op_add_verify_key) {
+        else if(current_item === op_codes.op_op_add_verify_key) {
             // Es wird geprüft ob es sich um einen Parren Inner handelt
             current_item = copyed_item.shift();
 
@@ -976,7 +980,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             if((await emit_vm_functions.add_verify_key(public_key_declaration.value)) !== true) { close_by_error('PUBLIC_KEY_CANT_NOT_ADD'); return false; }
 
             // Die anzahl der benötigten Signaturen wird neu festgelegt
-            states.needs_sigs = allowed_public_key_array.length;
+            states.needs_sigs = BigInt(allowed_public_key_array.length);
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item };
@@ -1014,21 +1018,19 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             // Die neue Stackliste wird geschrieben
             copyed_item = public_key_declaration.hex_str_lst;
 
-            // Der Öffentliche Schlüssel wird auf die berechtigten Liste gepackt
-            allowed_public_key_array.push(public_key_declaration.value);
-            states.needs_sigs++;
+            // Es wird versucht den Öffentlichen Schlüssel hinzuzufügen
+            if((await emit_vm_functions.add_verify_key(public_key_declaration.value)) !== true) { close_by_error('PUBLIC_KEY_CANT_NOT_ADD'); return false; }
+
+            // Es wird Signalisiert dass genau 1ne Signatur vorhadnen sein muus
+            states.needs_sigs = BigInt(1);
 
             /* Die Signaturen werden geprüft */
 
             // Es wird geprüft ob die Signaturen korrekt sind
-            if((await validate_unlockscript_sig()) !== true) {
-                states.aborted = true;
-                return { hex_str_list:[] }; 
-            }
+            if((await validate_unlockscript_sig()) !== true) { close_by_error('INVALID_SRIPT_SIGNATURES'); return false; }
 
-            // Das Skript wird als Entsperrt Markiert
-            y_stack_array.push(SIG_CHECK_TRUE);
-            states.unlocked = true;
+            // Es wird versucht die Ein / Ausgabe zu entsperrent
+            if(emit_vm_functions.unlock_script() !== true) { close_by_error('SCRIPT_UNLOCKING_ERROR'); return false; }
 
             // Das Skript ist erfolgreich durchgeführt wurden
             return { hex_str_list:copyed_item };

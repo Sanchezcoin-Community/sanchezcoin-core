@@ -35,7 +35,7 @@ let def_functions = {
     "get_total_signers": { type:"VALUE_OUTPUT", name:"GET_TOTAL_SIGNERS" },
     "abort": { type:"EMIT_FUNCTION", name:"ABORT_SKRIPT_RETURN_FALSE" },
     "verify_sig": { type:"EMIT_FUNCTION", name:"VERIFY_SIGNATURES" },
-    "block_nft": { type:"EMIT_FUNCTION", name:"BLOCK_NFT_TRANSFER" },
+    "block_nft": { type:"EMIT_FUNCTION", name:"op_block_nft_transfer" },
     "use_one_signer": { type:"VALUE_OUTPUT", name:"USE_ONE_SIGNER" },
     "push_to_y": { type:"EMIT_FUNCTION", name:"PUSH_TO_Y_STACK" },
     "swiftyH":{ type:"VALUE_OUTPUT", name:"HASH_SWIFTYH_256" },
