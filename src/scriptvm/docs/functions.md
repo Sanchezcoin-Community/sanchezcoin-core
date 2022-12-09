@@ -104,7 +104,7 @@ Exits the script gracefully, no more status changes are made, the script exits a
 
 
 ### **is_a_signer(...items) -> bool:**
-> #### **Parameters:**
+#### **Parameters:**
 - items = Specifies an address or public key used for signing
 > This function indicates whether a list of public keys or addresses was used for signing
 
