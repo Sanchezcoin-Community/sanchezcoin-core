@@ -81,7 +81,7 @@ If less than 1 signature or more than signatures are used, the script is marked 
     -> The specified number does not meet the required conditions: The script is marked as invalid and aborted.
 ```
 
-### **unlock() -> emit**
+### **unlock() -> emit:**
 Signals that this is a valid script and the output may be used.<br>
 If an error occurs in the script after calling this function, this script is marked as invalid and aborted.
 #### **Parameters:**
@@ -92,7 +92,7 @@ If an error occurs in the script after calling this function, this script is mar
     -> StateUnlocked is already set to true: The script is marked as faulty and aborted.
 ```
 
-### **exit() -> emit**
+### **exit() -> emit:**
 - Exits the script gracefully, no more status changes are made, the script exits as is.
 #### **Parameters:**
 - **This function has no parameters**
