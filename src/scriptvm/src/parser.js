@@ -1,5 +1,5 @@
 const { validate, getAddressInfo } = require('bitcoin-address-validation');
-const { op_codes } = require('./opcodes');
+const op_codes = require('./opcodes');
 let { bech32 } = require('bech32');
 const web3 = require('web3');
 

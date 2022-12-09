@@ -1,97 +1,58 @@
-// Speichert die Werte, String zu Hex ab
-let op_codes = {
-    chain_state_value:                      (1).toString(16).padStart(2, '0'),              // Informiert den Interpreter dass als nächstes ein ChainState Wert kommt#
-    op_code_hex_value:                      (2).toString(16).padStart(2, '0'),              // Gibt an das asl nächstes eine 1 Byte Zahl gefolgt von einem Hexwert kommt
-    parren_fnc_cube:                        (3).toString(16).padStart(2, '0'),              // Informiert den Interperter dass als nächstes ein Funktions Parren Cube kommt
-    op_script_abort:                        (4).toString(16).padStart(2, '0'),              // Sinalisiert dem Interpreter dass der Vorgagn abgrochen werden kann
-    op_push_false:                          (5).toString(16).padStart(2, '0'),              // Fügt ein False auf das Verify Stack
-    op_set_n_of_m:                          (6).toString(16).padStart(2, '0'),              // Legt fest, wieviele Signaturen benötigt werden um das Skript zu entsperren
-    op_push_to_y:                           (108).toString(16).padStart(2, '0'),            // Gibt an dass ein Wert auf den Y Stack gelegt werden soll
-    op_verify_ss:                           (7).toString(16).padStart(2, '0'),              // Bricht das Skript ab, wenn sich auf dem Stack noch mehr als 1 Element befindet
-    op_is_emit:                             (8).toString(16).padStart(2, '0'),              // Informiert den Interprert dass die Nächste Funtkion eine EMIT Funktion ist
-    op_unlock:                              (9).toString(16).padStart(2, '0'),              // Signalisiert dass der Verwenete ausgang verwendet werden kann
-    op_exit:                                (10).toString(16).padStart(2, '0'),             // Signalisiert dass das Skript beendet werden soll
-};
-
-// Gibt die Verfügabren Datentypen an
-let int_dtype = {
-    op_uint_256:                            (20).toString(16).padStart(2, '0'),             // Gibt an dass es sich um ein 256 Bit Integer handelt
-    op_uint_128:                            (21).toString(16).padStart(2, '0'),             // Gibt an dass es sich um ein 128 Bit Integer handelt
-    op_uint_64:                             (22).toString(16).padStart(2, '0'),             // Gibt an dass es sich um ein 64 Bit Integer handelt
-    op_uint_32:                             (23).toString(16).padStart(2, '0'),             // Gibt an dass es sich um ein 32 Bit Integer handelt
-    op_uint_16:                             (24).toString(16).padStart(2, '0'),             // Gibt an dass es sich um ein 16 Bit Integer handelt
-    op_uint_8:                              (25).toString(16).padStart(2, '0'),             // Gibt an dass es sich um ein 8 Bit Integer handelt
-};
-
-// Kryptoverfahren
-let crypto = {
-    public_key_defination:                  (26).toString(16).padStart(2, '0'),             // Informiert den Interpreter dass als nächstes ein Öffentlicher Schlüssel defineirt wird
-    address_defination:                     (49).toString(16).padStart(2, '0'),
-    secp256k1_schnorr:                      (32).toString(16).padStart(2, '0'),             // Informiert den Interprert dass es sich um einen Secp256k1 PublicKey handelt
-    op_btc_address_32:                      (47).toString(16).padStart(2, '0'),             // Unterbindet das Transferieren von NFTS
-    op_add_verify_key:                      (27).toString(16).padStart(2, '0'),             // Weist den Interpreter an einen neuen Öffentlichen Schlüssel auf die Überprüfungslsite zu setzen
-    op_add_pk_sverify:                      (28).toString(16).padStart(2, '0'),             // Fügt einen Öffentlichen Schlüssel hinzu und überprüft die Signaturen
-    op_verify_otpsig:                       (29).toString(16).padStart(2, '0'),             // Weist den Interpert an dass es sich um eine Signatur handelt
-    op_eth_address:                         (48).toString(16).padStart(2, '0'),
-    op_check_sig:                           (30).toString(16).padStart(2, '0'),             // Wird in einem Locking Skript verwendet um die Signaturen zu überüfen
-    curve25519:                             (31).toString(16).padStart(2, '0'),             // Informiert den Interpeter dass es sich um einen Curve25519 PublicKey handelt
-    bls12381:                               (33).toString(16).padStart(2, '0'),             // Gibt an das als nächstes ein BLS11-381 Schlüssel kommt
-};
-
-// IF Codes
-let if_code = {
-    op_ibigger:                             (37).toString(16).padStart(2, '0'),             // Gibt an dass die Werte größer sein müseen
-    op_ismall:                              (38).toString(16).padStart(2, '0'),             // Gibt an dass die Werte kleiner sein müssen
-    op_nmatch:                              (39).toString(16).padStart(2, '0'),             // Gibt an ob es sich nicht um die selben Werte handelt
-    op_match:                               (40).toString(16).padStart(2, '0'),             // Gibt an dass es sich um die selben Wert handeln muss
-    op_elif:                                (41).toString(16).padStart(2, '0'),             // Signalisiert dem Interprer dass es sich um eine ELSE_IF Anweisung handelt
-    op_else:                                (42).toString(16).padStart(2, '0'),             // Signalisiert dem Interprer dass es sich um eine ELSE Anweisung handelt
-    op_if:                                  (43).toString(16).padStart(2, '0'),             // Siganlisiert dem Interperer dass es sich um eine IF Anweisung handelt
-    false:                                  (44).toString(16).padStart(2, '0'),
-    true:                                   (45).toString(16).padStart(2, '0'),
-};
-
-// NFT Opcodes
-let nft_token = {
-    block_nft_transfer:                     (46).toString(16).padStart(2, '0'),             // Unterbindet das Transferieren von NFTS
-};
-
-// Gibt an ob es sich um eine
-let value_functions = {
-    op_value_verify_sig:                    (107).toString(16).padStart(2, '0'),
-    op_value_function:                      (100).toString(16).padStart(2, '0'),
-    op_is_one_signer:                       (101).toString(16).padStart(2, '0'),
-    op_verify_sig:                          (102).toString(16).padStart(2, '0'),
-    pop_from_y:                             (103).toString(16).padStart(2, '0'),
-    sha256d:                                (104).toString(16).padStart(2, '0'),
-    swiftyH:                                (105).toString(16).padStart(2, '0'),
-    sha3:                                   (106).toString(16).padStart(2, '0'),
-};
-
-// Blockchain Statuse
-let chain_states = {
-    cstate_unlock_scriptsig_pubkey:         (245).toString(16).padStart(2, '0'),            // Gibt den PublicKey des Entsperrskriptes aus
-    cstate_current_block_consens:           (246).toString(16).padStart(2, '0'),            // Gibt den Aktuellen Block Konsensus aus
-    cstate_current_block_hight:             (247).toString(16).padStart(2, '0'),            // Weist dem Interpreter an, die Aktuelle Blockhöhe auszugeben
-    cstate_next_block_consens:              (248).toString(16).padStart(2, '0'),            // Gibt das Consensusverfahren für den Nächsten Block aus
-    cstate_unlock_script_hash:              (249).toString(16).padStart(2, '0'),            // Fügt den Hash des Unlockscriptes auf dem Stack hinzu
-    cstate_current_posm_diff:               (250).toString(16).padStart(2, '0'),            // Gibt die Schwierigkeit des Stakings an
-    cstate_current_pow_diff:                (251).toString(16).padStart(2, '0'),            // Gibt die Aktuelle Schwierigkeit des Minings an
-    cstate_total_signatures:                (252).toString(16).padStart(2, '0'),            // Gibt die Gesamtzahl aller Signaturen an
-    cstate_lock_script_hash:                (253).toString(16).padStart(2, '0'),            // Fügt den Hash des Unlockscriptes auf dem Stack hinzu
-    cstate_current_pow_diff:                (254).toString(16).padStart(2, '0'),            // Gibt die Aktuelle Schwierigkeit an
-    cstate_last_block_hash:                 (255).toString(16).padStart(2, '0'),            // Fügt den Hash des letzten Blocks hinzu
-};
-
-// Exportiert die Funktionen
 module.exports = {
-    op_codes:{
-        ...op_codes,
-        ...int_dtype,
-        ...crypto,
-        ...if_code,
-        ...chain_states,
-        ...nft_token,
-        ...value_functions,
-    }
-};
+    cstate_unlock_scriptsig_pubkey:         (58).toString(16).padStart(2, '0'),
+    cstate_current_block_consens:           (57).toString(16).padStart(2, '0'),
+    cstate_current_block_hight:             (56).toString(16).padStart(2, '0'),
+    cstate_next_block_consens:              (55).toString(16).padStart(2, '0'),
+    cstate_unlock_script_hash:              (54).toString(16).padStart(2, '0'),
+    cstate_current_posm_diff:               (53).toString(16).padStart(2, '0'),
+    cstate_current_pow_diff:                (52).toString(16).padStart(2, '0'),
+    cstate_total_signatures:                (51).toString(16).padStart(2, '0'),
+    cstate_lock_script_hash:                (50).toString(16).padStart(2, '0'),
+    cstate_last_block_hash:                 (49).toString(16).padStart(2, '0'),
+    public_key_defination:                  (48).toString(16).padStart(2, '0'),
+    op_value_verify_sig:                    (47).toString(16).padStart(2, '0'),
+    block_nft_transfer:                     (46).toString(16).padStart(2, '0'),
+    address_defination:                     (45).toString(16).padStart(2, '0'),
+    secp256k1_schnorr:                      (44).toString(16).padStart(2, '0'),
+    op_btc_address_32:                      (43).toString(16).padStart(2, '0'),
+    op_add_verify_key:                      (42).toString(16).padStart(2, '0'),
+    chain_state_value:                      (41).toString(16).padStart(2, '0'),
+    op_code_hex_value:                      (40).toString(16).padStart(2, '0'),
+    op_add_pk_sverify:                      (39).toString(16).padStart(2, '0'),
+    op_verify_otpsig:                       (38).toString(16).padStart(2, '0'),
+    op_eth_address:                         (37).toString(16).padStart(2, '0'),
+    op_script_abort:                        (36).toString(16).padStart(2, '0'),
+    op_value_function:                      (35).toString(16).padStart(2, '0'),
+    op_is_one_signer:                       (34).toString(16).padStart(2, '0'),
+    parren_fnc_cube:                        (33).toString(16).padStart(2, '0'),
+    op_push_false:                          (32).toString(16).padStart(2, '0'),
+    op_verify_sig:                          (31).toString(16).padStart(2, '0'),
+    op_set_n_of_m:                          (30).toString(16).padStart(2, '0'),
+    op_push_to_y:                           (29).toString(16).padStart(2, '0'),
+    op_verify_ss:                           (28).toString(16).padStart(2, '0'),
+    op_check_sig:                           (27).toString(16).padStart(2, '0'),
+    op_uint_256:                            (26).toString(16).padStart(2, '0'),
+    op_uint_128:                            (25).toString(16).padStart(2, '0'),
+    op_uint_64:                             (24).toString(16).padStart(2, '0'),
+    op_uint_32:                             (23).toString(16).padStart(2, '0'),
+    op_uint_16:                             (22).toString(16).padStart(2, '0'),
+    op_uint_8:                              (21).toString(16).padStart(2, '0'),
+    op_is_emit:                             (18).toString(16).padStart(2, '0'),
+    op_unlock:                              (18).toString(16).padStart(2, '0'),
+    pop_from_y:                             (17).toString(16).padStart(2, '0'),
+    curve25519:                             (15).toString(16).padStart(2, '0'),
+    bls12381:                               (14).toString(16).padStart(2, '0'),
+    op_ibigger:                             (13).toString(16).padStart(2, '0'),
+    op_ismall:                              (12).toString(16).padStart(2, '0'),
+    op_nmatch:                              (11).toString(16).padStart(2, '0'),
+    op_match:                               (10).toString(16).padStart(2, '0'),
+    sha256d:                                (9).toString(16).padStart(2, '0'),
+    swiftyH:                                (8).toString(16).padStart(2, '0'),
+    op_exit:                                (7).toString(16).padStart(2, '0'),
+    op_elif:                                (6).toString(16).padStart(2, '0'),
+    op_else:                                (5).toString(16).padStart(2, '0'),
+    op_if:                                  (4).toString(16).padStart(2, '0'),
+    false:                                  (3).toString(16).padStart(2, '0'),
+    true:                                   (2).toString(16).padStart(2, '0'),
+    sha3:                                   (1).toString(16).padStart(2, '0'),
+}

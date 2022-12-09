@@ -2,11 +2,9 @@ const script_token_parser = require('./parser');
 const interpreter = require('./interpreter');
 const lexer = require('./lexer');
 
-
-
 // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
 let locking_script = `
-if(get_unlocking_script_hash() == 2ab2f00252d1a1cf7f30fa109d41796429ba88ef18bb20515fe7808a59ee109b) {
+if(get_unlocking_script_hash() == 8c07cd7708ae91590d677d0879795c2d4888a9d0dd1b7ed500dc568001180e6b) {
     unlock();
     exit();
 }
@@ -32,7 +30,6 @@ let avail_sigs = [
         pkey: '86b50179774296419b7e8375118823ddb06940d9a28ea045ab418c7ecbe6da84d416cb55406eec6393db97ac26e38bd4'
     }
 ];
-
 
 // Das Skript wird Gelext
 lexer(unlocking_script).then(async (script) => {

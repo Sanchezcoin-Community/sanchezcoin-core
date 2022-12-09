@@ -1,9 +1,8 @@
 const { ChainStateValue, HexString, NumberValue, BoolValue, HashValue, NullValue, compareValues } = require('./obj_types');
 const blockchain_crypto = require('blckcrypto');
-const { op_codes } = require('./opcodes');
+const op_codes = require('./opcodes');
 let { bech32 } = require('bech32');
 const web3 = require('web3');
-
 
 // Gibt ein True an, dieses True wird nur Zurückgegeben wenn die Signaturen korrekt geprüft wurden
 const SIG_CHECK_TRUE = 0;
@@ -16,12 +15,13 @@ const script_types = {
 
 // Speichert die Standardwerte für ein Skript ab
 const DEFAULT_STATES = {
-    verify_sig_checked:BigInt(0),
-    script_sig_is_closed:false,
-    needs_sigs:BigInt(0),
-    unlocked:false,
-    aborted:false,
-    exit:false
+    verify_sig_checked:BigInt(0),               // <- Gibt an, weiviele Signaturen bereits georüft wurden
+    script_sig_is_closed:false,                 // <- Gibt an ob die Signaturen dieses Skriptes beretis geprüft wurden
+    total_op_codes_called:0,                    // <- Gibt an wieviele OP_Codes das aktuelle Skript hat
+    needs_sigs:BigInt(0),                       // <- Gibt an, wieviele Signaturen geprüft werden sollen
+    unlocked:false,                             // <- Gibt an ob das Skript feigegeben wurde
+    aborted:false,                              // <- Bricht das Skript vollständig ab
+    exit:false                                  // <- Das Skript wird Odnungsgemäß beendet
 };
 
 // Wird verwendet um zu überprüfen ob es sich um einen gültigen Hexstring handelt
@@ -878,6 +878,15 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         return { hex_str_list:copyed_item, value:array_sz };
     };
 
+    // Stellt die einzelnen EMIT Funktionen bereit welche dann aufgerufen werden vom Skript
+    const emit_vm_functions = {
+        // Fügt einen Öffentlichen Schlüssel oder eine Adresse zur VerifyerWhiteList hinzu
+        add_verify_key: async(pkey_obj) => {
+            allowed_public_key_array.push(pkey_obj);
+            return true;
+        }
+    };
+
     // Wird ausgeführt um zu überprüfen ob als nächstes ein EMIT Call kommt
     async function next_inter_emit_call(hex_str_lst, script_type=null) {
         // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
@@ -916,7 +925,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item };
         }
-        // Es wird geprüft ob die Signaturen geprüft werden sollen
+        // Diese OP_CODE weist die VM an eine Signaturprüfung durchzuführen
         else if(current_item === op_codes.op_check_sig) {
             // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
             current_item = copyed_item.shift();
@@ -956,7 +965,6 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             // Es wird geprüft ob als nächsts ein Öffentlicher Schlüssel kommt
             let public_key_declaration = await next_read_public_key_defination(copyed_item, script_type);
             if(public_key_declaration === false){
-                // Es wird geprüft ob es sich um eine Adresse handelt
                 public_key_declaration = await next_read_altchain_address(copyed_item, script_type);
                 if(public_key_declaration === false) { console.log('Invalid script 107'); return { hex_str_list:[] }; }
             }
@@ -964,9 +972,11 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             // Die neue Stackliste wird geschrieben
             copyed_item = public_key_declaration.hex_str_lst;
 
-            // Der Öffentliche Schlüssel wird auf die berechtigten Liste gepackt
-            allowed_public_key_array.push(public_key_declaration.value);
-            states.needs_sigs++;
+            // Es wird versucht den Öffentlichen Schlüssel hinzuzufügen
+            if((await emit_vm_functions.add_verify_key(public_key_declaration.value)) !== true) { close_by_error('PUBLIC_KEY_CANT_NOT_ADD'); return false; }
+
+            // Die anzahl der benötigten Signaturen wird neu festgelegt
+            states.needs_sigs = allowed_public_key_array.length;
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item };
@@ -1117,7 +1127,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Das Stack wird abgearbeitet bis er leer ist
         while(splited_hex_string.length > 0) {
             // Es wird geprüft ob das Skript beendet wurde
-            if(states.exit === true) break;
+            if(script_running_aborted() === true) break;
 
             // Es wird geprüft ob es sich um einen EMIT Funktionsaufruf handelt
             let sitc_intrpr = await next_inter_if_function(splited_hex_string, script_type);
@@ -1211,7 +1221,6 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     // Führt beide Skripte aus und gibt die Ergebnisse zurück
     return (await main_ioscript());
 };
-
 
 // Exportiert den Interpreter
 module.exports = hexed_script_interpreter;
