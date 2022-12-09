@@ -1,11 +1,4 @@
 module.exports = {
-    // Skript Konfigurations OP_CODES, werden verwendet um bestimmte Eigetnschaften des Skriptes festzulegen
-    //op_script_set_type_is_condiscript:      (104).toString(16).padStart(2, '0'),
-    //op_script_disable_signature_field:      (103).toString(16).padStart(2, '0'),
-    //op_script_enable_signature_field:       (102).toString(16).padStart(2, '0'),
-    //op_script_set_hash_algorithms:          (100).toString(16).padStart(2, '0'),
-
-    // Basis Funktionen
     op_unlock_scriptsig_pubkey:             (54).toString(16).padStart(2, '0'),
     op_public_key_defination:               (53).toString(16).padStart(2, '0'),
     op_current_block_consens:               (52).toString(16).padStart(2, '0'),
@@ -27,7 +20,7 @@ module.exports = {
     chain_state_value:                      (36).toString(16).padStart(2, '0'),
     op_code_hex_value:                      (35).toString(16).padStart(2, '0'),
     op_add_pk_sverify:                      (34).toString(16).padStart(2, '0'),
-    //op_dogge_address:                       (33).toString(16).padStart(2, '0'),
+    op_dogge_address:                       (33).toString(16).padStart(2, '0'),
     op_is_one_signer:                       (32).toString(16).padStart(2, '0'),
     parren_fnc_cube:                        (31).toString(16).padStart(2, '0'),
     op_script_abort:                        (30).toString(16).padStart(2, '0'),
@@ -40,7 +33,7 @@ module.exports = {
     op_uint_64:                             (23).toString(16).padStart(2, '0'),
     op_uint_32:                             (22).toString(16).padStart(2, '0'),
     op_uint_16:                             (21).toString(16).padStart(2, '0'),
-    //eq_signers:                             (20).toString(16).padStart(2, '0'),
+    eq_signers:                             (20).toString(16).padStart(2, '0'),
     op_uint_8:                              (19).toString(16).padStart(2, '0'),
     op_is_emit:                             (18).toString(16).padStart(2, '0'),
     op_unlock:                              (17).toString(16).padStart(2, '0'),

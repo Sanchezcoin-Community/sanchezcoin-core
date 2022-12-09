@@ -103,6 +103,12 @@ Exits the script gracefully, no more status changes are made, the script exits a
 **Value functions are used to return a specific value, they cannot push values onto the stack.**
 
 
+### **is_a_signer(...items) -> bool:**
+> #### **Parameters:**
+- items = Specifies an address or public key used for signing
+> This function indicates whether a list of public keys or addresses was used for signing
+
+
 ### **get_unlocking_script_hash() -> hash:**
 > This function returns the hash of the unlocking script.
 
@@ -115,11 +121,11 @@ Exits the script gracefully, no more status changes are made, the script exits a
 > Returns the hash of the last block.
 
 
-### **get_current_block_hight() -> vmnumber:**
+### **get_current_block_hight() -> Number:**
 > Returns the current block height.
 
 
-### **get_current_block_diff() -> vmnumber:**
+### **get_current_block_diff() -> Number:**
 > Returns the current block difficulty.
 
 
@@ -131,7 +137,7 @@ Exits the script gracefully, no more status changes are made, the script exits a
 > Returns a boolean indicating whether the signature is correct.
 
 
-### **get_total_signers() -> vmnumber:**
+### **get_total_signers() -> Number:**
 > This function returns the total number of all signatures.
 
 

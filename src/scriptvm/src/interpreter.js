@@ -315,7 +315,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     };
 
     // Wird verwendet um ParrentCube Werte auszuwerten
-    async function next_read_parren_cube(hex_str_lst, script_type) {
+    async function next_read_parren_cube(hex_str_lst, script_type, is_emit_call=false) {
         // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
         if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
 
@@ -372,6 +372,20 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
                 return interpr_value_function; 
             }
 
+            // Es wird geprüft ob es sich um einen Öffentlichen Schlüssel handelt
+            let read_public_key_declaration = await next_read_public_key_defination(copyed_item, script_type);
+            if(read_public_key_declaration !== false) {
+                copyed_item = read_public_key_declaration.hex_str_lst;
+                return read_public_key_declaration; 
+            }
+
+            // Es wird geprüft ob es sich um eine AlternateBlockchainAddress handelt
+            let readed_address_declaration = await next_read_altchain_address(copyed_item, script_type);
+            if(readed_address_declaration !== false) {
+                copyed_item = readed_address_declaration.hex_str_lst;
+                return readed_address_declaration; 
+            }
+
             // Es handelt sich um eine Unbeaknnte aufgabe
             close_by_error('INVALID_FUNCTION_PARREN_VALUE');
             return false;
@@ -410,7 +424,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         let current_item = copyed_item.shift();
 
         // Wird verwendet um die Parren Cube Werte einzulesen
-        let readed_parren_cube = await next_read_parren_cube(copyed_item, script_type);
+        let readed_parren_cube = await next_read_parren_cube(copyed_item, script_type, false);
         if(readed_parren_cube === false) {
             if(script_running_aborted() === true) return false;
             close_by_error('INVALID_PARREN_CUBE_VALUE');
@@ -527,6 +541,24 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item, value:new NullValue() };
+        }
+        // Wird verwendet um zu überprüfen ob ein oder mehrere bestimmte PublicKeys oder Adressen dieses Skript signiert haben
+        else if(current_item === op_codes.eq_signers) {
+            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
+            if(readed_parren_cube.items.length < 1) { close_by_error('EQ_SIGNERS_NEEDS_MINIMUM_ONE_VALUE'); return false; }
+
+            // Es wird geprüft ob es sich um gültige Parameter handelt
+            let is_ok = true;
+            for(let otem of readed_parren_cube.items) {
+                let arrv = script_sigs.map((r) => r.pkey);
+                if(arrv.includes(otem.value.pkey) !== true) {
+                    is_ok = false;
+                    break;
+                }
+            }
+
+            // Die Daten werden zurückgegeben
+            return { hex_str_list:copyed_item, value:new BoolValue(is_ok) };
         }
         // Es konnte kein gültiger Befehler gefunden werden
         else {
@@ -885,6 +917,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         },
         // Makiert das aktulelle Skript als Entsperrt
         unlock_script: () => {
+            if(states.unlocked === true) return false;
             y_stack_array.push(SIG_CHECK_TRUE);
             states.unlocked = true;
             return true;
@@ -916,11 +949,11 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         if(current_item === op_codes.op_unlock) {
             // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
             current_item = copyed_item.shift();
-            if(current_item !== op_codes.parren_fnc_cube) { console.log('Invalid script 1'); return { hex_str_list:[] }; }
+            if(current_item !== op_codes.parren_fnc_cube) { close_by_error('INVALID_SCRIPT'); return false; }
 
             // Es wird geprüft ob 0 Daten angegeben wurden
             current_item = copyed_item.shift();
-            if(current_item !== '00') { console.log('Invalid script 2'); return { hex_str_list:[] }; }
+            if(current_item !== '00') { close_by_error('INVALID_SCRIPT'); return false; }
 
             // Es wird versucht die Ein / Ausgabe zu entsperrent
             if(emit_vm_functions.unlock_script() !== true) { close_by_error('SCRIPT_UNLOCKING_ERROR'); return false; }
@@ -1096,7 +1129,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         // Wird ausgeführt um einen Wert auf das Skript zu legen
         else if(current_item === op_codes.op_push_to_y) {
             // Es wird versucht die ParrenCube werte auszulesen
-            let push_function_parren = await next_read_parren_cube(copyed_item, script_type);
+            let push_function_parren = await next_read_parren_cube(copyed_item, script_type, true);
             if(push_function_parren === false) throw new Error('Invalid script');
             if(push_function_parren.items < 1) throw new Error('Invalid script');
 

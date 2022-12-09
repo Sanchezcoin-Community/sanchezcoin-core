@@ -37,10 +37,7 @@ PublicKey(curve25519, 384b1332be6666c48dc8b106797b6d6014939df07d6cd8ba369da41552
 PublicKey(bls12381, 86b50179774296419b7e8375118823ddb06940d9a28ea045ab418c7ecbe6da84d416cb55406eec6393db97ac26e38bd4)
 ```
 
-
-# **String / Number types:**
-
-### **HexString:**
+# **HexString:**
 In Conditions Script it is sufficient to write a hex value freestanding, the interpreter automatically recognizes that it is a hex value.
 
 Example:
@@ -48,8 +45,7 @@ Example:
 4b4ce1e31176cbe96603ad7715db977bb5664315fde59866b22295a2e746d95e <- Automatically recognized as a hex string.
 ```
 
-
-### **number:**
+# **Number:**
 A number can be specified directly as a number or as a hex value. The smallest possible value is 0 and the largest possible value is 2^256
 
 Example:
@@ -63,9 +59,6 @@ Example:
 
 ### **hash:**
 Used by the script VM to return a hash value.
-
-### **vmnumber:**
-Used by the script VM to specify a number.
 
 ### **bool:**
 Used by the script VM to return a bool.

@@ -69,6 +69,9 @@ let value_functions = {
     CURRENT_LAST_BLOCK_HASH:[
         op_codes.op_last_block_hash
     ],
+    IS_SIGNERS:[
+        op_codes.eq_signers
+    ],
     GET_TOTAL_SIGNERS:[
         op_codes.op_total_signatures
     ],
