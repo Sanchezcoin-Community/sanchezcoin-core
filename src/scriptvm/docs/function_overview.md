@@ -5,14 +5,14 @@
 # **Emit functions**
 Emit functions are able to push data onto the Y stack. If an Emit function does not return True, the script is aborted at this point.
 
-### **add_verify_key_and_eq_verfiy_signature(pkey) -> emit**
+### **add_verify_key_and_eq_verfiy_signature(pkey) -> emit:**
 - This function adds a public key to the `VerifyerWhiteList`.
 - After the key has been added, it is checked whether the signature of the added key is correct, if not the script is aborted with a false.
 
-#### **Parameters**
+#### **Parameters:**
 - pkey = This is either a public key or an address
 
-#### **Functional Rules**
+#### **Functional Rules:**
 ```
 1) It is checked whether there is already a public key on the VerifyerWhiteList.
     -> There is already a public key on the VerifyWhiteList: The script is aborted
