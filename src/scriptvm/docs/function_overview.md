@@ -21,7 +21,7 @@ Emit functions are able to push data onto the Y stack. If an Emit function does 
     -> The signature is incorrect: the script will be aborted.
 3) The unlock function is executed, the script is valid up to this point and can be used.
 ```
-<br>
+
 
 ### **add_verify_key(pkey) -> emit**
 - This function adds a public key to the `VerifyerWhiteList`.
@@ -35,7 +35,7 @@ Emit functions are able to push data onto the Y stack. If an Emit function does 
 1) It is checked whether there is already a public key on the VerifyerWhiteList.
     -> There is already a public key on the VerifyWhiteList: The script is aborted
 ```
-<br>
+
 
 ### **abort() -> emit**
 - Aborts the script and returns false.
@@ -48,7 +48,6 @@ Emit functions are able to push data onto the Y stack. If an Emit function does 
 1) It is checked whether there is already a public key on the VerifyerWhiteList.
     -> There is already a public key on the VerifyWhiteList: The script is aborted
 ```
-<br>
 
 
 ### **verify_sig() -> emit**
@@ -73,7 +72,6 @@ Emit functions are able to push data onto the Y stack. If an Emit function does 
 ### **exit() -> emit**
 - Exits the script gracefully, no more status changes are made, the script exits as is.
 
-</br>
 
 # **Value functions**
 **Value functions are used to return a specific value, they cannot push values onto the stack.**
