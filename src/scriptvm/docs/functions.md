@@ -106,7 +106,7 @@ Exits the script gracefully, no more status changes are made, the script exits a
 ### **is_a_signer(...items) -> bool:**
 #### **Parameters:**
 - items = Specifies an address or public key used for signing
-> This function indicates whether a list of public keys or addresses was used for signing
+> This function returns a bool that indicates whether a specific list of public keys or addresses was used for signing
 
 
 ### **get_unlocking_script_hash() -> hash:**
