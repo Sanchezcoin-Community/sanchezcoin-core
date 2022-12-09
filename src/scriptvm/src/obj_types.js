@@ -88,6 +88,35 @@ class NullValue extends ValueObject {
 };
 
 
+
+// Nicht verwenden
+
+// Wird verwendet wenn es sich um einen Öffentlichen Schlüssel handelt
+class PublicKeyValue extends ValueObject {
+
+};
+
+// Wird verwendet wenn es sich um eine Altchain Adresse handelt
+class AlternativeBlockchainAddressValue extends ValueObject {
+
+};
+
+// Wird verwendet um zu Signalisieren dass das Skript freigegeben wurde
+class UnlockedScriptValue extends ValueObject {
+
+};
+
+// Wird verwendet um zu Signalisieren dass es sich um eine Signle Signatur handelt
+class SingleSignatureValue extends ValueObject {
+
+};
+
+// Wird verwendet um den Aktuellen Block Cosnensus auszuegeben
+class BlockchainConsensusValue extends ValueObject {
+
+};
+
+
 // Wird verwendet um 2 Objekte miteinander zu vergleichen
 function compare(obj_a, obj_b) {
     if(obj_a.dtypes.includes(obj_b.type) !== true) return false;
@@ -105,5 +134,11 @@ module.exports = {
     NumberValue:NumberValue,
     compareValues:compare,
     HexString:HexString,
-    HashValue:HashValue
+    HashValue:HashValue,
+    PublicKeyValue:PublicKeyValue,
+    UnlockedScriptValue:UnlockedScriptValue,
+    SingleSignatureValue:SingleSignatureValue,
+    BlockchainConsensusValue:BlockchainConsensusValue,
+    AlternativeBlockchainAddressValue:AlternativeBlockchainAddressValue,
+
 }

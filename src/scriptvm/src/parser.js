@@ -1088,7 +1088,7 @@ module.exports = async function(tokens) {
     let script_tokens = await script_token_parser(tokens);
 
     // Es wird ein Hash aus dem Skript erstellt
-    let script_hash = blockchain_crypto.sha3(256, script_tokens.inner);
+    let script_hash = blockchain_crypto.sha3(256, script_tokens.inner.toLowerCase()).toLowerCase();
 
     // Die Daten werden zurückgegeben
     return { hex_script:script_tokens.inner, hash:script_hash };
