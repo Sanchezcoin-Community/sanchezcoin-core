@@ -23,12 +23,33 @@ Emit functions are able to push data onto the Y stack. If an Emit function does 
 ```
 <br>
 
-### **add_verify_key(pkey:PublicKey) -> emit**
+### **add_verify_key(pkey) -> emit**
 - This function adds a public key to the `VerifyerWhiteList`.
 - If a key is already in the `VerifyerWhiteList`, the script is aborted with a false.
 
+#### **Parameters:**
+- pkey = This is either a public key or an address
+
+#### **Functional Rules:**
+```
+1) It is checked whether there is already a public key on the VerifyerWhiteList.
+    -> There is already a public key on the VerifyWhiteList: The script is aborted
+```
+<br>
+
 ### **abort() -> emit**
 - Aborts the script and returns false.
+
+#### **Parameters:**
+- **This function has no parameters**
+
+#### **Functional Rules:**
+```
+1) It is checked whether there is already a public key on the VerifyerWhiteList.
+    -> There is already a public key on the VerifyWhiteList: The script is aborted
+```
+<br>
+
 
 ### **verify_sig() -> emit**
 - This function verifies the signatures.
