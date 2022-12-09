@@ -27,7 +27,7 @@ exit();
 
 
 ### Console result:
-```json
+```JavaScript
 {
     pkeys: [
     {
