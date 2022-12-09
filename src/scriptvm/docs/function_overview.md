@@ -1,93 +1,106 @@
-# General
+# **General**
 **<font color="red">It should be noted that if an error occurs, the script will be marked as faulty and aborted. This applies to emit as well as value functions.</font>**
 <br>
-<br>
 
-# Emit functions
+# **Emit functions**
 Emit functions are able to push data onto the Y stack. If an Emit function does not return True, the script is aborted at this point.
 
-### add_verify_key_and_eq_verfiy_signature(pkey:PublicKey) -> emit
+### **add_verify_key_and_eq_verfiy_signature(pkey) -> emit**
 - This function adds a public key to the `VerifyerWhiteList`.
 - After the key has been added, it is checked whether the signature of the added key is correct, if not the script is aborted with a false.
 
-### add_verify_key(pkey:PublicKey) -> emit
+#### **Parameters**
+- pkey = This is either a public key or an address
+
+#### **Functional Rules**
+```
+1) It is checked whether there is already a public key on the VerifyerWhiteList.
+    -> There is already a public key on the VerifyWhiteList: The script is aborted
+2) It is checked whether there is a suitable signature for the public key used.
+    -> There is no matching signature: The script will be aborted
+    -> The signature is incorrect: the script will be aborted.
+3) The unlock function is executed, the script is valid up to this point and can be used.
+```
+<br>
+
+### **add_verify_key(pkey:PublicKey) -> emit**
 - This function adds a public key to the `VerifyerWhiteList`.
 - If a key is already in the `VerifyerWhiteList`, the script is aborted with a false.
 
-### abort() -> emit
+### **abort() -> emit**
 - Aborts the script and returns false.
 
-### verify_sig() -> emit
+### **verify_sig() -> emit**
 - This function verifies the signatures.
 - If one of the signatures is not valid, the process is aborted.
 
-### block_nft() -> emit
+### **block_nft() -> emit**
 - This function prevents the transmission of NFTs.
 - If this function is called, the script will be marked as invalid as soon as an attempt is made to transfer an NFT.
 
-### push_to_y(item:Any) -> emit
+### **push_to_y(item:Any) -> emit**
 - This function adds an arbitrary value to the stack.
 
-### set_n_of_m() -> emit
+### **set_n_of_m() -> emit**
 - Determines how many signatures are required at least to unlock this script.
 - If less than 1 signature or more than signatures are used, the script is marked as invalid and aborted.
 
-### unlock() -> emit
+### **unlock() -> emit**
 - Signals that this is a valid script and the output may be used.
 - If an error occurs in the script after calling this function, this script is marked as invalid and aborted.
 
-### exit() -> emit
+### **exit() -> emit**
 - Exits the script gracefully, no more status changes are made, the script exits as is.
 
 </br>
 
-# Value functions
-- Value functions are used to return a specific value, they cannot push values onto the stack.
+# **Value functions**
+**Value functions are used to return a specific value, they cannot push values onto the stack.**
 
 
-### get_unlocking_script_hash() -> hash
+### **get_unlocking_script_hash() -> hash**
 - This function returns the hash of the unlocking script.
 
 
-### get_locking_script_hash() -> hash
+### **get_locking_script_hash() -> hash**
 - This function returns the hash of the locking script.
 
 
-### get_last_block_hash() -> hash
+### **get_last_block_hash() -> hash**
 - Returns the hash of the last block.
 
 
-### get_current_block_hight() -> uint256
+### **get_current_block_hight() -> uint256**
 - Returns the current block height.
 
 
-### get_current_block_diff() -> uint256
+### **get_current_block_diff() -> uint256**
 - Returns the current block difficulty.
 
 
-### verify_spfc_sig(signer:PublicKey, sig:Digest message:Digest) -> bool
+### **verify_spfc_sig(signer:PublicKey, sig:Digest message:Digest) -> bool**
 - This function checks if a special signature is valid and returns a boolean.
 
 
-### get_total_signers() -> int
+### **get_total_signers() -> int**
 - This function returns the total number of all signatures.
 
 
-### use_one_signer() -> bool
+### **use_one_signer() -> bool**
 - This function returns a boolean that indicates whether there is exactly 1 signature.
 
 
-### swiftyH(...items) -> hash
+### **swiftyH(...items) -> hash**
 - Generates a swifty hash from the given parameters.
 
 
-### pop_from_y(...items) -> hash
+### **pop_from_y(...items) -> hash**
 - Removes the first value from Y stack and returns that value.
 
 
-### sha256d(...items) -> hash
+### **sha256d(...items) -> hash**
 - Generates and returns a duplicate SHA256 hash.
 
 
-### sha3(...items) -> hash
+### **sha3(...items) -> hash**
 - Generates and returns a SHA3-256 hash.
