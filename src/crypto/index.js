@@ -252,6 +252,12 @@ const generateBip39MnemonicF = (wordlist=undefined) => bip39.generateMnemonic(25
 // Wird verwendet um aus einem Bip32 Mnemonic einen Seed zu erstellen
 const getSeedFromBip39MnemonicF = (bip_39_mnemonic) => bip39.mnemonicToSeedSync(bip_39_mnemonic).toString('hex');
 
+// Wird verwendet um eine Ethereum Basierende Signatur zu überprüfen
+
+// Wird verwendet um eine Bitcoin Basierende Signatur zu überprüfen
+
+
+
 
 // Die Funktionen werden Exportiert
 module.exports = {

@@ -20,7 +20,7 @@ module.exports = {
     chain_state_value:                      (36).toString(16).padStart(2, '0'),
     op_code_hex_value:                      (35).toString(16).padStart(2, '0'),
     op_add_pk_sverify:                      (34).toString(16).padStart(2, '0'),
-    op_dogge_address:                       (33).toString(16).padStart(2, '0'),
+    //op_dogge_address:                       (33).toString(16).padStart(2, '0'),
     op_is_one_signer:                       (32).toString(16).padStart(2, '0'),
     parren_fnc_cube:                        (31).toString(16).padStart(2, '0'),
     op_script_abort:                        (30).toString(16).padStart(2, '0'),

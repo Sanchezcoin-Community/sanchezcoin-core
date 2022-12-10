@@ -6,15 +6,17 @@ const lexer = require('./lexer');
 
 // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
 let locking_script = `
-if(is_a_signer(EthAddress(0xac27b3da732a8753192ba3f9f90195c5922e7d0a)) == true) {
-    verify_sig();
+if(get_unlocking_script_hash() == f5e5af6809424c135ec2c971d3cdcd566c716d4abd508267e11d7285dd1a5a21) {
+    unlock();
     exit();
 }
 `
 
 // Wird verwendet um eine Ausgabe zu Entsperren und nachzuweisen dass man die Benötigen Bediungen erfüllt
 let unlocking_script = `
-add_verify_key(EthAddress(0xac27b3da732a8753192ba3f9f90195c5922e7d0a));
+add_verify_key( PublicKey(secp256k1, 384b1332be6666c48dc8b106797b6d6014939df07d6cd8ba369da415520ba3a2) );
+add_verify_key( PublicKey(bls12381, 86b50179774296419b7e8375118823ddb06940d9a28ea045ab418c7ecbe6da84d416cb55406eec6393db97ac26e38bd4) );
+set_n_of_m(1);
 verify_sig();
 exit();
 `
@@ -22,10 +24,15 @@ exit();
 // Speichert die Verfügbaren Signaturen ab
 let avail_sigs = [
     {
-        type: 'ethadr',
-        pkey: '0xac27b3da732a8753192ba3f9f90195c5922e7d0a'
+        type: 'secp256k1',
+        pkey: '384b1332be6666c48dc8b106797b6d6014939df07d6cd8ba369da415520ba3a2'
     },
+    {
+        type: 'bls12381',
+        pkey: '86b50179774296419b7e8375118823ddb06940d9a28ea045ab418c7ecbe6da84d416cb55406eec6393db97ac26e38bd4'
+    }
 ];
+
 
 // Das Skript wird Gelext
 lexer(unlocking_script).then(async (script) => {

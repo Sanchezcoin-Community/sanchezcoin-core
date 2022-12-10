@@ -35,8 +35,8 @@ exit();
     }
     ],
     hashes: {
-    unlock_script: '8e3b954c4d417d93409c9eb5f5679ef63cd07012ed6b8fa7f2d1b6364dab52ae',
-    locking_script: '766dd16aacc6584ddf9a758182c1531cac15c72372d422665710a1f23201a108'
+        unlock_script: '8e3b954c4d417d93409c9eb5f5679ef63cd07012ed6b8fa7f2d1b6364dab52ae',
+        locking_script: '766dd16aacc6584ddf9a758182c1531cac15c72372d422665710a1f23201a108'
     },
     unlocking_script_result: true,
     locking_script_result: true,

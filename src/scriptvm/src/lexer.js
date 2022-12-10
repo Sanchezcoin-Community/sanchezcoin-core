@@ -12,7 +12,6 @@ let key_words = {
     "curve25519":{ type:"CRYPTO_ALGORITHM", name:"CURVE25519_CRYPTO_ALGORITHM" },
     "secp256k1":{ type:"CRYPTO_ALGORITHM", name:"SECP256K1_CRYPTO_ALGORITHM" },
     "bls12381":{ type:"CRYPTO_ALGORITHM", name:"BLS12381_CRYPTO_ALGORITHM" },
-    "DogeAddress": { type:"ADDRESS", name:"DOGE_ADDRESS" },
     "PublicKey":{ type:"PUBLIC_KEY", name:"PUBLIC_KEY" },
     "BtcAddress":{ type:"ADDRESS", name:"BTC_ADDRESS" },
     "EthAddress":{ type:"ADDRESS", name:"ETH_ADDRESS" },

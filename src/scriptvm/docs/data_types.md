@@ -26,9 +26,9 @@ EthAddress(0x165cd37b4c644c2921454429e7f9358d18a45e14)
 Use a public secp256k1 Schnorr key within the conditions script.
 
 #### **Types**:
-- bls12381
-- secp256k1
-- curve25519
+- bls12-381
+- secp256k1 Schnorr (bip340)
+- ristretto255 Schnorr (curve25519)
 
 Examples:
 ```JavaScript

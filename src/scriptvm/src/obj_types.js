@@ -89,11 +89,22 @@ class NullValue extends ValueObject {
 
 
 
-// Nicht verwenden
-
 // Wird verwendet wenn es sich um einen Öffentlichen Schlüssel handelt
-class PublicKeyValue extends ValueObject {
+class PublicKeyValue extends HexString {
+    constructor(value, algo, is_vm_value=false) {
+        // Es wird geprüft ob es sich um einen Zulässigen Algo handelt
+        if(algo !== 'curve25519' && algo !== 'bls12381' && algo !== 'secp256k1') throw new Error('INVALID_HASH_ALGO');
 
+        // Der Hash Algo wird abgespeichert
+        this.algo = algo;
+
+        // Das Mutter Objekt wird erzeugt
+        super(value, is_vm_value);
+
+        // Der Type wird angepasst
+        this.type = 'pkey';
+        this.dtypes.push('pkey');
+    }
 };
 
 // Wird verwendet wenn es sich um eine Altchain Adresse handelt

@@ -4,7 +4,7 @@
 # **Emit functions**
 Emit functions are able to push data onto the Y stack. If an Emit function does not return True, the script is aborted at this point.
 
-### **add_verify_key_and_eq_verfiy_signature(pkey) -> emit:**
+### **add_verify_key_and_eq_verfiy_signature(pkey) -> Emit:**
 This function adds a public key to the `VerifyerWhiteList`.<br>
 After the key has been added, it is checked whether the signature of the added key is correct, if not the script is aborted with a false.
 #### **Parameters:**
@@ -20,7 +20,7 @@ After the key has been added, it is checked whether the signature of the added k
 ```
 
 
-### **add_verify_key(pkey) -> emit:**
+### **add_verify_key(pkey) -> Emit:**
 This function adds a public key to the `VerifyerWhiteList`.<br>
 If the key is already in the VerifyWhiteList, the script terminates with false.
 #### **Parameters:**
@@ -32,13 +32,13 @@ If the key is already in the VerifyWhiteList, the script terminates with false.
 ```
 
 
-### **abort() -> emit:**
+### **abort() -> Emit:**
 - Aborts the script and returns false.
 #### **Parameters:**
 - **This function has no parameters**
 
 
-### **verify_sig() -> emit:**
+### **verify_sig() -> Emit:**
 This function verifies the signatures.<br>
 If one of the signatures is not valid, the process is aborted.
 #### **Parameters:**
@@ -52,7 +52,7 @@ If one of the signatures is not valid, the process is aborted.
 ```
 
 
-### **block_nft() -> emit:**
+### **block_nft() -> Emit:**
 This function prevents the transmission of NFTs.<br>
 If this function is called, the script will be marked as invalid as soon as an attempt is made to transfer an NFT.
 #### **Parameters:**
@@ -64,13 +64,13 @@ If this function is called, the script will be marked as invalid as soon as an a
 ```
 
 
-### **push_to_y(item) -> emit:**
+### **push_to_y(item) -> Emit:**
 This function adds an arbitrary value to the stack.
 #### **Parameters:**
 - item = Specifies a legal object to be pushed onto the Y stack
 
 
-### **set_n_of_m(int_value) -> emit:**
+### **set_n_of_m(int_value) -> Emit:**
 Determines how many signatures are required at least to unlock this script.<br>
 If less than 1 signature or more than 16 signatures are used, the script is marked invalid and aborted.
 #### **Parameters:**
@@ -81,7 +81,7 @@ If less than 1 signature or more than 16 signatures are used, the script is mark
     -> The specified number does not meet the required conditions: The script is marked as invalid and aborted.
 ```
 
-### **unlock() -> emit:**
+### **unlock() -> Emit:**
 Signals that this is a valid script and the output may be used.<br>
 If an error occurs in the script after calling this function, this script is marked as invalid and aborted.
 #### **Parameters:**
@@ -92,7 +92,7 @@ If an error occurs in the script after calling this function, this script is mar
     -> StateUnlocked is already set to true: The script is marked as faulty and aborted.
 ```
 
-### **exit() -> emit:**
+### **exit() -> Emit:**
 Exits the script gracefully, no more status changes are made, the script exits as is.
 #### **Parameters:**
 - **This function has no parameters**
@@ -103,21 +103,21 @@ Exits the script gracefully, no more status changes are made, the script exits a
 **Value functions are used to return a specific value, they cannot push values onto the stack.**
 
 
-### **is_a_signer(...items) -> bool:**
+### **is_a_signer(...items) -> Boolean:**
 #### **Parameters:**
 - items = Specifies an address or public key used for signing
 > This function returns a bool that indicates whether a specific list of public keys or addresses was used for signing
 
 
-### **get_unlocking_script_hash() -> hash:**
+### **get_unlocking_script_hash() -> Hash:**
 > This function returns the hash of the unlocking script.
 
 
-### **get_locking_script_hash() -> hash:**
+### **get_locking_script_hash() -> Hash:**
 > This function returns the hash of the locking script.
 
 
-### **get_last_block_hash() -> hash:**
+### **get_last_block_hash() -> Hash:**
 > Returns the hash of the last block.
 
 
@@ -129,7 +129,7 @@ Exits the script gracefully, no more status changes are made, the script exits a
 > Returns the current block difficulty.
 
 
-### **verify_spfc_sig(signer_pkey, sig, message) -> bool:**
+### **verify_spfc_sig(signer_pkey, sig, message) -> Boolean:**
 #### **Parameters:**
 - signer_pkey = Specifies the public key / address to use to verify that the signature is correct.
 - message = Specifies the message that was signed.
@@ -141,29 +141,29 @@ Exits the script gracefully, no more status changes are made, the script exits a
 > This function returns the total number of all signatures.
 
 
-### **use_one_signer() -> bool:**
+### **use_one_signer() -> Boolean:**
 > This function returns a boolean that indicates whether there is exactly 1 signature.
 
 
-### **swiftyH(...items) -> hash:**
+### **swiftyH(...items) -> Hash:**
 #### **Parameters:**
 - items = Specifies the data used to be hashed.
 > Generates a swifty hash from the given parameters.
 
 
-### **pop_from_y(...items) -> hash:**
+### **pop_from_y(...items) -> Hash:**
 #### **Parameters:**
 - items = Specifies the data used to be hashed.
 > Removes the first value from Y stack and returns that value.
 
 
-### **sha256d(...items) -> hash:**
+### **sha256d(...items) -> Hash:**
 #### **Parameters:**
 - items = Specifies the data used to be hashed.
 > Generates and returns a duplicate SHA256 hash.
 
 
-### **sha3(...items) -> hash:**
+### **sha3(...items) -> Hash:**
 #### **Parameters:**
 - items = Specifies the data used to be hashed.
 > Generates and returns a SHA3-256 hash.
