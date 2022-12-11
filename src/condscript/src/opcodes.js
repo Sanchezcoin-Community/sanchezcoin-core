@@ -1,8 +1,7 @@
 module.exports = {
-    op_unlock_scriptsig_pubkey:             (50).toString(16).padStart(2, '0'),
-    op_public_key_defination:               (49).toString(16).padStart(2, '0'),
-    op_current_block_hight:                 (48).toString(16).padStart(2, '0'),
-    op_block_nft_transfer:                  (47).toString(16).padStart(2, '0'),
+    op_unlock_scriptsig_pubkey:             (49).toString(16).padStart(2, '0'),
+    op_public_key_defination:               (48).toString(16).padStart(2, '0'),
+    op_current_block_hight:                 (47).toString(16).padStart(2, '0'),
     op_unlock_script_hash:                  (46).toString(16).padStart(2, '0'),
     op_address_defination:                  (45).toString(16).padStart(2, '0'),
     op_current_block_diff:                  (44).toString(16).padStart(2, '0'),

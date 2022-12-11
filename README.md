@@ -27,9 +27,6 @@ Condition script is a simple script used to lock or unlock transactions. [Read m
 ## swiftyHash256 🧩
 swiftHash256 Uses SHA3, Keccak and AES-256-CBC to guarantee initial ASIC resistance.
 
-## Nft support 👻
-Sanchezcoin contains a simple universal NFT standard, there are no mandatory NFT data fields or values. Any JSON value can be used as an NFT.
-
 ## Cryptographic methods 🔐
 In addition to ed25519, the Ricocin Blockchain also supports secp256k1. A MultiSig address can thus be used from several different cryptographic methods.
 

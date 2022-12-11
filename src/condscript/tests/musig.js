@@ -7,7 +7,7 @@ const lexer = require('../src/lexer');
 
 // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
 let locking_script = `
-if(get_unlocking_script_hash() == d76789692b0f9a6a60ff0c89a183feb747255882a3318c5443a0bfed1e1a1842) {
+if(get_unlocking_script_hash() == 500dffbfa038298f8b4ee0d88b65f22c77dad395cfd08da2cf7084bdda026de6) {
     unlock();
     exit();
 }

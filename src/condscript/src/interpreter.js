@@ -59,16 +59,6 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     // Es wird geprüft ob Mindestes eine Signatur und nicht mehr als 16 Signaturen vorhanden sind
     if(script_sigs.length < 1 || script_sigs.length > 16) throw new Error('Invalid script sigs length');
 
-    // Es wird geprüft ob die Einträge auf dem Script Sigs Array korrekt ist
-    for(let sig_item of script_sigs) {
-        // Es wird geprüft ob es sich um ein Zulässiges Objekt handelt
-        if(typeof sig_item !== 'object') throw new Error('Invalid script sig item');
-        if(sig_item.constructor.name !== 'SingleSignatureValue') throw new Error('Invalid script sig object type');
-
-        // Führt eine Schnellprüfung durch
-        if(sig_item.quickCheck() === false) throw new Error('Invalid signature for this script');
-    }
-
     // Es wird ein Hash aus dem Eingabe, sowie ausgabe Skript erstellt
     let unlocking_script_hash = blockchain_crypto.sha3(256, unlocking_script.toLowerCase());
     let locking_script_hash = blockchain_crypto.sha3(256, locking_script.toLowerCase());
@@ -81,6 +71,16 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
     // Es wird ein Number Objekt aus der Aktuellen Schwierigkeit erzeugt
     let current_block_diff = new NumberValue(0n, true);
+
+    // Es wird geprüft ob die Einträge auf dem Script Sigs Array korrekt ist
+    for(let sig_item of script_sigs) {
+        // Es wird geprüft ob es sich um ein Zulässiges Objekt handelt
+        if(typeof sig_item !== 'object') throw new Error('Invalid script sig item');
+        if(sig_item.constructor.name !== 'SingleSignatureValue') throw new Error('Invalid script sig object type');
+
+        // Führt eine Schnellprüfung durch
+        if(sig_item.quickCheck() === false) throw new Error('Invalid signature for this script');
+    }
 
     // Speichert alle PublicKeys ab, welche berechtigt sind mittels Signatur die Skripte zu überprüfen
     let allowed_public_key_array = [];
