@@ -1,0 +1,27 @@
+```
+--- UNLOCKING_SCRIPT_DEBUG_START ---
+emit_call add_verify_key
+public_key_reading
+secp256k1_schnorr_32_byte_public_key_readed 384b1332be6666c48dc8b106797b6d6014939df07d6cd8ba369da415520ba3a2
+script_adding_public_key 384b1332be6666c48dc8b106797b6d6014939df07d6cd8ba369da415520ba3a2
+emit_call add_verify_key
+public_key_reading
+bls12_381_public_key_readed 86b50179774296419b7e8375118823ddb06940d9a28ea045ab418c7ecbe6da84d416cb55406eec6393db97ac26e38bd4
+script_adding_public_key 86b50179774296419b7e8375118823ddb06940d9a28ea045ab418c7ecbe6da84d416cb55406eec6393db97ac26e38bd4
+emit_call set_needed_sigs
+emit_call check_sig
+script_signaling unlocked
+emit_call exit_script
+--- UNLOCKING_SCRIPT_DEBUG_END ---
+```
+
+```
+--- LOCKING_SCRIPT_DEBUG_START ---
+value_function unlock_script_hash a341996de24031e74e9b77b5690523d31fdadc80465f7cb2e61d16835422fa1d
+operation if_compate true a341996de24031e74e9b77b5690523d31fdadc80465f7cb2e61d16835422fa1d a341996de24031e74e9b77b5690523d31fdadc80465f7cb2e61d16835422fa1d
+emit_call unlock
+script_signaling unlocked
+emit_call exit_script
+--- LOCKING_SCRIPT_DEBUG_END ---
+```
+

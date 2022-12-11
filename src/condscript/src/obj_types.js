@@ -7,13 +7,6 @@ class ValueObject {
     }
 };
 
-// Wird verwendet um Wert die die Blockchain zurückgibt zu verwenden
-class ChainStateValue extends ValueObject {
-    constructor(value) {
-        super(value, "cst", ['cst', 'hxstr', 'num', 'bool', 'hashv']);
-    }
-}
-
 // Dieses Objekt wird verwendet um Hexwerte abzuspeicherrn
 class HexString extends ValueObject {
     constructor(value, is_vm_value=false) {
@@ -27,7 +20,7 @@ class HexString extends ValueObject {
         if(value.length > 256) throw new Error('TO_BIG_HEX_VALUE');
 
         // Das Mutterobjekt wird gebaut
-        super(value, "hxstr", ['cst', 'hxstr', 'num', 'hashv'], is_vm_value);
+        super(value, "hxstr", ['cst', 'hxstr', 'num', 'hash'], is_vm_value);
     }
 };
 
@@ -44,7 +37,7 @@ class NumberValue extends ValueObject {
         if(value < BigInt(0)) throw new Error('INVALID_NUMBER_VALUE');
 
         // Das Mutter Objekt wird erstellt
-        super(value, "num", ['cst', 'hxstr', 'num', 'bool', 'hashv'], is_vm_value);
+        super(value, "num", ['cst', 'hxstr', 'num', 'bool'], is_vm_value);
     }
 };
 
@@ -58,7 +51,7 @@ class BoolValue extends ValueObject {
         if(typeof value !== 'boolean') throw new Error('INVALID_NUMBER_VALUE');
 
         // Das Mutter Objekt wird erstellt
-        super(value, "bool", ['cst', 'hxstr', 'num', 'bool', 'hashv'], is_vm_value);
+        super(value, "bool", ['cst', 'hxstr', 'num', 'bool'], is_vm_value);
     }
 };
 
@@ -68,11 +61,11 @@ class HashValue extends HexString {
         // Es wird geprüft ob es sich um einen Zulässigen Algo handelt
         if(algo !== 'sha256d' && algo !== 'sha3_256' && algo !== 'swiftyh_256') throw new Error('INVALID_HASH_ALGO');
 
-        // Der Hash Algo wird abgespeichert
-        this.algo = algo;
-
         // Das Mutter Objekt wird erzeugt
         super(value, is_vm_value);
+
+        // Der Hash Algo wird abgespeichert
+        this.algo = algo;
 
         // Der Type wird angepasst
         this.type = 'hash';
@@ -87,43 +80,71 @@ class NullValue extends ValueObject {
     }
 };
 
-
-
 // Wird verwendet wenn es sich um einen Öffentlichen Schlüssel handelt
 class PublicKeyValue extends HexString {
     constructor(value, algo, is_vm_value=false) {
         // Es wird geprüft ob es sich um einen Zulässigen Algo handelt
-        if(algo !== 'curve25519' && algo !== 'bls12381' && algo !== 'secp256k1') throw new Error('INVALID_HASH_ALGO');
+        if(algo !== 'curve25519' && algo !== 'bls12381' && algo !== 'secp256k1') throw new Error('INVLAID_PUBLIC_KEY_VALUE');
+
+        // Das Mutter Objekt wird erzeugt
+        super(value, is_vm_value);
 
         // Der Hash Algo wird abgespeichert
         this.algo = algo;
 
-        // Das Mutter Objekt wird erzeugt
-        super(value, is_vm_value);
+        // Gibt an ob mit diesem Schlüssel eine Signatur geprüft wurde
+        this.was_used_sig_check = false;
 
         // Der Type wird angepasst
         this.type = 'pkey';
         this.dtypes.push('pkey');
     }
+
+    markAsUsed() {
+        this.was_used_sig_check = true;
+    }
 };
 
 // Wird verwendet wenn es sich um eine Altchain Adresse handelt
 class AlternativeBlockchainAddressValue extends ValueObject {
+    constructor(value, algo, is_vm_value=false) {
+        // Es wird geprüft ob es sich um einen Zulässigen Algo handelt
+        if(algo !== 'ethadr' && algo !== 'btcadr') throw new Error('UNKOWN_ADDRESS_TYPE');
 
-};
+        // Das Mutter Objekt wird erzeugt
+        super(value, "addr", ['cst', 'hxstr', 'num', 'addr'], is_vm_value);
 
-// Wird verwendet um zu Signalisieren dass das Skript freigegeben wurde
-class UnlockedScriptValue extends ValueObject {
+        // Gibt an ob mit diesem Schlüssel eine Signatur geprüft wurde
+        this.was_used_sig_check = false;
 
+        // Der Hash Algo wird abgespeichert
+        this.algo = algo;
+    }
+
+    markAsUsed() {
+        this.was_used_sig_check = true;
+    }
 };
 
 // Wird verwendet um zu Signalisieren dass es sich um eine Signle Signatur handelt
-class SingleSignatureValue extends ValueObject {
+class SingleSignatureValue {
+    constructor(pubkey, algo, sig) {
+        this.value = pubkey;
+        this.type = algo;
+        this.sig = sig;
+    }
 
+    async fullSignatureCheck() {
+        return true;
+    }
+
+    quickCheck() {
+        return true;
+    }
 };
 
-// Wird verwendet um den Aktuellen Block Cosnensus auszuegeben
-class BlockchainConsensusValue extends ValueObject {
+// Wird verwender um Extrem Erweiterte Bedingunden an die Transaktion anzuhängen
+class CommitmentValue {
 
 };
 
@@ -134,12 +155,9 @@ function compare(obj_a, obj_b) {
     return obj_a.value === obj_b.value;
 };
 
-// Wird verwendet um zu Überprüfen ob 2 Objekte nicht Identisch sind
-
 
 // Exportiert die Klassen
 module.exports = {
-    ChainStateValue:ChainStateValue,
     BoolValue:BoolValue,
     NullValue:NullValue,
     NumberValue:NumberValue,
@@ -147,9 +165,7 @@ module.exports = {
     HexString:HexString,
     HashValue:HashValue,
     PublicKeyValue:PublicKeyValue,
-    UnlockedScriptValue:UnlockedScriptValue,
     SingleSignatureValue:SingleSignatureValue,
-    BlockchainConsensusValue:BlockchainConsensusValue,
     AlternativeBlockchainAddressValue:AlternativeBlockchainAddressValue,
 
 }

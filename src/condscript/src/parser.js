@@ -9,10 +9,7 @@ let chain_state_commands = {
     unlocking_script_hash:[op_codes.op_unlock_script_hash],
     locking_script_hash:[op_codes.op_lock_script_hash],
     current_b_hight:[op_codes.op_current_block_hight],
-    current_b_consensus:[op_codes.op_current_block_consens],
-    next_b_consensus:[op_codes.op_next_block_consens],
-    current_pow_diff:[op_codes.op_current_pow_diff],
-    current_posm_diff:[op_codes.op_current_posm_diff],
+    current_diff:[op_codes.op_current_block_diff],
     last_block_hash:[op_codes.op_last_block_hash],
     unlock_script_sig:[op_codes.op_unlock_scriptsig_pubkey],
     total_signatures:[op_codes.op_total_signatures]
@@ -63,8 +60,8 @@ let value_functions = {
     CURRENT_BLOCK_HIGHT:[
         op_codes.op_current_block_hight
     ],
-    CURRENT_POW_DIFF:[
-        op_codes.op_current_pow_diff
+    CURRENT_DIFF:[
+        op_codes.op_current_block_diff
     ],
     CURRENT_LAST_BLOCK_HASH:[
         op_codes.op_last_block_hash
