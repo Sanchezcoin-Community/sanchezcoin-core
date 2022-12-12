@@ -67,7 +67,7 @@ let value_functions = {
         op_codes.op_last_block_hash
     ],
     IS_SIGNERS:[
-        op_codes.eq_signers
+        op_codes.op_eq_signers
     ],
     GET_TOTAL_SIGNERS:[
         op_codes.op_total_signatures
@@ -76,16 +76,16 @@ let value_functions = {
         op_codes.op_is_one_signer
     ],
     HASH_SHA256D:[
-        op_codes.sha256d
+        op_codes.op_sha256d
     ],
     HASH_SWIFTYH_256:[
-        op_codes.swiftyH
+        op_codes.op_swifty_h
     ],
     SHA3_256:[
-        op_codes.sha3
+        op_codes.op_sha3
     ],
     POP_FROM_Y:[
-        op_codes.pop_from_y
+        op_codes.op_pop_from_y
     ]
 };
 
@@ -219,10 +219,10 @@ async function is_next_a_bool(tokens) {
 
     // Der Type des Bools wird ermittelt
     if(last_t_obj.name === 'TRUE') {
-        return { tokens:temp_token_lst, inner:op_codes.true };
+        return { tokens:temp_token_lst, inner:op_codes.op_true };
     }
     else if(last_t_obj.name === 'FALSE') {
-        return { tokens:temp_token_lst, inner:op_codes.false };
+        return { tokens:temp_token_lst, inner:op_codes.op_false };
     }
     else {
         throw new Error('Invalid script');
@@ -266,15 +266,15 @@ async function is_pkey_declaration(tokens) {
     // Es wird geprüft ob die Länge des Verwendeten Schlüssels korrekt ist
     if(algo_last.name === 'CURVE25519_CRYPTO_ALGORITHM') {
         if(hexed_value.length !== 64) throw new Error('Invalid public key');
-        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.curve25519, hexed_value].join('').toLowerCase() };
+        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.op_curve25519, hexed_value].join('').toLowerCase() };
     }
     else if(algo_last.name === 'SECP256K1_CRYPTO_ALGORITHM') {
         if(hexed_value.length !== 64) throw new Error('Invalid public key');
-        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.secp256k1_schnorr, hexed_value].join('').toLowerCase() };
+        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.op_secp256k1_schnorr, hexed_value].join('').toLowerCase() };
     }
     else if(algo_last.name === 'BLS12381_CRYPTO_ALGORITHM') {
         if(hexed_value.length !== 96) throw new Error('Invalid public key');
-        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.bls12381, hexed_value].join('').toLowerCase() };
+        return { tokens:temp_token_lst, inner:[op_codes.op_public_key_defination, op_codes.op_bls12381, hexed_value].join('').toLowerCase() };
     }
     else {
         console.log(last_t_obj)
@@ -350,7 +350,7 @@ async function is_chain_state_value(tokens) {
     if(op_code_retrive === false) throw new Error('Op code not found');
 
     // Die Daten werden zurückgegeben
-    return { tokens:temp_token_lst, inner:[op_codes.chain_state_value, op_code_retrive] };;
+    return { tokens:temp_token_lst, inner:[op_codes.op_chain_state_value, op_code_retrive] };;
 };
 
 // Extrahiert einen Mathematischen Parrent
@@ -643,7 +643,7 @@ async function is_parrent_cube(tokens, function_type=value_io_function_types.EMI
         let current_parm_total = ((parsed_hex_value.join('').length > 0) ? parsed_hex_value.join('') : '');
 
         // Der Finale Hex String wird erstellt
-        let final_hex_string = [op_codes.parren_fnc_cube, hex_total_value_len, current_parm_total].join('');
+        let final_hex_string = [op_codes.op_parren_fnc_cube, hex_total_value_len, current_parm_total].join('');
 
         // Die Daten werden zurückgegeben
         return { tokens:temp_token_lst, inner:final_hex_string };
@@ -916,7 +916,7 @@ async function is_emit_function_call(tokens, parrn_inner=false) {
     }
 
     // Die Restlichen Tokens werden zurückgeben
-    return { tokens:temp_lst, inner:[op_codes.op_is_emit, r_op_code, parrent_cube.inner].join('') };
+    return { tokens:temp_lst, inner:[op_codes.op_emit_function, r_op_code, parrent_cube.inner].join('') };
 };
 
 // Gibt an ob als nächstes ein Codeblock kommt

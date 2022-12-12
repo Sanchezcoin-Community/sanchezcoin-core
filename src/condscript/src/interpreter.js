@@ -24,6 +24,11 @@ const DEFAULT_STATES = {
     exit:false                                  // <- Das Skript wird Odnungsgemäß beendet
 };
 
+// Wird verwendet um ein Objekt zu Klonen
+function clone_object(orig_obj) {
+    return { ...orig_obj };
+};
+
 // Wird verwendet um zu überprüfen ob es sich um einen gültigen Hexstring handelt
 function is_validate_hex_str(hex_str) {
     try { let a = Buffer.from(hex_str, 'hex').toString('hex'); return hex_str.toLowerCase() === a.toLowerCase(); }
@@ -82,6 +87,9 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         if(sig_item.quickCheck() === false) throw new Error('Invalid signature for this script');
     }
 
+    // Speichert spizielle Zustände des Aktuellen Skriptes ab
+    let states = { ...DEFAULT_STATES };
+
     // Speichert alle PublicKeys ab, welche berechtigt sind mittels Signatur die Skripte zu überprüfen
     let allowed_public_key_array = [];
 
@@ -91,11 +99,34 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     // Speichert alle PublicKeys und die Signaturen ab, welche verwendet wurden um die beiden Skripte zu überprüfen
     let used_signatures = [];
 
+    // Gibt an, gegen wieiviele Regeln verstoßen wurde
+    let rule_cheatings = 0;
+
     // Speichert das Aktuelle Data Stack ab
     let y_stack_array = [];
 
-    // Speichert spizielle Zustände des Aktuellen Skriptes ab
-    let states = { ...DEFAULT_STATES };
+    // Stellt die einzelnen EMIT Funktionen bereit welche dann aufgerufen werden vom Skript
+    const emit_vm_functions = {
+        // Fügt einen Öffentlichen Schlüssel oder eine Adresse zur VerifyerWhiteList hinzu
+        add_verify_key: async(pkey_obj) => {
+            print('script_adding_public_key', pkey_obj.value)
+            allowed_public_key_array.push(pkey_obj);
+            return true;
+        },
+        // Makiert das aktulelle Skript als Entsperrt
+        unlock_script: () => {
+            if(states.unlocked === true) return false;
+            y_stack_array.push(SIG_CHECK_TRUE);
+            states.unlocked = true;
+            print('script_signaling', 'unlocked');
+            return true;
+        }
+    };
+
+    // Wird verwendet um einen neuen Vorgang vorzubereiten
+    function new_reset_values() {
+        return { ...DEFAULT_STATES };
+    };
 
     // Wird ausgeführt wenn das Skript aufgrund eines Fehlers abgebrochen werden soll
     function close_by_error(exception_text) {
@@ -129,6 +160,11 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
                 break;
             }
         }
+    };
+
+    /* Magic scissors */
+    async function magic_scissors(item_stack, script_type) {
+
     };
 
     // Wird verwendet um zu überprüfen ob es sich um einen zulässigen Öffentlichen Schlüssel handelt
@@ -288,7 +324,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         let script_stack_entry = copyed_item.shift();
 
         // Es wird geprüft, um was für einen ChainState wert es sich handelt
-        if(script_stack_entry !== op_codes.chain_state_value) return false;
+        if(script_stack_entry !== op_codes.op_chain_state_value) return false;
 
         // Gibt den Hash des Unlock Scripts aus
         script_stack_entry = copyed_item.shift();
@@ -380,7 +416,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
         let extracted_item = copyed_item.shift();
-        if(extracted_item !== op_codes.parren_fnc_cube) return false;
+        if(extracted_item !== op_codes.op_parren_fnc_cube) return false;
 
         // Die Anzahl der Verfügbaren Parameter werden extrahiert
         let total_parameters = parseInt(`0x${copyed_item.shift()}`);
@@ -494,7 +530,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new BoolValue((script_sigs.length === 1), true) };
         }
         // Es wird geprüft ob es sich um eine SHA256d Funktion handelt
-        else if(current_item === op_codes.sha256d) {
+        else if(current_item === op_codes.op_sha256d) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length < 1) { close_by_error('SHA256D_FUNCTION_NEED_MINIMUM_ONE_VALUE'); return false; }
 
@@ -506,7 +542,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha256d', false) };
         }
         // Es wird geprüft ob es sich um eine SHA3 Funktion handelt
-        else if(current_item === op_codes.sha3) {
+        else if(current_item === op_codes.op_sha3) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length < 1) { close_by_error('SHA3_256_NEED_MINIMUM_ONE_PARAMETER'); return false; }
 
@@ -518,7 +554,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'sha3_256', false) };
         }
         // Es wird geprüft ob es sich um einen SwiftyHash handelt
-        else if(current_item === op_codes.swiftyH) {
+        else if(current_item === op_codes.op_swifty_h) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length < 1) { close_by_error('SWIFTYH_256_NEED_MINIMUM_ONE_PARAMETER'); return false; }
 
@@ -530,7 +566,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new HashValue(final_value_hash, 'swiftyh_256', false) };
         }
         // Wird verwendet um den letzten Eintrag vom Y Stack zurückzugeben
-        else if(current_item === op_codes.pop_from_y) {
+        else if(current_item === op_codes.op_pop_from_y) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length !== 0) { close_by_error('FUNCTION_DONT_ALLOWED_PARAMETERS'); return false; }
 
@@ -605,7 +641,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             return { hex_str_list:copyed_item, value:new NullValue() };
         }
         // Wird verwendet um zu überprüfen ob ein oder mehrere bestimmte PublicKeys oder Adressen dieses Skript signiert haben
-        else if(current_item === op_codes.eq_signers) {
+        else if(current_item === op_codes.op_eq_signers) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
             if(readed_parren_cube.items.length < 1) { close_by_error('EQ_SIGNERS_NEEDS_MINIMUM_ONE_VALUE'); return false; }
 
@@ -644,11 +680,11 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         let script_stack_entry = copyed_item.shift();
 
         // Es wird geprüft, um was für einen ChainState wert es sich handelt
-        if(script_stack_entry === op_codes.true) {
+        if(script_stack_entry === op_codes.op_true) {
             let reconstructed_bool = new BoolValue(true, false);
             return { hex_str_list:copyed_item, bool_value:reconstructed_bool };
         }
-        else if(script_stack_entry === op_codes.false) {
+        else if(script_stack_entry === op_codes.op_false) {
             let reconstructed_bool = new BoolValue(false, false);
             return { hex_str_list:copyed_item, bool_value:reconstructed_bool };
         }
@@ -886,7 +922,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Es wird geprüft ob danach ein zulässiger Alrorithmns kommt
         extracted_item = copyed_item.shift();
-        if(extracted_item === op_codes.secp256k1_schnorr) {
+        if(extracted_item === op_codes.op_secp256k1_schnorr) {
             // Es wird geprüft ob sich noch 32 Einträge auf dem Stack befinden
             // wenn nicht handelt es sich um ein ungültiges Skript.
             if(copyed_item.length < 32) { close_by_error('INVALID_SECP256K1_PUBLIC_KEY'); return false; }
@@ -899,7 +935,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             print('secp256k1_schnorr_32_byte_public_key_readed', full_str);
             return { hex_str_lst:copyed_item, value:new PublicKeyValue(full_str, 'secp256k1', false) };
         }
-        else if(extracted_item === op_codes.curve25519) {
+        else if(extracted_item === op_codes.op_curve25519) {
             // Es wird geprüft ob sich noch 32 Einträge auf dem Stack befinden
             // wenn nicht handelt es sich um ein ungültiges Skript.
             if(copyed_item.length < 32) { close_by_error('INVALID_CURVE25519_PUBLIC_KEY'); return false; }
@@ -912,7 +948,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             print('curve25519_schnorr_32_byte_public_key_readed', full_str);
             return { hex_str_lst:copyed_item, value:new PublicKeyValue(full_str, 'curve25519', false) };
         }
-        else if(extracted_item === op_codes.bls12381) {
+        else if(extracted_item === op_codes.op_bls12381) {
             // Es wird geprüft ob sich noch 48 Einträge auf dem Stack befinden
             // wenn nicht handelt es sich um ein ungültiges Skript.
             if(copyed_item.length < 48) { close_by_error('INVALID_CURVE25519_PUBLIC_KEY'); return false; }
@@ -1003,24 +1039,6 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         return { hex_str_list:copyed_item, value:array_sz };
     };
 
-    // Stellt die einzelnen EMIT Funktionen bereit welche dann aufgerufen werden vom Skript
-    const emit_vm_functions = {
-        // Fügt einen Öffentlichen Schlüssel oder eine Adresse zur VerifyerWhiteList hinzu
-        add_verify_key: async(pkey_obj) => {
-            print('script_adding_public_key', pkey_obj.value)
-            allowed_public_key_array.push(pkey_obj);
-            return true;
-        },
-        // Makiert das aktulelle Skript als Entsperrt
-        unlock_script: () => {
-            if(states.unlocked === true) return false;
-            y_stack_array.push(SIG_CHECK_TRUE);
-            states.unlocked = true;
-            print('script_signaling', 'unlocked');
-            return true;
-        }
-    };
-
     // Wird ausgeführt um zu überprüfen ob als nächstes ein EMIT Call kommt
     async function next_inter_emit_call(hex_str_lst, script_type=null) {
         // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
@@ -1037,7 +1055,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
         let extracted_item = copyed_item.shift();
-        if(extracted_item !== op_codes.op_is_emit) return false;
+        if(extracted_item !== op_codes.op_emit_function) return false;
 
         // Das Aktuelle Item wird abgerufen
         let current_item = copyed_item.shift();
@@ -1046,7 +1064,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         if(current_item === op_codes.op_unlock) {
             // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
             current_item = copyed_item.shift();
-            if(current_item !== op_codes.parren_fnc_cube) { close_by_error('INVALID_SCRIPT'); return false; }
+            if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('INVALID_SCRIPT'); return false; }
 
             // Es wird geprüft ob 0 Daten angegeben wurden
             current_item = copyed_item.shift();
@@ -1063,7 +1081,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         else if(current_item === op_codes.op_check_sig) {
             // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
             current_item = copyed_item.shift();
-            if(current_item !== op_codes.parren_fnc_cube) {
+            if(current_item !== op_codes.op_parren_fnc_cube) {
                 close_by_error('Invalid script, syntax error');
                 return false;
             }
@@ -1107,7 +1125,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             current_item = copyed_item.shift();
 
             // Es wird geprüft ob es sich um einen Parren Inner handelt
-            if(current_item !== op_codes.parren_fnc_cube) { console.log('Invalid script 5'); return { hex_str_list:[] }; }
+            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 5'); return { hex_str_list:[] }; }
 
             // Die Gesamtzahl aller Parameter wird abgerufen
             let total_items = parseInt(copyed_item.shift(), 16);
@@ -1149,7 +1167,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             current_item = copyed_item.shift();
 
             // Es wird geprüft ob es sich um einen Parren Inner handelt
-            if(current_item !== op_codes.parren_fnc_cube) { console.log('Invalid script 8'); return { hex_str_list:[] }; }
+            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 8'); return { hex_str_list:[] }; }
 
             // Die Gesamtzahl aller Parameter wird abgerufen
             let total_items = parseInt(copyed_item.shift(), 16);
@@ -1191,7 +1209,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             current_item = copyed_item.shift();
 
             // Es wird geprüft ob es sich um einen Parren Inner handelt
-            if(current_item !== op_codes.parren_fnc_cube) { console.log('Invalid script 12'); return { hex_str_list:[] }; }
+            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 12'); return { hex_str_list:[] }; }
 
             // Die Gesamtzahl aller Parameter wird abgerufen
             let total_items = parseInt(copyed_item.shift(), 16);
@@ -1221,7 +1239,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         else if(current_item === op_codes.op_exit) {
             // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
             current_item = copyed_item.shift();
-            if(current_item !== op_codes.parren_fnc_cube) { console.log('Invalid script 3'); return { hex_str_list:[] }; }
+            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 3'); return { hex_str_list:[] }; }
 
             // Es wird geprüft ob 0 Daten angegeben wurden
             current_item = copyed_item.shift();
@@ -1238,7 +1256,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         else if(current_item === op_codes.op_script_abort) {
             // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
             current_item = copyed_item.shift();
-            if(current_item !== op_codes.parren_fnc_cube) { console.log('Invalid script 3'); return { hex_str_list:[] }; }
+            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 3'); return { hex_str_list:[] }; }
 
             // Es wird geprüft ob 0 Daten angegeben wurden
             current_item = copyed_item.shift();
@@ -1264,6 +1282,34 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:push_function_parren.hex_str_list };
+        }
+        // Wird ausführt um zu Überprüfen ob die Angegebene Sperrzeit erreicht wurde
+        else if(current_item == op_codes.op_check_locktimeverify) {
+            
+        }
+        // Wird ausgeführt um zu überprüfen ob die angegebene Sperrzeit in Form der Blockzeit erreicht wurde
+        else if(current_item == op_codes.op_check_blockblockverify) {
+
+        }
+        // Wird ausgeführt wenn ein Commitment geprüft werden soll
+        else if(current_item == op_codes.op_check_commitment) {
+
+        }
+        // Wird ausgeführt wenn ein Schnorr Commitment geprüft werden soll
+        else if(current_item == op_codes.op_verify_schnorr_commitment) {
+
+        }
+        // Wird verwendet um zu überprüfen ob die Transaktion mit STARKS freigegeben wurde
+        else if(current_item == op_codes.op_check_unlock_starks) {
+
+        }
+        // Wird verwendet um zu überprüfen ob die Sequenz Prüfung korrekt ist
+        else if(current_item == op_codes.op_checksequenceverify) {
+
+        }
+        // Wird verwendet um einen angegeben MAST zu überprüfen
+        else if(current_item == op_codes.op_mast_verify) {
+
         }
         // Es konnte kein gültiger Befehler gefunden werden
         else {
@@ -1319,11 +1365,8 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
     // Diese Funktion führt Input sowie Output Script parallel voneinander aus
     async function main_ioscript() {
-        // Die Standardwerte werden gesetzt
-        states = { ...DEFAULT_STATES };
-
-        // Gibt an, gegen wieiviele Regeln verstoßen wurde
-        let rule_cheatings = 0;
+        // Wird verwendet um die Verwendung eines neuen Vorgangs vorzubereiten
+        states = new_reset_values();
 
         // Das Unlocking Script wird ausgeführt
         print('--- UNLOCKING_SCRIPT_DEBUG_START ---');
@@ -1350,16 +1393,15 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             }
         }
 
-        // Die Statuse werden geupdated
-        let unlocking_state = { ...states };
-        states = {  }; states = { ...DEFAULT_STATES };
+        // Wird verwendet um die Verwendung eines neuen Vorgangs vorzubereiten
+        let unlocking_state = clone_object(states);
+        states = new_reset_values();
 
         // Das Locking Script wird eingelesen
         print('--- LOCKING_SCRIPT_DEBUG_START ---');
         await interpr_hex_string(locking_script, false, script_types.LOCKING);
         print('--- LOCKING_SCRIPT_DEBUG_END ---');
         let locking_state = { ...states };
-        states = {  }; states = { ...DEFAULT_STATES };
 
         // Es wird geprüft ob auf dem Y Stack ein True liegt
         if(y_stack_array.length === 1) {
