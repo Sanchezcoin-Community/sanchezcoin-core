@@ -128,7 +128,8 @@ class AlternativeBlockchainAddressValue extends ValueObject {
 
 // Wird verwendet um zu Signalisieren dass es sich um eine Signle Signatur handelt
 class SingleSignatureValue {
-    constructor(pubkey, algo, sig) {
+    constructor(pubkey, algo, sig, msg_hash) {
+        this.msg_hash = msg_hash;
         this.value = pubkey;
         this.type = algo;
         this.sig = sig;

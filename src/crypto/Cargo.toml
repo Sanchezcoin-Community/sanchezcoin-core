@@ -14,9 +14,6 @@ crate-type = ["cdylib"]
 schnorrkel = "0.10.2"
 rand = "0.8.5"
 hex = "0.4.3"
-bip32 = "0.4.0"
-hmac = "0.12.1"
-sha2 = "0.10.6"
 
 [dependencies.neon]
 version = "0.10"

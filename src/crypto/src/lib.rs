@@ -1,28 +1,17 @@
 use schnorrkel::{signing_context, SecretKey, Keypair, PublicKey, Signature, MiniSecretKey, ExpansionMode};
-use hmac::{Hmac, Mac};
 use neon::prelude::*;
-use sha2::{Sha256};
-
-
-// Deklariert ein HMAC Typen
-type HmacSha256 = Hmac<Sha256>;
 
 
 // Erzeugt einen sr25519 Keypair aus einem Seed
-fn get_key_pair_from_bip32_seed_sr25519(mut cx: FunctionContext) -> JsResult<JsObject> {
+fn get_key_pair_from_hash_sr25519(mut cx: FunctionContext) -> JsResult<JsObject> {
     // Die Argumente werden abgerufen
     let seed_js = cx.argument::<JsString>(0)?;
-    let path_value = cx.argument::<JsString>(1)?;
 
     // Der Seed wird eingelesen
     let decoded_seed = hex::decode(&seed_js.value(&mut cx)).unwrap();
 
-    // Aus dem Seed wird Mittels HMAC ein Unterseed erstellt um einen neuen Schlüssel abzuleiten
-    let mut mac = HmacSha256::new_from_slice(&decoded_seed).expect("HMAC can take key of any size");
-    mac.update(&path_value.value(&mut cx).as_bytes());
-
     // Es wird ein SeecretKey aus dem Seed erstellt
-    let mini_secret_key:MiniSecretKey = MiniSecretKey::from_bytes(&mac.finalize().into_bytes()).unwrap();
+    let mini_secret_key:MiniSecretKey = MiniSecretKey::from_bytes(&decoded_seed).unwrap();
     let secret_key:SecretKey = mini_secret_key.expand(ExpansionMode::Uniform);
 
     // Das Ausgabeobjekt wird erzeugt
@@ -59,7 +48,7 @@ fn sign_digest_sr25519(mut cx: FunctionContext) -> JsResult<JsString> {
     let decoded_key_data = hex::decode(p_value).unwrap();
 
     // Die Daten werden Signiert
-    let ctx = signing_context(b"Never heard of Wall Street? There these guys sit in their posh boardrooms. They dip their balls in the cocaine and then they rub it on each other");
+    let ctx = signing_context(&decoded_key_data);
     let sig: Signature = key_pair.sign(ctx.bytes(&decoded_key_data));
 
     // Die Signatur wird umgewandelt
@@ -91,7 +80,7 @@ fn verfiy_digest_sign_sr25519(mut cx: FunctionContext) -> JsResult<JsBoolean> {
     let public_key:PublicKey = PublicKey::from_bytes(&decoded_readed_hex_pkey).unwrap();
 
     // Die Daten werden auf die Signaturprüffung vorbereitet
-    let ctx = signing_context(b"Never heard of Wall Street? There these guys sit in their posh boardrooms. They dip their balls in the cocaine and then they rub it on each other");
+    let ctx = signing_context(&decoded_readed_hex_data);
     let prepared_data = ctx.bytes(&decoded_readed_hex_data);
 
     // Die Signatur wird eingelesen
@@ -107,7 +96,7 @@ fn verfiy_digest_sign_sr25519(mut cx: FunctionContext) -> JsResult<JsBoolean> {
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
-    cx.export_function("get_key_pair_from_bip32_seed_sr25519", get_key_pair_from_bip32_seed_sr25519)?;
+    cx.export_function("get_key_pair_from_hash_sr25519", get_key_pair_from_hash_sr25519)?;
     cx.export_function("verfiy_digest_sign_sr25519", verfiy_digest_sign_sr25519)?;
     cx.export_function("sign_digest_sr25519", sign_digest_sr25519)?;
     Ok(())

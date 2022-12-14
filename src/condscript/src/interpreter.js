@@ -162,15 +162,10 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         }
     };
 
-    /* Magic scissors */
-    async function magic_scissors(item_stack, script_type) {
-
-    };
-
     // Wird verwendet um zu überprüfen ob es sich um einen zulässigen Öffentlichen Schlüssel handelt
     async function is_allowed_public_key(public_key_str, algo) {
         for(let pkey of allowed_public_key_array) {
-            if(pkey.value === public_key_str) return true;
+            if(pkey.value.toLowerCase() === public_key_str.toLowerCase()) return true;
         }
         return false;
     };
@@ -185,7 +180,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         for(let otems of script_sigs) {
             // Es wird geprüft ob es sich um einen Zulässigen Datentypen handelt
             if(typeof otems !== 'object') throw new Error('Invalid script');
-            if(otems.constructor.name !== 'SingleSignatureValue') throw new Error('Invalid signature object')
+            if(otems.constructor.name !== 'SingleSignatureValue') throw new Error('Invalid signature object');
 
             // Es wird geprüft ob es sich um einen Zulässigen Öffentlichen Schlüssel handelt
             if((await is_allowed_public_key(otems.value, null)) !== true) return false;
@@ -220,22 +215,61 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         });
 
         // Die Signaturen werden geprüft
-        for(let ssig of sorted_key_pairs) {
-            // Der Öffentliche Schlüssel für diese Signatur wird als verwendet Makiert
-            mark_public_key_as_used_for_sig_check_true(ssig.value);
+        try {
+            for(let ssig of sorted_key_pairs) {
+                // Der Öffentliche Schlüssel für diese Signatur wird als verwendet Makiert
+                mark_public_key_as_used_for_sig_check_true(ssig.value);
+    
+                // Die Signatur wird geprüft
+                if((await ssig.fullSignatureCheck()) !== true) {
+                    print('crypto_signature_verify', ssig.value, ssig.sig, false);
+                    return false;
+                }
+    
+                // Es wird geprüft ob es sich um eine secp256k1 Signatur handelt
+                if(ssig.type === 'secp256k1') {
+                    let vresult = await blockchain_crypto.ecc.secp256k1.verifySignature(ssig.value, ssig.sig, ssig.msg_hash);
+                    if(vresult !== true) continue;
+                }
+                // Es wird geprüft ob es sich um eine ristretto255 Signatur handelt
+                else if(ssig.type === 'curve25519') {
+                    let vresult = await blockchain_crypto.ecc.curve25519.verifySignature(ssig.value, ssig.sig, ssig.msg_hash);
+                    if(vresult !== true) continue;
+                }
+                // Es wird geprüft ob es sich um eine BLS Signatur handelt
+                else if(ssig.type === 'bls12381') {
+                    let vresult = await blockchain_crypto.ecc.bls1231.verifySignature(ssig.value, ssig.sig, ssig.msg_hash);
+                    if(vresult !== true) continue;
+                }
+                // Es wird geprüft ob es sich um eine Bitcoin Signatur handelt
+                else if(ssig.type === 'btcadr') {
+                    let vresult = await blockchain_crypto.altchain.validateWeb3EthereumMessageSignature(ssig.value, ssig.sig, ssig.msg_hash);
+                    if(vresult !== true) continue;
+                }
+                // Es wird geprüft ob es sich um eine Ethereum Signatur handelt
+                else if(ssig.type === 'ethadr') {
+                    let prep_sig = `0x${ssig.sig}`;
+                    let vresult = await blockchain_crypto.altchain.validateWeb3EthereumMessageSignature(ssig.value, prep_sig, ssig.msg_hash);
+                    if(vresult !== true) continue;
+                }
+                // Es handelt sich um einen Unbekannten Adresstypen
+                else {
+                    close_by_error('Invalid script');
+                    return false;
+                }
 
-            // Die Signatur wird geprüft
-            if((await ssig.fullSignatureCheck()) !== true) {
-                print('crypto_signature_verify', ssig.value, ssig.sig, false);
-                return false;
+                // Speichert die Verwendete Signaturen ab
+                used_signatures.push(ssig);
+    
+                //console.log(last_unlocking_script_hash_signature);
+                print('crypto_signature_verify', ssig.value, ssig.sig, true);
+                states.verify_sig_checked++;
             }
-
-            // Speichert die Verwendete Signaturen ab
-            used_signatures.push(ssig);
-
-            //console.log(last_unlocking_script_hash_signature);
-            print('crypto_signature_verify', ssig.value, ssig.sig, true);
-            states.verify_sig_checked++;
+        }
+        catch(e) {
+            print('crypto_signature_verify', ssig.value, ssig.sig, false, 'exception_called');
+            close_by_error(e);
+            return false;
         }
 
         // Es wird geprüft ob genausoviele Signaturen geprüft wurden wie benötigt werden
@@ -1365,6 +1399,15 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
     // Diese Funktion führt Input sowie Output Script parallel voneinander aus
     async function main_ioscript() {
+        // DEBUG MAIN Informationen
+        print('--- SCRIPT_META_INFORMATION_START ---');
+        print('Unlocking Script hex:', unlocking_script);
+        print('Locking Script hex:', locking_script);
+        print('Unlocking Script hash:', unlocking_script_hash);
+        print('Locking Script hash:', locking_script_hash)
+        print('--- SCRIPT_META_INFORMATION_END ---');
+        print();
+
         // Wird verwendet um die Verwendung eines neuen Vorgangs vorzubereiten
         states = new_reset_values();
 
@@ -1372,6 +1415,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         print('--- UNLOCKING_SCRIPT_DEBUG_START ---');
         await interpr_hex_string(unlocking_script, false, script_types.UNLOCKING);
         print('--- UNLOCKING_SCRIPT_DEBUG_END ---');
+        print();
 
         // Es wird geprüft ob der Erste Eintrag des Y Stacks ein True ist
         if(y_stack_array.length > 0) {
