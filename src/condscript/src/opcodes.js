@@ -23,7 +23,6 @@ module.exports = {
     op_toaltstack:                          (58).toString(16).padStart(2, '0'),
     op_nop:                                 (57).toString(16).padStart(2, '0'),
     op_checksequenceverify:                 (55).toString(16).padStart(2, '0'),
-    op_check_unlock_starks:                 (54).toString(16).padStart(2, '0'),
     op_check_commitment:                    (52).toString(16).padStart(2, '0'),
     op_unlock_scriptsig_pubkey:             (51).toString(16).padStart(2, '0'),
     op_public_key_defination:               (50).toString(16).padStart(2, '0'),

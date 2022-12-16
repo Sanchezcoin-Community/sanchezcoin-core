@@ -857,7 +857,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
         let script_stack_result = false;
         if(if_conditions === op_codes.op_match) {
             script_stack_result = compareValues(item_a, item_b);
-            print('operation', 'if_compate', item_a.value, item_b.value, script_stack_result);
+            print('operation', 'if_compare', item_a.value, item_b.value, script_stack_result);
         }
         else if(if_conditions === op_codes.op_match) {
             
@@ -1347,7 +1347,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
 
             // Die Neue List wird zwischengespeichert
             copyed_item = number_read_result.hex_str_list;
-
+ 
             // Es wird geprüft ob die Benötigte Zeit erreicht wurde
             let timestamp = number_read_result.int_value.value;
             if(current_timest.toNumber() >= timestamp) {
@@ -1399,7 +1399,8 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
             copyed_item = number_read_result.hex_str_list;
 
             // Es wird geprüft ob der Benötigte Block erreicht oder überschritten wurde
-            if(number_read_result.int_value.value >= unlocking_data.wr_block_hight) {
+            let unlock_hight = number_read_result.int_value.value + unlocking_data.wr_block_hight;
+            if(c_block_hight >= unlock_hight) {
                 print('emit_call', 'check_blockblockverify', true);
                 return { hex_str_list:copyed_item };
             }
@@ -1436,8 +1437,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
             }
 
             // Es wird geprüft ob als nächstes ein 96 Byte (192 Hex) Langer Hexwert vorhanden ist
-            
-
+            let readed_hex_str = await next_is_inter_hex_str(copyed_item, script_type);
         }
         // Wird verwendet um zu überprüfen ob die Transaktion mit STARKS freigegeben wurde
         else if(current_item == op_codes.op_check_unlock_starks) {

@@ -29,8 +29,8 @@ let def_functions = {
     "get_locking_script_hash": { type:"VALUE_OUTPUT", name:"LOCKING_SCRIPT_HASH" },
     "get_last_block_hash": { type:"VALUE_OUTPUT", name:"CURRENT_LAST_BLOCK_HASH" },
     "get_current_block_hight": { type:"VALUE_OUTPUT", name:"CURRENT_BLOCK_HIGHT" },
-    "checklocktimeverify": { type:"EMIT_FUNCTION", name:"CHECKLOCKTIMEVERIFY" },
-    "checkblockblockverify": { type:"EMIT_FUNCTION", name:"CHECKBLOCKBLOCKVERIFY" },
+    "check_locktime_verify": { type:"EMIT_FUNCTION", name:"CHECKLOCKTIMEVERIFY" },
+    "check_blockverify": { type:"EMIT_FUNCTION", name:"CHECKBLOCKBLOCKVERIFY" },
     "add_verify_key": { type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY" },
     "get_current_block_diff": { type:"VALUE_OUTPUT", name:"CURRENT_DIFF" },
     "verify_spfc_sig": { type:"VALUE_OUTPUT", name:"VERIFY_SIGNATURE_IS" },
@@ -100,7 +100,7 @@ async function lex_conditions_script(str_script) {
     let cleared = str_script.replace(/(\r\n|\n|\r)/gm, " ").replace(/  +/g, ' ').trim().split('');
 
     // Die Liste wird abgearbeitet
-    let current_c_list = [], c_prev = '', rnd = 0;
+    let current_c_list = [], c_prev = '';
     for await(let titem of cleared) {
         // Es wird geprüft ob es sich um einen Token handelt
         if(Object.keys(tokens).includes(titem) === true) {

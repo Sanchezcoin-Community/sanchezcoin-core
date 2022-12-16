@@ -7,8 +7,7 @@ const lexer = require('../src/lexer');
 // verify_commitment(931178fd6248c4d8650426537afd262c6407018f2d89f5aec1cf9dff7b281ce0c16ebf88d6f49ba33bdb502f69ef03580cad279b353051a6d8f4d6941da0634afc8a0ca6fe4119b8c042c93016c5237dd06b0b455f46e25b344ebe4e3c86ce19);
 // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen 
 let locking_script = `
-checkblockblockverify(1);
-
+check_blockverify(1);
 if(get_unlocking_script_hash() == 654924d66101913f317fe6f965de8ea67b13e6be6b0c804e8098e86ccafbd502) {
     unlock();
     exit();
@@ -32,6 +31,9 @@ let avail_sigs = [
 lexer(unlocking_script).then(async (script) => {
     let p_unlock_script = await script_token_parser(script);
     let p_lock_script = await lexer(locking_script);
+    console.log(p_lock_script)
+    
+    return;
     p_lock_script = await script_token_parser(p_lock_script);
     let test_result = await interpreter(p_lock_script.hex_script, new TxOutputMetaData(BigInt(1), DateTimestamp.getCurrent(), p_unlock_script.hex_script), BigInt(2), avail_sigs, '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08');
 
