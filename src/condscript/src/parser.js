@@ -26,8 +26,12 @@ let emit_functions = {
     ADD_PUBLIC_VERIFY_KEY:[
         op_codes.op_op_add_verify_key
     ],
-    op_block_nft_transfer:[
-        op_codes.op_block_nft_transfer
+    CHECKBLOCKBLOCKVERIFY:
+    [
+        op_codes.op_check_blockblockverify
+    ],
+    CHECKLOCKTIMEVERIFY:[
+        op_codes.op_check_locktimeverify
     ],
     PUSH_TO_Y_STACK:[
         op_codes.op_push_to_y

@@ -1,3 +1,13 @@
+// Gibt an um was für eine Nummer es sich handelt
+const NumberType = {
+    bit8:0,
+    bit16:1,
+    bit32:2,
+    bit64:3,
+    bit128:4,
+    bit256:5
+};
+
 class ValueObject {
     constructor(value, type, acepted_d_types, is_vm_value=false) {
         this.is_vm_value = is_vm_value;
@@ -26,7 +36,7 @@ class HexString extends ValueObject {
 
 // Wird verwendet wenn es sich um eine 
 class NumberValue extends ValueObject {
-    constructor(value, is_vm_value=false) {
+    constructor(value, is_vm_value=false, type=null) {
         // Es wird geprüft ob der value Parameter vorhanden ist
         if(value === undefined || value === null) throw Error('INVALID_HEX_STRING_VALUE');
 
@@ -38,6 +48,9 @@ class NumberValue extends ValueObject {
 
         // Das Mutter Objekt wird erstellt
         super(value, "num", ['cst', 'hxstr', 'num', 'bool'], is_vm_value);
+
+        // Speichert den Typen der Nummer ab
+        this.n_type = type;
     }
 };
 
@@ -144,11 +157,71 @@ class SingleSignatureValue {
     }
 };
 
+// Wird verwendet um einen Zeitstempel darzustellen
+class DateTimestamp extends ValueObject {
+    static getCurrent() {
+        let base_ts = Math.floor(new Date().getTime())
+        return new DateTimestamp(base_ts.toString(16).padStart(32, '0'), true);
+    };
+
+    constructor(value, is_vm_value=false) {
+        if(value === undefined || value === null) throw new Error('Invalid timestamp value');
+        if(typeof value !== 'string') throw new Error('Invalid timestamp data type');
+        if(value.length !== 32) throw new Error('Invalid timestamp length');
+
+        // Der Hexstring wird in eine Zahl umgewandelt
+        let converted_timestamp = BigInt(`0x${value}`);
+        super(converted_timestamp, "dts", ['cst', 'hxstr', 'num', 'dts'], is_vm_value);
+    };
+
+    calcSub(item_b, is_vm_value=false) {
+        let b = item_b.toNumber();
+        let new_v = this.toNumber() - b;
+        return new DateTimestamp(new_v.toString(16).padStart(32, '0'), is_vm_value);
+    };
+
+    calcAdd(item_b, is_vm_value=false) {
+        let b = item_b.toNumber();
+        let new_v = this.toNumber() + b;
+        return new DateTimestamp(new_v.toString(16).padStart(32, '0'), is_vm_value);
+    };
+
+    toString(type='plain') {
+        if(type === 'hex') return this.value.toString(16).toLowerCase().padStart(32, '0');
+        else if(type === 'plain') return this.toDateTime().toISOString().replace(/T/, ' ').replace(/\..+/, '');
+        else throw new Error('Invalid type');
+    };
+
+    toDateTime() {
+        return new Date(
+            parseInt(
+                (this.toNumber()).toString()
+            )
+        );
+    };
+
+    toNumber() {
+        return this.value;
+    };
+};
+
+// Wird verwendet um die Metadaten des Verwendeten Outputs anzugeben
+class TxOutputMetaData {
+    constructor(wr_block_hight, block_time, locking_script) {
+        this.locking_script = locking_script;
+        this.wr_block_hight = wr_block_hight;
+        this.block_time = block_time;
+    }
+
+    getScript() {
+        return this.locking_script;
+    }
+};
+
 // Wird verwender um Extrem Erweiterte Bedingunden an die Transaktion anzuhängen
 class CommitmentValue {
 
 };
-
 
 // Wird verwendet um 2 Objekte miteinander zu vergleichen
 function compare(obj_a, obj_b) {
@@ -162,11 +235,13 @@ module.exports = {
     BoolValue:BoolValue,
     NullValue:NullValue,
     NumberValue:NumberValue,
+    NumberType:NumberType,
     compareValues:compare,
     HexString:HexString,
     HashValue:HashValue,
     PublicKeyValue:PublicKeyValue,
+    DateTimestamp:DateTimestamp,
+    TxOutputMetaData:TxOutputMetaData,
     SingleSignatureValue:SingleSignatureValue,
     AlternativeBlockchainAddressValue:AlternativeBlockchainAddressValue,
-
 }

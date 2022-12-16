@@ -1,4 +1,4 @@
-const { HexString, NumberValue, BoolValue, HashValue, NullValue, PublicKeyValue, AlternativeBlockchainAddressValue, compareValues } = require('./obj_types');
+const { HexString, NumberValue, BoolValue, HashValue, NullValue, PublicKeyValue, AlternativeBlockchainAddressValue, DateTimestamp, TxOutputMetaData, NumberType, compareValues } = require('./obj_types');
 const blockchain_crypto = require('blckcrypto');
 const op_codes = require('./opcodes');
 let { bech32 } = require('bech32');
@@ -48,9 +48,9 @@ const extract_obj_values = (items) => items.map((value) => {
 });
 
 // Wird ausgeführt um ein einfaches Skript auszuführen
-const hexed_script_interpreter = async(locking_script, unlocking_script, c_block_hight=0n, script_sigs=[], last_block_value=null, current_chain_data=null, debug=true) => {
+const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_hight=0n, script_sigs=[], last_block_value=null, current_chain_data=null, current_timest=new DateTimestamp("00000000000000000000000000000000"), debug=true) => {
     // Es wird geprüft ob es sich um gültige Hexstrings handelt
-    if(is_validate_hex_str(unlocking_script) !== true) throw new Error('Invalid unlocking script hex data');
+    if(unlocking_data.constructor.name !== 'TxOutputMetaData') throw new Error('Invalid unlocking script data');
     if(is_validate_hex_str(locking_script) !== true) throw new Error('Invalid locking script hex data');
 
     // Es wird geprüft ob es sich um eine gültige Blocknummer handelt
@@ -65,7 +65,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     if(script_sigs.length < 1 || script_sigs.length > 16) throw new Error('Invalid script sigs length');
 
     // Es wird ein Hash aus dem Eingabe, sowie ausgabe Skript erstellt
-    let unlocking_script_hash = blockchain_crypto.sha3(256, unlocking_script.toLowerCase());
+    let unlocking_script_hash = blockchain_crypto.sha3(256, unlocking_data.getScript().toLowerCase());
     let locking_script_hash = blockchain_crypto.sha3(256, locking_script.toLowerCase());
 
     // Gibt an ob das Locking und oder das Unlocking Script eine Signatur Prüfung durchgeführt haben
@@ -75,7 +75,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     let last_block_hash = new HashValue("", 'sha3_256', true);
 
     // Es wird ein Number Objekt aus der Aktuellen Schwierigkeit erzeugt
-    let current_block_diff = new NumberValue(0n, true);
+    let current_block_diff = new NumberValue(0n, true, NumberType.bit64);
 
     // Es wird geprüft ob die Einträge auf dem Script Sigs Array korrekt ist
     for(let sig_item of script_sigs) {
@@ -298,42 +298,42 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             let extracted = await extract_n2_bytes(copyed_item, 2);
 
             // Die Zahl und das neue Stack wird zurückgegeben
-            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(extracted.value), false) };
+            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(`0x${extracted.value}`), false, NumberType.bit8) };
         }
         else if(extracted_item === op_codes.op_uint_16) {
             // Der Nächste Eintrag wird aus dem Stack Extrahiert
             let extracted = await extract_n2_bytes(copyed_item, 4);
 
             // Die Zahl und das neue Stack wird zurückgegeben
-            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(extracted.value), false) };
+            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(`0x${extracted.value}`), false, NumberType.bit16) };
         }
         else if(extracted_item === op_codes.op_uint_32) {
             // Der Nächste Eintrag wird aus dem Stack Extrahiert
             let extracted = await extract_n2_bytes(copyed_item, 8);
 
             // Die Zahl und das neue Stack wird zurückgegeben
-            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(extracted.value), false) };
+            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(`0x${extracted.value}`), false, NumberType.bit32) };
         }
         else if(extracted_item === op_codes.op_uint_64) {
             // Der Nächste Eintrag wird aus dem Stack Extrahiert
             let extracted = await extract_n2_bytes(copyed_item, 16);
 
             // Die Zahl und das neue Stack wird zurückgegeben
-            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(extracted.value, false)) };
+            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(`0x${extracted.value}`), false, NumberType.bit64) };
         }
         else if(extracted_item === op_codes.op_uint_128) {
             // Der Nächste Eintrag wird aus dem Stack Extrahiert
             let extracted = await extract_n2_bytes(copyed_item, 32);
 
             // Die Zahl und das neue Stack wird zurückgegeben
-            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(extracted.value, false)) };   
+            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(`0x${extracted.value}`), false, NumberType.bit128) };   
         }
         else if(extracted_item === op_codes.op_uint_256) {
             // Der Nächste Eintrag wird aus dem Stack Extrahiert
             let extracted = await extract_n2_bytes(copyed_item, 64);
 
             // Die Zahl und das neue Stack wird zurückgegeben
-            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(extracted.value, false)) };
+            return { hex_str_list:extracted.hex_str_list, int_value:new NumberValue(BigInt(`0x${extracted.value}`), false, NumberType.bit256) };
         }
         else {
             return false;
@@ -371,7 +371,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         }
         // Gibt die Aktuelle Blockhöhe an
         else if(script_stack_entry === op_codes.op_current_block_hight) {
-            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight, true) };
+            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight, true, NumberType.bit256) };
         }
         // Gibt den Hash des letzten Blocks aus
         else if(script_stack_entry === op_codes.op_last_block_hash) {
@@ -383,7 +383,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         }
         // Gibt die Anzahl der Signaturen aus
         else if(script_stack_entry === op_codes.op_total_signatures) {
-            return { hex_str_list:copyed_item, value:new NumberValue(BigInt(script_sigs.length), true) };
+            return { hex_str_list:copyed_item, value:new NumberValue(BigInt(script_sigs.length), true, NumberType.bit8) };
         }
         // Gibt die gesamtzahlen aller Signaturen an
         else {
@@ -618,7 +618,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
             // Die Daten werden zurückgegeben
             print('value_function', 'total_signers', allowed_public_key_array.length);
-            return { hex_str_list:copyed_item, value:new NumberValue(BigInt(allowed_public_key_array.length), true) };
+            return { hex_str_list:copyed_item, value:new NumberValue(BigInt(allowed_public_key_array.length), true, NumberType.bit8) };
         }
         // Wird verwendet um den Aktuellen Blockhash auszugeben
         else if(current_item === op_codes.op_last_block_hash) {
@@ -663,16 +663,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
             // Die Daten werden zurückgegeben
             print('value_function', 'current_block_highgt', c_block_hight.toString());
-            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight, true) };
-        }
-        // Wird verwndet um eine Spizielle Signatur zu überprüfen
-        else if(current_item === op_codes.op_value_verify_sig) {
-            // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
-            if(readed_parren_cube.items.length !== 3) { close_by_error('VERIFY_SPERIFC_SIGNATURE_NEED_3_PARAMETERS'); return false; }
-
-            // Die Daten werden zurückgegeben
-            print('value_function', 'verify_spefic_signature');
-            return { hex_str_list:copyed_item, value:new NullValue() };
+            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight, true, NumberType.bit256) };
         }
         // Wird verwendet um zu überprüfen ob ein oder mehrere bestimmte PublicKeys oder Adressen dieses Skript signiert haben
         else if(current_item === op_codes.op_eq_signers) {
@@ -1183,6 +1174,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
             // Die anzahl der benötigten Signaturen wird neu festgelegt
             states.needs_sigs = BigInt(allowed_public_key_array.length);
+            print('emit_call', 'set_needed_sigs', states.needs_sigs.toString());
 
             // Die Daten werden zurückgegeben
             return { hex_str_list:copyed_item };
@@ -1225,6 +1217,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
             // Es wird Signalisiert dass genau 1ne Signatur vorhadnen sein muus
             states.needs_sigs = BigInt(1);
+            print('emit_call', 'set_needed_sigs', states.needs_sigs.toString());
 
             /* Die Signaturen werden geprüft */
 
@@ -1248,7 +1241,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             // Die Gesamtzahl aller Parameter wird abgerufen
             let total_items = parseInt(copyed_item.shift(), 16);
 
-            // Es wird geprüft ob 1 Argumente vorhanden sind
+            // Es wird geprüft ob 1 Argument vorhanden ist
             if(total_items !== 1) { console.log('Invalid script 13'); return { hex_str_list:[] }; }
 
             // Es wird geprüft ob nachfolgend eine Nummer kommt
@@ -1263,7 +1256,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             if(BigInt(allowed_public_key_array.length) < number_read_result.int_value.value) { console.log('Invalid script 16', allowed_public_key_array.length, number_read_result.int_value.value); return { hex_str_list:[] }; }
 
             // Die Zahl der benötigten Signaturen wird festgelegt
-            print('emit_call', 'set_needed_sigs');
+            print('emit_call', 'set_needed_sigs', number_read_result.int_value.value.toString());
             states.needs_sigs = number_read_result.int_value.value;
 
             // Die Daten werden zurückgegeben
@@ -1319,18 +1312,131 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         }
         // Wird ausführt um zu Überprüfen ob die Angegebene Sperrzeit erreicht wurde
         else if(current_item == op_codes.op_check_locktimeverify) {
-            
+            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+            current_item = copyed_item.shift();
+            if(current_item !== op_codes.op_parren_fnc_cube) {
+                print('emit_call', 'check_locktimeverify', 'invalid script');
+                close_by_error('INVALID_SCRIPT');
+                return false; 
+            }
+
+            // Die Gesamtzahl aller Parameter wird abgerufen
+            let total_items = parseInt(copyed_item.shift(), 16);
+
+            // Es wird geprüft ob 1 Argument vorhanden ist
+            if(total_items !== 1) { 
+                print('emit_call', 'check_locktimeverify', 'invalid script');
+                close_by_error('Invalid parameter length');
+                return false;
+            }
+
+            // Es wird geprüft ob nachfolgend eine Nummer kommt
+            let number_read_result = await next_read_number(copyed_item);
+            if(number_read_result === false) {
+                print('emit_call', 'check_locktimeverify', 'invalid script');
+                close_by_error('Invalid script, no number on stack');
+                return false;
+            }
+
+            // Es wird geprüft ob es sich um einen Zulässigen Typen von Nummer handelt
+            if([NumberType.bit8, NumberType.bit16, NumberType.bit32, NumberType.bit64, NumberType.bit128].includes(number_read_result.int_value.n_type) !== true) {
+                print('emit_call', 'check_locktimeverify', 'invalid script');
+                close_by_error('Invalid data type for number');
+                return false; 
+            }
+
+            // Die Neue List wird zwischengespeichert
+            copyed_item = number_read_result.hex_str_list;
+
+            // Es wird geprüft ob die Benötigte Zeit erreicht wurde
+            let timestamp = number_read_result.int_value.value;
+            if(current_timest.toNumber() >= timestamp) {
+                print('emit_call', 'check_locktimeverify', true);
+                return { hex_str_list:copyed_item };
+            }
+
+            // Die Daten werden zurückgegeben
+            print('emit_call', 'check_locktimeverify', false);
+            abort_script();
+            return false;
         }
         // Wird ausgeführt um zu überprüfen ob die angegebene Sperrzeit in Form der Blockzeit erreicht wurde
         else if(current_item == op_codes.op_check_blockblockverify) {
+            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+            current_item = copyed_item.shift();
+            if(current_item !== op_codes.op_parren_fnc_cube) {
+                print('emit_call', 'check_blockblockverify', 'invalid script');
+                close_by_error('INVALID_SCRIPT');
+                return false; 
+            }
 
+            // Die Gesamtzahl aller Parameter wird abgerufen
+            let total_items = parseInt(copyed_item.shift(), 16);
+
+            // Es wird geprüft ob 1 Argument vorhanden ist
+            if(total_items !== 1) { 
+                print('emit_call', 'check_blockblockverify', 'invalid script');
+                close_by_error('Invalid parameter length');
+                return false;
+            }
+
+            // Es wird geprüft ob nachfolgend eine Nummer kommt
+            let number_read_result = await next_read_number(copyed_item);
+            if(number_read_result === false) {
+                print('emit_call', 'check_blockblockverify', 'invalid script');
+                close_by_error('Invalid script, no number on stack');
+                return false;
+            }
+
+            // Es wird geprüft ob es sich um einen Zulässigen Typen von Nummer handelt
+            if([NumberType.bit8, NumberType.bit16, NumberType.bit32, NumberType.bit64].includes(number_read_result.int_value.n_type) !== true) {
+                print('emit_call', 'check_blockblockverify', 'invalid script');
+                close_by_error('Invalid data type for number');
+                return false; 
+            }
+
+            // Die Neue List wird zwischengespeichert
+            copyed_item = number_read_result.hex_str_list;
+
+            // Es wird geprüft ob der Benötigte Block erreicht oder überschritten wurde
+            if(number_read_result.int_value.value >= unlocking_data.wr_block_hight) {
+                print('emit_call', 'check_blockblockverify', true);
+                return { hex_str_list:copyed_item };
+            }
+
+            // Die Daten werden zurückgegeben
+            print('emit_call', 'check_blockblockverify', false);
+            abort_script();
+            return false;
         }
         // Wird ausgeführt wenn ein Commitment geprüft werden soll
         else if(current_item == op_codes.op_check_commitment) {
+            // Es wird Geprüft ob es sich um ein Locking Script handelt, wenn nein wird das Skript abgebrochen
+            if(script_type !== script_types.LOCKING) {
+                close_by_error('Function not availavle outside of locking scripts');
+                return false;
+            }
 
-        }
-        // Wird ausgeführt wenn ein Schnorr Commitment geprüft werden soll
-        else if(current_item == op_codes.op_verify_schnorr_commitment) {
+            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+            current_item = copyed_item.shift();
+            if(current_item !== op_codes.op_parren_fnc_cube) {
+                print('emit_call', 'check_blockblockverify', 'invalid script');
+                close_by_error('INVALID_SCRIPT');
+                return false; 
+            }
+
+            // Die Gesamtzahl aller Parameter wird abgerufen
+            let total_items = parseInt(copyed_item.shift(), 16);
+
+            // Es wird geprüft ob 1 Argument vorhanden ist
+            if(total_items !== 1) { 
+                print('emit_call', 'check_blockblockverify', 'invalid script');
+                close_by_error('Invalid parameter length');
+                return false;
+            }
+
+            // Es wird geprüft ob als nächstes ein 96 Byte (192 Hex) Langer Hexwert vorhanden ist
+            
 
         }
         // Wird verwendet um zu überprüfen ob die Transaktion mit STARKS freigegeben wurde
@@ -1339,10 +1445,6 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         }
         // Wird verwendet um zu überprüfen ob die Sequenz Prüfung korrekt ist
         else if(current_item == op_codes.op_checksequenceverify) {
-
-        }
-        // Wird verwendet um einen angegeben MAST zu überprüfen
-        else if(current_item == op_codes.op_mast_verify) {
 
         }
         // Es konnte kein gültiger Befehler gefunden werden
@@ -1364,33 +1466,39 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
         let splited_hex_string = hex_string.toLowerCase().match(/.{2}/g);
 
         // Das Stack wird abgearbeitet bis er leer ist
-        while(splited_hex_string.length > 0) {
-            // Es wird geprüft ob das Skript beendet wurde
-            if(script_running_aborted() === true) break;
-
-            // Es wird geprüft ob es sich um einen EMIT Funktionsaufruf handelt
-            let sitc_intrpr = await next_inter_if_function(splited_hex_string, script_type);
-            if(sitc_intrpr !== false) {
-                splited_hex_string = sitc_intrpr.hex_str_list;
-                continue;
+        try {
+            while(splited_hex_string.length > 0) {
+                // Es wird geprüft ob das Skript beendet wurde
+                if(script_running_aborted() === true) break;
+    
+                // Es wird geprüft ob es sich um einen EMIT Funktionsaufruf handelt
+                let sitc_intrpr = await next_inter_if_function(splited_hex_string, script_type);
+                if(sitc_intrpr !== false) {
+                    splited_hex_string = sitc_intrpr.hex_str_list;
+                    continue;
+                }
+    
+                // Es wird geprüft ob das Skript beendet wurde
+                if(script_running_aborted() === true) break;
+    
+                // Es wird geprüft ob es sich um einen EMIT Call handelt
+                sitc_intrpr = await next_inter_emit_call(splited_hex_string, script_type);
+                if(sitc_intrpr !== false) {
+                    splited_hex_string = sitc_intrpr.hex_str_list;
+                    continue;
+                }
+    
+                // Es wird geprüft ob das Skript beendet wurde
+                if(script_running_aborted() === true) break;
+    
+                // Es handelt sich um ein ungültes Skript
+                console.log(splited_hex_string)
+                throw new Error('Invalid hex script')
             }
-
-            // Es wird geprüft ob das Skript beendet wurde
-            if(script_running_aborted() === true) break;
-
-            // Es wird geprüft ob es sich um einen EMIT Call handelt
-            sitc_intrpr = await next_inter_emit_call(splited_hex_string, script_type);
-            if(sitc_intrpr !== false) {
-                splited_hex_string = sitc_intrpr.hex_str_list;
-                continue;
-            }
-
-            // Es wird geprüft ob das Skript beendet wurde
-            if(script_running_aborted() === true) break;
-
-            // Es handelt sich um ein ungültes Skript
-            console.log(splited_hex_string)
-            throw new Error('Invalid hex script')
+        }
+        catch(e) {
+            close_by_error(e);
+            return { hex_str_list:[] }; 
         }
 
         // Die Hexliste wird zurückgegeben
@@ -1401,7 +1509,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
     async function main_ioscript() {
         // DEBUG MAIN Informationen
         print('--- SCRIPT_META_INFORMATION_START ---');
-        print('Unlocking Script hex:', unlocking_script);
+        print('Unlocking Script hex:', unlocking_data.getScript());
         print('Locking Script hex:', locking_script);
         print('Unlocking Script hash:', unlocking_script_hash);
         print('Locking Script hash:', locking_script_hash)
@@ -1413,7 +1521,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
 
         // Das Unlocking Script wird ausgeführt
         print('--- UNLOCKING_SCRIPT_DEBUG_START ---');
-        await interpr_hex_string(unlocking_script, false, script_types.UNLOCKING);
+        await interpr_hex_string(unlocking_data.getScript(), false, script_types.UNLOCKING);
         print('--- UNLOCKING_SCRIPT_DEBUG_END ---');
         print();
 
@@ -1423,19 +1531,6 @@ const hexed_script_interpreter = async(locking_script, unlocking_script, c_block
             else rule_cheatings++;
         }
         else rule_cheatings++;
-
-        // Es wird geprüft ob bereits gegen eine Regel verstoßen wurde, wenn ja ist das Skript ungültig
-        if(rule_cheatings !== 0) {
-            return {
-                hashes: { unlock_script:unlocking_script_hash, locking_script:locking_script_hash },
-                unlocking_script_result:false,
-                locking_script_result: false,
-                total_unlocked: false,
-                needed_sigs:'unkown',
-                state:'aborted',
-                pkeys:[]
-            }
-        }
 
         // Wird verwendet um die Verwendung eines neuen Vorgangs vorzubereiten
         let unlocking_state = clone_object(states);
