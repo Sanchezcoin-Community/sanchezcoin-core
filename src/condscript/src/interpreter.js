@@ -48,7 +48,7 @@ const extract_obj_values = (items) => items.map((value) => {
 });
 
 // Wird ausgeführt um ein einfaches Skript auszuführen
-const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_hight=0n, script_sigs=[], last_block_value=null, current_chain_data=null, current_timest=new DateTimestamp("00000000000000000000000000000000"), commitment_data=null, debug=true) => {
+const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_hight=0n, script_sigs=[], current_timest=new DateTimestamp("00000000000000000000000000000000"), commitment_data=null, debug=true) => {
     // Es wird geprüft ob es sich um gültige Hexstrings handelt
     if(unlocking_data.constructor.name !== 'TxOutputMetaData') throw new Error('Invalid unlocking script data');
     if(is_validate_hex_str(locking_script) !== true) throw new Error('Invalid locking script hex data');
@@ -127,6 +127,10 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
         // Signalisiert, dass das Commitment geprüft wurde
         signalCommitmentValidate: () => {
             commitment_was_succs = true;
+        },
+        // Signalisiert dass die Transaktion in einen Extensionblock verschoben wurde
+        signal_extension_block_transfer: () => {
+
         }
     };
 
@@ -1058,6 +1062,63 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
         }
     };
 
+    // Wird verwendet um eine Variable zu löschen
+    async function next_delete_var(hex_str_lst, script_type=null) {
+        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
+        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
+
+        // Es wird geprüft ob es sich um ein
+        if(script_running_aborted() === true) return false;
+
+        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
+        if(hex_str_lst.length < 4) return false;
+
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_lst.slice();
+
+        // Es wird geprüft ob es sich bei dem ersten Eintrag um eine VAR Deklaration handelt
+        let extracted_item = copyed_item.shift();
+        if(extracted_item !== op_codes.op_var_delete_declaration) return false;
+    };
+
+    // Es wird geprüft ob eine Variable ausgelesen werden soll
+    async function next_read_var_value(hex_str_lst, script_type=null) {
+        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
+        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
+
+        // Es wird geprüft ob es sich um ein
+        if(script_running_aborted() === true) return false;
+
+        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
+        if(hex_str_lst.length < 4) return false;
+
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_lst.slice();
+
+        // Es wird geprüft ob es sich bei dem ersten Eintrag um eine VAR Deklaration handelt
+        let extracted_item = copyed_item.shift();
+        if(extracted_item !== op_codes.op_var_read) return false;
+    };
+
+    // Wird verwendet um eine Variablen Deklaration einzulesen
+    async function next_read_var_declaration(hex_str_lst, script_type=null) {
+        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
+        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
+
+        // Es wird geprüft ob es sich um ein
+        if(script_running_aborted() === true) return false;
+
+        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
+        if(hex_str_lst.length < 4) return false;
+
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_lst.slice();
+
+        // Es wird geprüft ob es sich bei dem ersten Eintrag um eine VAR Deklaration handelt
+        let extracted_item = copyed_item.shift();
+        if(extracted_item !== op_codes.op_var_declaration) return false;
+    };
+
     // Wird verwendet um Zusammenhängende Daten zu Extrahieren
     async function extract_n2_bytes(hex_str_lst, byte_size) {
         // Das Item wird Kopiert
@@ -1105,10 +1166,10 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
                 if(current_item !== '00') { close_by_error('emit_call', 'unlock', 'invalid script'); return false; }
 
                 // Es wird versucht die Ein / Ausgabe zu entsperrent
-                print('emit_call', 'unlock');
                 if(emit_vm_functions.unlock_script() !== true) { close_by_error('emit_call', 'unlock', 'invalid script'); return false; }
 
                 // Die Daten werden zurückgegeben
+                print('emit_call', 'unlock');
                 return { hex_str_list:copyed_item };
             }
             // Diese OP_CODE weist die VM an eine Signaturprüfung durchzuführen
@@ -1309,7 +1370,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
                 return { hex_str_list:push_function_parren.hex_str_list };
             }
             // Wird ausführt um zu Überprüfen ob die Angegebene Sperrzeit erreicht wurde
-            else if(current_item == op_codes.op_check_locktimeverify) {
+            else if(current_item === op_codes.op_check_locktimeverify) {
                 // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
                 current_item = copyed_item.shift();
                 if(current_item !== op_codes.op_parren_fnc_cube) {
@@ -1355,7 +1416,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
                 return false;
             }
             // Wird ausgeführt um zu überprüfen ob die angegebene Sperrzeit in Form der Blockzeit erreicht wurde
-            else if(current_item == op_codes.op_check_blockblockverify) {
+            else if(current_item === op_codes.op_check_blockblockverify) {
                 // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
                 current_item = copyed_item.shift();
                 if(current_item !== op_codes.op_parren_fnc_cube) {
@@ -1401,7 +1462,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
                 return false;
             }
             // Wird ausgeführt wenn ein Commitment geprüft werden soll
-            else if(current_item == op_codes.op_check_commitment) {
+            else if(current_item === op_codes.op_check_commitment) {
                 // Es wird Geprüft ob es sich um ein Locking Script handelt, wenn nein wird das Skript abgebrochen
                 if(script_type !== script_types.LOCKING) {
                     close_by_error('emit_call', 'check_commitment', 'invalid script');
@@ -1467,10 +1528,47 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
                 return { hex_str_list:readed_hex_str.hex_str_list };
             }
             // Wird verwendet um zu überprüfen ob die Sequenz Prüfung korrekt ist
-            else if(current_item == op_codes.op_checksequenceverify) {
+            else if(current_item === op_codes.op_checksequenceverify) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) {
+                    close_by_error('emit_call', 'hecksequenceverify', 'invalid script');
+                    return false; 
+                }
 
+                // Es wird geprüft ob 0 Daten angegeben wurden
+                current_item = copyed_item.shift();
+                if(current_item !== '00') {
+                    close_by_error('emit_call', 'hecksequenceverify', 'invalid script');
+                    return false; 
+                }
             }
-            // Es konnte kein gültiger Befehler gefunden werden
+            // Es wird geprüft ob ein Extension Block Transfer vorhanden ist
+            else if(current_item === op_codes.op_extblock_transfer) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) {
+                    close_by_error('emit_call', 'extblock_transfer', 'invalid script');
+                    return false; 
+                }
+
+                // Es wird geprüft ob 0 Daten angegeben wurden
+                current_item = copyed_item.shift();
+                if(current_item !== '00') {
+                    close_by_error('emit_call', 'extblock_transfer', 'invalid script');
+                    return false; 
+                }
+
+                // Es wird Signalisiert dass die Ausgabe nur von einem Extensionblock verwendet werden kann
+                if(emit_vm_functions.signal_extension_block_transfer() !== true) {
+
+                }
+
+                // Die Daten werden zurückgegeben
+                print('emit_call', 'extensionblock transfer enabled', true);
+                return { hex_str_list:copyed_item };
+            }
+            // Es handelt sich um einen unbekannten emit OP_CODE
             else {
                 close_by_error('emit_call', 'unkown function call');
                 return false;
@@ -1498,6 +1596,10 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
         // Das Stack wird abgearbeitet bis er leer ist
         try {
             while(splited_hex_string.length > 0) {
+                // Wird verwendet um eine variable zu Deklarieren
+
+                // Wird verwendet um eine variable zu Löschen
+
                 // Es wird geprüft ob das Skript beendet wurde
                 if(script_running_aborted() === true) break;
     

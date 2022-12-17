@@ -1,5 +1,9 @@
 module.exports = {
     op_invalid_op_code:                     (255).toString(16).padStart(2, '0'),
+    op_extblock_transfer:                   (82).toString(16).padStart(2, '0'),
+    op_var_read:                            (81).toString(16).padStart(2, '0'),
+    op_var_delete_declaration:              (80).toString(16).padStart(2, '0'),
+    op_var_declaration:                     (79).toString(16).padStart(2, '0'),
     op_boolor:                              (78).toString(16).padStart(2, '0'),
     op_booland:                             (77).toString(16).padStart(2, '0'),
     op_sub:                                 (76).toString(16).padStart(2, '0'),
@@ -32,7 +36,7 @@ module.exports = {
     op_unlock_script_hash:                  (46).toString(16).padStart(2, '0'),
     op_address_defination:                  (45).toString(16).padStart(2, '0'),
     op_current_block_diff:                  (44).toString(16).padStart(2, '0'),
-    op_add_verify_key:                   (43).toString(16).padStart(2, '0'),
+    op_add_verify_key:                      (43).toString(16).padStart(2, '0'),
     op_total_signatures:                    (42).toString(16).padStart(2, '0'),
     op_lock_script_hash:                    (41).toString(16).padStart(2, '0'),
     op_timestamp:                           (40).toString(16).padStart(2, '0'),
