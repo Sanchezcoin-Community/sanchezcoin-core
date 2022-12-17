@@ -8,6 +8,7 @@ const NumberType = {
     bit256:5
 };
 
+
 class ValueObject {
     constructor(value, type, acepted_d_types, is_vm_value=false) {
         this.is_vm_value = is_vm_value;
@@ -207,7 +208,7 @@ class DateTimestamp extends ValueObject {
 
 // Wird verwendet um die Metadaten des Verwendeten Outputs anzugeben
 class TxOutputMetaData {
-    constructor(wr_block_hight, block_time, locking_script) {
+    constructor(wr_block_hight, block_time, locking_script, n_lock_time, n_lock_block) {
         this.locking_script = locking_script;
         this.wr_block_hight = wr_block_hight;
         this.block_time = block_time;
@@ -231,10 +232,204 @@ class CommitmentValue {
     }
 };
 
+// Wird verwendet um die Daten der Transaktion an zu übergeben
+class TxScriptCheckData {
+    constructor(locking_script, unlocking_script, input_tx_block_hight, input_tx_block_timestamp, input_seq, signatures) {
+        this.input_seq = input_seq;                                             // Gibt die Sequenz des Verwendeten Inputs an
+        this.signatures = signatures;                                           // Speichert alle Verwendeten Signaturen ab
+        this.locking_script = locking_script;                                   // Gibt das Locking Script an
+        this.unlocking_script = unlocking_script;                               // Gibt das Unlocking Script an
+        this.input_tx_block_hight = input_tx_block_hight;                       // Gibt die Blocköhe an, in welcher das Verwenete Input geschrieben wurde
+        this.input_tx_block_timestamp = input_tx_block_timestamp                // Gibt die Blockzeit an, in welcher dass Verwendete Input gechrieben wurde
+    };
+
+    // Gibt die Gesamtzahl der Verwendeten Signaturen an
+    getTotalSigantures() {
+        return BigInt(this.signatures.length);
+    };
+
+    // Gibt den Unlockingscript String aus
+    getUnlockScriptHexStr() {
+        return this.unlocking_script.toLowerCase();
+    };
+
+    // Gibt den Lockingscript Sring aus
+    getLockingScriptHexStr() {
+        return this.locking_script.toLowerCase();
+    }
+};
+
+// Wird verwendet um die Daten des Ausgeführten Skriptes zu Notieren
+class ScriptInstanceData {
+    constructor() {
+        this.exit = false;
+        this.aborted = false;
+        this.unlocked = false;
+        this.abort_by_error = false;
+        this.has_commitment = false;
+        this.commitment_validate = false;
+        this.allow_spend_by_extension_block = false;
+    }
+
+    signalUnlock() {
+        this.unlocked = true;
+        return true;
+    }
+
+    singalCommitmentValidate() {
+        this.commitment_validate = true;
+        return true;
+    }
+
+    signalExtensionBlockTransfer() {
+        this.allow_spend_by_extension_block = true;
+        return true;
+    }
+
+    signalAbortScriptByError() {
+        this.abort_by_error = true;
+    }
+
+    signalAbort() {
+        this.aborted = true;
+    }
+
+    signalExit() {
+        this.exit = true;
+    }
+
+    isClosedOrAborted() {
+        return this.aborted === true || this.exit === true || this.abort_by_error === true;
+    }
+};
+
+// Wird verwendet um Erlaubte Öffentliche Schlüssel zwischen zu speichern
+class AllowedScriptSignerPublicKeys {
+    constructor() {
+        this.pkeys = {};
+        this.needs_sigs = 0;
+        this.market_as_used = [];
+    };
+
+    // Fügt einen Öffentlichen Schlüssel auf der Liste hinzu
+    addPkey(pkey_obj) {
+        this.pkeys[pkey_obj.value.toLowerCase()] = pkey_obj;
+        this.setNeededSignatures(this.totalPublicKeys());
+        return true;
+    };
+
+    // Gibt die Gesamtzahl der Berechtigten Public Keys an
+    totalPublicKeys() {
+        return Object.keys(this.pkeys).length;
+    };
+
+    // Makiert eine Adresse als verwendet
+    markAddressAsUsed(address) {
+        if(this.isKnownPublicKey(address) === true) {
+            if(Object.keys(this.market_as_used).includes(address.toLowerCase()) === false) {
+                this.market_as_used.push(address.toLowerCase());
+            }
+        }
+    };
+
+    // Gibt an, ob es sich um einen Publickey handelt welcher bekannt ist
+    isKnownPublicKey(pkey) {
+        return this.pkeys[pkey.toLowerCase()] !== undefined;
+    };
+
+    // Gibt alle Publickeys aus, welcher verwendet wurden
+    getUsedSignaturesPublicKeys() {
+        let reval_items = [];
+        for(let otems of this.market_as_used) {
+            reval_items.push(this.pkeys[otems]);
+        }
+        return reval_items;
+    };
+
+    // Gibt die Anazahl aller Verwendeten Public Keys aus, welche verwendeten wurden um Signaturen zu überprüfen
+    totalMarketPublicKeys() {
+        return this.market_as_used.length;
+    };
+
+    // Legt fest weiviele Signaturen benötigt werden
+    setNeededSignatures(am) {
+        this.needs_sigs = am;
+    };
+};
+
+// Wird verwendet um die Ergebnisse der Skript Ausführung zusammenzufassen
+class SigScriptExecutionResults {
+    constructor(unlocking_script, locking_script, unlocking_script_hash, locking_script_hash, is_validate_y_stack, used_pkey_signatures) {
+        this.script_results = { unlocking:unlocking_script, locking:locking_script };
+        this.unlocking_script_hash = unlocking_script_hash;
+        this.used_pkey_signatures = used_pkey_signatures;
+        this.locking_script_hash = locking_script_hash;
+        this.is_validate_y_stack = is_validate_y_stack;
+    };
+
+    // Gibt an ob das Unlocking + das Locking Skript erfolgreich und ohne fehler unlockt wurden
+    isFinallyTrue(total_needed_signatures=1) {
+        // Es wird geprüft ob die Benötigte Anzahl von Signaturen vorhanden ist
+        if(this.used_pkey_signatures.length >= total_needed_signatures) {
+            // Es wird geprüft ob eines der Skripte aufgrund eines Fehlers abgebrochen wurde
+            if(this.script_results.unlocking.abort_by_error === true) return false;
+            if(this.script_results.locking.abort_by_error === true) return false;
+            if(this.script_results.unlocking.aborted === true) return false;
+            if(this.script_results.locking.aborted === true) return false;
+
+            // Es wird geprüft ob die Skripte Entsperrt wurden
+            if(this.script_results.unlocking.unlocked !== true) return false;
+            if(this.script_results.locking.unlocked !== true) return false;
+
+            // Es wird geprüft ob es das Y Stack Korrekt Validiert wurde
+            if(this.is_validate_y_stack !== true) return false;
+
+            // Es wird geprüft ob die Commitment Regeln für das Locking Skript korrekt sind
+            if(this.script_results.locking.has_commitment === true && this.script_results.locking.commitment_validate !== true) return false;
+
+            // Es wird geprüft ob die Commitment Regeln für das Unlocking Skript korrekt sind
+            if(this.script_results.unlocking.has_commitment !== false) return false;
+            if(this.script_results.unlocking.commitment_validate !== false) return false;
+
+            // Es handelt sich um ein gültiges Skript
+            return true;
+        }
+        else {
+            // Es handelt sich um einen ungültigen Schlüssel
+            return false;
+        }
+    };
+};
+
+// Wird verwendet um zu Signalisieren dass das Aktuelle Skript entwender gültig oder ungültig ist
+class SecureVMValue {
+    constructor(name, value) {
+        this.name = name;
+        this.value = value;
+    };
+
+    equal(another_obj) {
+        if(another_obj === undefined || another_obj === null) return false;
+        if(typeof another_obj !== 'object') return false;
+        if(another_obj.constructor.name !== 'SecureVMValue') return false;
+        if(this.name !== another_obj.name) return false;
+        if(this.value !== another_obj.value) return false;
+        return true;
+    };
+};
+
+
 // Wird verwendet um 2 Objekte miteinander zu vergleichen
 function compare(obj_a, obj_b) {
     if(obj_a.dtypes.includes(obj_b.type) !== true) return false;
     return obj_a.value === obj_b.value;
+};
+
+
+// Speichert alle SecureVMValue Werte ab
+const secure_vm_value_operations = {
+    true:new SecureVMValue('secure_bool', 'secure_true'),
+    false:new SecureVMValue('secure_bool', 'secure_true'),
 };
 
 
@@ -247,10 +442,16 @@ module.exports = {
     compareValues:compare,
     HexString:HexString,
     HashValue:HashValue,
+    SecureVMValue:SecureVMValue,
+    DateTimestamp:DateTimestamp,
     PublicKeyValue:PublicKeyValue,
     CommitmentValue:CommitmentValue,
-    DateTimestamp:DateTimestamp,
     TxOutputMetaData:TxOutputMetaData,
+    TxScriptCheckData:TxScriptCheckData,
+    securevm:secure_vm_value_operations,
+    ScriptInstanceData:ScriptInstanceData,
     SingleSignatureValue:SingleSignatureValue,
+    SigScriptExecutionResults:SigScriptExecutionResults,
+    AllowedScriptSignerPublicKeys:AllowedScriptSignerPublicKeys,
     AlternativeBlockchainAddressValue:AlternativeBlockchainAddressValue,
 }
