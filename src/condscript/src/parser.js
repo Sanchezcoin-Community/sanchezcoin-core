@@ -24,10 +24,9 @@ let emit_functions = {
         op_codes.op_script_abort
     ],
     ADD_PUBLIC_VERIFY_KEY:[
-        op_codes.op_op_add_verify_key
+        op_codes.op_add_verify_key
     ],
-    CHECKBLOCKBLOCKVERIFY:
-    [
+    CHECK_BLOCKBLOCKVERIFY:[
         op_codes.op_check_blockblockverify
     ],
     CHECKLOCKTIMEVERIFY:[
@@ -41,6 +40,9 @@ let emit_functions = {
     ],
     UNLOCK_SCRIPT:[
         op_codes.op_unlock
+    ],
+    VERF_COMMITMENT:[
+      op_codes.op_check_commitment  
     ],
     EXIT_SCRIPT:[
         op_codes.op_exit

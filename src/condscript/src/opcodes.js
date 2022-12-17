@@ -32,7 +32,7 @@ module.exports = {
     op_unlock_script_hash:                  (46).toString(16).padStart(2, '0'),
     op_address_defination:                  (45).toString(16).padStart(2, '0'),
     op_current_block_diff:                  (44).toString(16).padStart(2, '0'),
-    op_op_add_verify_key:                   (43).toString(16).padStart(2, '0'),
+    op_add_verify_key:                   (43).toString(16).padStart(2, '0'),
     op_total_signatures:                    (42).toString(16).padStart(2, '0'),
     op_lock_script_hash:                    (41).toString(16).padStart(2, '0'),
     op_timestamp:                           (40).toString(16).padStart(2, '0'),

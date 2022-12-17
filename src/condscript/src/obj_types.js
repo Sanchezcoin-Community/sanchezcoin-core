@@ -220,7 +220,15 @@ class TxOutputMetaData {
 
 // Wird verwender um Extrem Erweiterte Bedingunden an die Transaktion anzuhängen
 class CommitmentValue {
+    constructor(pkey, commitment_script) {
+        this.commitment_script = commitment_script;
+        this.pkey = pkey;
+    }
 
+    // Gibt einen Datensaz des Commitments aus welcher verwendet wird um einen Signaturhash aus dem Commitment zu erstellen
+    toFullyString() {
+        return `${this.pkey}${this.commitment_script}`.toLowerCase();
+    }
 };
 
 // Wird verwendet um 2 Objekte miteinander zu vergleichen
@@ -240,6 +248,7 @@ module.exports = {
     HexString:HexString,
     HashValue:HashValue,
     PublicKeyValue:PublicKeyValue,
+    CommitmentValue:CommitmentValue,
     DateTimestamp:DateTimestamp,
     TxOutputMetaData:TxOutputMetaData,
     SingleSignatureValue:SingleSignatureValue,

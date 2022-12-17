@@ -48,7 +48,7 @@ const extract_obj_values = (items) => items.map((value) => {
 });
 
 // Wird ausgeführt um ein einfaches Skript auszuführen
-const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_hight=0n, script_sigs=[], last_block_value=null, current_chain_data=null, current_timest=new DateTimestamp("00000000000000000000000000000000"), debug=true) => {
+const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_hight=0n, script_sigs=[], last_block_value=null, current_chain_data=null, current_timest=new DateTimestamp("00000000000000000000000000000000"), commitment_data=null, debug=true) => {
     // Es wird geprüft ob es sich um gültige Hexstrings handelt
     if(unlocking_data.constructor.name !== 'TxOutputMetaData') throw new Error('Invalid unlocking script data');
     if(is_validate_hex_str(locking_script) !== true) throw new Error('Invalid locking script hex data');
@@ -71,14 +71,17 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
     // Gibt an ob das Locking und oder das Unlocking Script eine Signatur Prüfung durchgeführt haben
     let locking_was_check_sigs = false, unlocking_was_check_sigs = false;
 
-    // Es wird ein Hash Objekt des letzten Blocks erstetllt
-    let last_block_hash = new HashValue("", 'sha3_256', true);
-
     // Es wird ein Number Objekt aus der Aktuellen Schwierigkeit erzeugt
     let current_block_diff = new NumberValue(0n, true, NumberType.bit64);
 
+    // Es wird ein Hash Objekt des letzten Blocks erstetllt
+    let last_block_hash = new HashValue("", 'sha3_256', true);
+
+    // Es wird verwendet um zu Signalisieren dass das Commitment erfolgreich gepüft wurde
+    let commitment_was_succs = false;
+
     // Es wird geprüft ob die Einträge auf dem Script Sigs Array korrekt ist
-    for(let sig_item of script_sigs) {
+    for await(let sig_item of script_sigs) {
         // Es wird geprüft ob es sich um ein Zulässiges Objekt handelt
         if(typeof sig_item !== 'object') throw new Error('Invalid script sig item');
         if(sig_item.constructor.name !== 'SingleSignatureValue') throw new Error('Invalid script sig object type');
@@ -120,6 +123,10 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
             states.unlocked = true;
             print('script_signaling', 'unlocked');
             return true;
+        },
+        // Signalisiert, dass das Commitment geprüft wurde
+        signalCommitmentValidate: () => {
+            commitment_was_succs = true;
         }
     };
 
@@ -129,8 +136,8 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
     };
 
     // Wird ausgeführt wenn das Skript aufgrund eines Fehlers abgebrochen werden soll
-    function close_by_error(exception_text) {
-        console.log(exception_text);
+    function close_by_error(...exception_text) {
+        console.log(...exception_text);
         states.aborted = true;
     };
 
@@ -1073,7 +1080,7 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
         if(script_running_aborted() === true) return false;
 
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
-        if(hex_str_lst.length < 3) return false;
+        if(hex_str_lst.length < 4) return false;
 
         // Das Item wird Kopiert
         let copyed_item = hex_str_lst.slice();
@@ -1085,376 +1092,399 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
         // Das Aktuelle Item wird abgerufen
         let current_item = copyed_item.shift();
 
-        // Es wird geprüft ob der Ausgang entsperrt werden soll
-        if(current_item === op_codes.op_unlock) {
-            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
-            current_item = copyed_item.shift();
-            if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('INVALID_SCRIPT'); return false; }
+        // Die Eigentlichen Funktionen werden in einem Try ausgeführt
+        try {
+            // Es wird geprüft ob der Ausgang entsperrt werden soll
+            if(current_item === op_codes.op_unlock) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('emit_call', 'unlock', 'invalid script'); return false; }
 
-            // Es wird geprüft ob 0 Daten angegeben wurden
-            current_item = copyed_item.shift();
-            if(current_item !== '00') { close_by_error('INVALID_SCRIPT'); return false; }
+                // Es wird geprüft ob 0 Daten angegeben wurden
+                current_item = copyed_item.shift();
+                if(current_item !== '00') { close_by_error('emit_call', 'unlock', 'invalid script'); return false; }
 
-            // Es wird versucht die Ein / Ausgabe zu entsperrent
-            print('emit_call', 'unlock');
-            if(emit_vm_functions.unlock_script() !== true) { close_by_error('SCRIPT_UNLOCKING_ERROR'); return false; }
+                // Es wird versucht die Ein / Ausgabe zu entsperrent
+                print('emit_call', 'unlock');
+                if(emit_vm_functions.unlock_script() !== true) { close_by_error('emit_call', 'unlock', 'invalid script'); return false; }
 
-            // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item };
-        }
-        // Diese OP_CODE weist die VM an eine Signaturprüfung durchzuführen
-        else if(current_item === op_codes.op_check_sig) {
-            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
-            current_item = copyed_item.shift();
-            if(current_item !== op_codes.op_parren_fnc_cube) {
-                close_by_error('Invalid script, syntax error');
-                return false;
-            }
-
-            // Es wird geprüft ob 0 Daten angegeben wurden
-            current_item = copyed_item.shift();
-            if(current_item !== '00') {
-                close_by_error('Invalid script, syntax error');
-                return false;
-            }
-
-            // Es wird geprüft ob bereits eine Signaturprüfung innerhalb dieses Skriptes durchgeührt wurde
-            if(script_type === script_types.LOCKING && locking_was_check_sigs === true) { close_by_error('Script always checked signatures'); return false; }
-            else if(script_type === script_types.UNLOCKING && unlocking_was_check_sigs === true) { close_by_error('Script always checked signatures'); return false; }
-
-            // Es wird geprüft ob die Signaturen korrekt sind
-            print('emit_call', 'check_sig');
-            if((await validate_unlockscript_sig()) !== true) {
-                close_by_error('SIGNATURE_VALIDATING_IS_FAILED');
-                print('emit_call', 'check_sig', 'failed');
-                return { hex_str_list:[] }; 
-            }
-
-            // Es wird versucht die Ein / Ausgabe zu entsperrent
-            print('emit_call', 'check_sig', 'ok');
-            if(emit_vm_functions.unlock_script() !== true) {
-                close_by_error('SCRIPT_UNLOCKING_ERROR');
-                return false; 
-            }
-
-            // Es wird Signalisiert dass eine Signaturprüfung durchgeführt wurde
-            if(script_type === script_types.LOCKING) locking_was_check_sigs = true
-            else if(script_type === script_types.UNLOCKING) unlocking_was_check_sigs = true;
-
-            // Das Skript ist erfolgreich durchgeführt wurden
-            return { hex_str_list:copyed_item };
-        }
-        // Fügt einen neuen Berechtigen Schlüssel in die Verifyer liste hinzu
-        else if(current_item === op_codes.op_op_add_verify_key) {
-            // Es wird geprüft ob es sich um einen Parren Inner handelt
-            current_item = copyed_item.shift();
-
-            // Es wird geprüft ob es sich um einen Parren Inner handelt
-            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 5'); return { hex_str_list:[] }; }
-
-            // Die Gesamtzahl aller Parameter wird abgerufen
-            let total_items = parseInt(copyed_item.shift(), 16);
-
-            // Es wird geprüft ob 1 Argumente vorhanden sind
-            if(total_items !== 1) { console.log('Invalid script 6'); return { hex_str_list:[] }; }
-
-            // Es wird geprüft ob als nächsts ein Öffentlicher Schlüssel kommt
-            print('emit_call', 'add_verify_key');
-            let public_key_declaration = await next_read_public_key_defination(copyed_item, script_type);
-            if(public_key_declaration === false){
-                public_key_declaration = await next_read_altchain_address(copyed_item, script_type);
-                if(public_key_declaration === false) { console.log('Invalid script 107'); return { hex_str_list:[] }; }
-            }
-
-            // Die neue Stackliste wird geschrieben
-            copyed_item = public_key_declaration.hex_str_lst;
-
-            // Es wird versucht den Öffentlichen Schlüssel hinzuzufügen
-            if((await emit_vm_functions.add_verify_key(public_key_declaration.value)) !== true) { close_by_error('PUBLIC_KEY_CANT_NOT_ADD'); return false; }
-
-            // Die anzahl der benötigten Signaturen wird neu festgelegt
-            states.needs_sigs = BigInt(allowed_public_key_array.length);
-            print('emit_call', 'set_needed_sigs', states.needs_sigs.toString());
-
-            // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item };
-        }
-        // Fügt erst einen Öffentlichen Schlüssel hinzu und führt dann eine Signatur prüffung durch
-        else if(current_item === op_codes.op_add_pk_sverify) {
-            // Es wird geprüft ob bereits ein Öffentlicher Schlüssel auf dem PublicKey Stack liegt
-            if(allowed_public_key_array.length !== 0) {
-                close_by_error('HAS_ALWAYS_PKEY_ON_NEEDLIST');
-                return false;
-            }
-
-            /* Die Öffentlichen Schlüssel werden hinzugefügt */
-
-            // Es wird geprüft ob es sich um einen Parren Inner handelt
-            current_item = copyed_item.shift();
-
-            // Es wird geprüft ob es sich um einen Parren Inner handelt
-            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 8'); return { hex_str_list:[] }; }
-
-            // Die Gesamtzahl aller Parameter wird abgerufen
-            let total_items = parseInt(copyed_item.shift(), 16);
-
-            // Es wird geprüft ob 1 Argumente vorhanden sind
-            if(total_items !== 1) { console.log('Invalid script 9'); return { hex_str_list:[] }; }
-
-            // Es wird geprüft ob als nächsts ein Öffentlicher Schlüssel kommt
-            let public_key_declaration = await next_read_public_key_defination(copyed_item, script_type);
-            if(public_key_declaration === false){
-                // Es wird geprüft ob es sich um eine Adresse handelt
-                public_key_declaration = await next_read_altchain_address(copyed_item, script_type);
-                if(public_key_declaration === false) { console.log('Invalid script 107'); return { hex_str_list:[] }; }
-            }
-
-            // Die neue Stackliste wird geschrieben
-            copyed_item = public_key_declaration.hex_str_lst;
-
-            // Es wird versucht den Öffentlichen Schlüssel hinzuzufügen
-            if((await emit_vm_functions.add_verify_key(public_key_declaration.value)) !== true) { close_by_error('PUBLIC_KEY_CANT_NOT_ADD'); return false; }
-
-            // Es wird Signalisiert dass genau 1ne Signatur vorhadnen sein muus
-            states.needs_sigs = BigInt(1);
-            print('emit_call', 'set_needed_sigs', states.needs_sigs.toString());
-
-            /* Die Signaturen werden geprüft */
-
-            // Es wird geprüft ob die Signaturen korrekt sind
-            if((await validate_unlockscript_sig()) !== true) { close_by_error('INVALID_SRIPT_SIGNATURES'); return false; }
-
-            // Es wird versucht die Ein / Ausgabe zu entsperrent
-            if(emit_vm_functions.unlock_script() !== true) { close_by_error('SCRIPT_UNLOCKING_ERROR'); return false; }
-
-            // Das Skript ist erfolgreich durchgeführt wurden
-            return { hex_str_list:copyed_item };
-        }
-        // Setzt die Anzahl der Mindestens benötigten Signaturen an
-        else if(current_item === op_codes.op_set_n_of_m) {
-            // Es wird geprüft ob es sich um einen Parren Inner handelt
-            current_item = copyed_item.shift();
-
-            // Es wird geprüft ob es sich um einen Parren Inner handelt
-            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 12'); return { hex_str_list:[] }; }
-
-            // Die Gesamtzahl aller Parameter wird abgerufen
-            let total_items = parseInt(copyed_item.shift(), 16);
-
-            // Es wird geprüft ob 1 Argument vorhanden ist
-            if(total_items !== 1) { console.log('Invalid script 13'); return { hex_str_list:[] }; }
-
-            // Es wird geprüft ob nachfolgend eine Nummer kommt
-            let number_read_result = await next_read_number(copyed_item);
-            if(number_read_result === false) { console.log('Invalid script 14'); return { hex_str_list:[] }; }
-            copyed_item = number_read_result.hex_str_list;
-
-            // Es wird geprüft ob die Zahl größer oder gleich 0 ist
-            if(BigInt(0) >= number_read_result.int_value.value) { console.log('Invalid script 15'); return { hex_str_list:[] }; }
-
-            // Es wird geprüft ob die Anzahl der Verfügabren PublicKeys größer ist als die Anzahl der Zulässigen
-            if(BigInt(allowed_public_key_array.length) < number_read_result.int_value.value) { console.log('Invalid script 16', allowed_public_key_array.length, number_read_result.int_value.value); return { hex_str_list:[] }; }
-
-            // Die Zahl der benötigten Signaturen wird festgelegt
-            print('emit_call', 'set_needed_sigs', number_read_result.int_value.value.toString());
-            states.needs_sigs = number_read_result.int_value.value;
-
-            // Die Daten werden zurückgegeben
-            return { hex_str_list:copyed_item };
-        }
-        // Beendet die ausführung des gesamten Skriptes
-        else if(current_item === op_codes.op_exit) {
-            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
-            current_item = copyed_item.shift();
-            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 3'); return { hex_str_list:[] }; }
-
-            // Es wird geprüft ob 0 Daten angegeben wurden
-            current_item = copyed_item.shift();
-            if(current_item !== '00') { console.log('Invalid script 4'); return { hex_str_list:[] }; }
-
-            // Es wird Signalisiert dass das Skript beendet werden soll
-            print('emit_call', 'exit_script');
-            states.exit = true;
-
-            // Das Skript ist erfolgreich durchgeführt wurden
-            return { hex_str_list:[] };
-        }
-        // Wird ausgeführt wenn das Skript fehlerhaft abgebrochen werden soll
-        else if(current_item === op_codes.op_script_abort) {
-            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
-            current_item = copyed_item.shift();
-            if(current_item !== op_codes.op_parren_fnc_cube) { console.log('Invalid script 3'); return { hex_str_list:[] }; }
-
-            // Es wird geprüft ob 0 Daten angegeben wurden
-            current_item = copyed_item.shift();
-            if(current_item !== '00') { console.log('Invalid script 4'); return { hex_str_list:[] }; }
-
-            // Es wird Signalisiert dass das Skript abgebrochen werden soll
-            print('emit_call', 'abort_script');
-            abort_script();
-
-            // Das Skript ist erfolgreich durchgeführt wurden
-            return { hex_str_list:[] };
-        }
-        // Wird ausgeführt um einen Wert auf das Skript zu legen
-        else if(current_item === op_codes.op_push_to_y) {
-            // Es wird versucht die ParrenCube werte auszulesen
-            let push_function_parren = await next_read_parren_cube(copyed_item, script_type, true);
-            if(push_function_parren === false) throw new Error('Invalid script');
-            if(push_function_parren.items < 1) throw new Error('Invalid script');
-
-            // Es wird versucht dein Eintrag auf das Stack zu legen
-            print('emit_call', 'add_to_y_stack');
-            for(let citem of push_function_parren.items) y_stack_array.push(citem);
-
-            // Die Daten werden zurückgegeben
-            return { hex_str_list:push_function_parren.hex_str_list };
-        }
-        // Wird ausführt um zu Überprüfen ob die Angegebene Sperrzeit erreicht wurde
-        else if(current_item == op_codes.op_check_locktimeverify) {
-            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
-            current_item = copyed_item.shift();
-            if(current_item !== op_codes.op_parren_fnc_cube) {
-                print('emit_call', 'check_locktimeverify', 'invalid script');
-                close_by_error('INVALID_SCRIPT');
-                return false; 
-            }
-
-            // Die Gesamtzahl aller Parameter wird abgerufen
-            let total_items = parseInt(copyed_item.shift(), 16);
-
-            // Es wird geprüft ob 1 Argument vorhanden ist
-            if(total_items !== 1) { 
-                print('emit_call', 'check_locktimeverify', 'invalid script');
-                close_by_error('Invalid parameter length');
-                return false;
-            }
-
-            // Es wird geprüft ob nachfolgend eine Nummer kommt
-            let number_read_result = await next_read_number(copyed_item);
-            if(number_read_result === false) {
-                print('emit_call', 'check_locktimeverify', 'invalid script');
-                close_by_error('Invalid script, no number on stack');
-                return false;
-            }
-
-            // Es wird geprüft ob es sich um einen Zulässigen Typen von Nummer handelt
-            if([NumberType.bit8, NumberType.bit16, NumberType.bit32, NumberType.bit64, NumberType.bit128].includes(number_read_result.int_value.n_type) !== true) {
-                print('emit_call', 'check_locktimeverify', 'invalid script');
-                close_by_error('Invalid data type for number');
-                return false; 
-            }
-
-            // Die Neue List wird zwischengespeichert
-            copyed_item = number_read_result.hex_str_list;
- 
-            // Es wird geprüft ob die Benötigte Zeit erreicht wurde
-            let timestamp = number_read_result.int_value.value;
-            if(current_timest.toNumber() >= timestamp) {
-                print('emit_call', 'check_locktimeverify', true);
+                // Die Daten werden zurückgegeben
                 return { hex_str_list:copyed_item };
             }
+            // Diese OP_CODE weist die VM an eine Signaturprüfung durchzuführen
+            else if(current_item === op_codes.op_check_sig) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('emit_call', 'check_sig', 'invalid script'); return false; }
 
-            // Die Daten werden zurückgegeben
-            print('emit_call', 'check_locktimeverify', false);
-            abort_script();
-            return false;
-        }
-        // Wird ausgeführt um zu überprüfen ob die angegebene Sperrzeit in Form der Blockzeit erreicht wurde
-        else if(current_item == op_codes.op_check_blockblockverify) {
-            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
-            current_item = copyed_item.shift();
-            if(current_item !== op_codes.op_parren_fnc_cube) {
-                print('emit_call', 'check_blockblockverify', 'invalid script');
-                close_by_error('INVALID_SCRIPT');
-                return false; 
-            }
+                // Es wird geprüft ob 0 Daten angegeben wurden
+                current_item = copyed_item.shift();
+                if(current_item !== '00') { close_by_error('emit_call', 'check_sig', 'invalid script'); return false; }
 
-            // Die Gesamtzahl aller Parameter wird abgerufen
-            let total_items = parseInt(copyed_item.shift(), 16);
+                // Es wird geprüft ob bereits eine Signaturprüfung innerhalb dieses Skriptes durchgeührt wurde
+                if(script_type === script_types.LOCKING && locking_was_check_sigs === true) { close_by_error('emit_call', 'check_sig', 'invalid script'); return false; }
+                else if(script_type === script_types.UNLOCKING && unlocking_was_check_sigs === true) { close_by_error('emit_call', 'check_sig', 'invalid script'); return false; }
 
-            // Es wird geprüft ob 1 Argument vorhanden ist
-            if(total_items !== 1) { 
-                print('emit_call', 'check_blockblockverify', 'invalid script');
-                close_by_error('Invalid parameter length');
-                return false;
-            }
+                // Es wird geprüft ob die Signaturen korrekt sind
+                if((await validate_unlockscript_sig()) !== true) {
+                    close_by_error('emit_call', 'check_sig', 'failed');
+                    return { hex_str_list:[] }; 
+                }
 
-            // Es wird geprüft ob nachfolgend eine Nummer kommt
-            let number_read_result = await next_read_number(copyed_item);
-            if(number_read_result === false) {
-                print('emit_call', 'check_blockblockverify', 'invalid script');
-                close_by_error('Invalid script, no number on stack');
-                return false;
-            }
+                // Es wird versucht die Ein / Ausgabe zu entsperrent
+                if(emit_vm_functions.unlock_script() !== true) {
+                    close_by_error('emit_call', 'check_sig', 'internal error');
+                    return false; 
+                }
 
-            // Es wird geprüft ob es sich um einen Zulässigen Typen von Nummer handelt
-            if([NumberType.bit8, NumberType.bit16, NumberType.bit32, NumberType.bit64].includes(number_read_result.int_value.n_type) !== true) {
-                print('emit_call', 'check_blockblockverify', 'invalid script');
-                close_by_error('Invalid data type for number');
-                return false; 
-            }
+                // Es wird Signalisiert dass eine Signaturprüfung durchgeführt wurde
+                if(script_type === script_types.LOCKING) locking_was_check_sigs = true
+                else if(script_type === script_types.UNLOCKING) unlocking_was_check_sigs = true;
 
-            // Die Neue List wird zwischengespeichert
-            copyed_item = number_read_result.hex_str_list;
-
-            // Es wird geprüft ob der Benötigte Block erreicht oder überschritten wurde
-            let unlock_hight = number_read_result.int_value.value + unlocking_data.wr_block_hight;
-            if(c_block_hight >= unlock_hight) {
-                print('emit_call', 'check_blockblockverify', true);
+                // Das Skript ist erfolgreich durchgeführt wurden
+                print('emit_call', 'check_sig', 'ok');
                 return { hex_str_list:copyed_item };
             }
+            // Fügt einen neuen Berechtigen Schlüssel in die Verifyer liste hinzu
+            else if(current_item === op_codes.op_add_verify_key) {
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                current_item = copyed_item.shift();
 
-            // Die Daten werden zurückgegeben
-            print('emit_call', 'check_blockblockverify', false);
-            abort_script();
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('emit_call', 'add_verify_key', 'invalid script'); return false; }
+
+                // Die Gesamtzahl aller Parameter wird abgerufen
+                let total_items = parseInt(copyed_item.shift(), 16);
+
+                // Es wird geprüft ob 1 Argumente vorhanden sind
+                if(total_items !== 1) { close_by_error('emit_call', 'add_verify_key', 'invalid script'); return false; }
+
+                // Es wird geprüft ob als nächsts ein Öffentlicher Schlüssel kommt
+                print('emit_call', 'add_verify_key');
+                let public_key_declaration = await next_read_public_key_defination(copyed_item, script_type);
+                if(public_key_declaration === false){
+                    public_key_declaration = await next_read_altchain_address(copyed_item, script_type);
+                    if(public_key_declaration === false) { close_by_error('emit_call', 'add_verify_key', 'invalid script'); return false; }
+                }
+
+                // Die neue Stackliste wird geschrieben
+                copyed_item = public_key_declaration.hex_str_lst;
+
+                // Es wird versucht den Öffentlichen Schlüssel hinzuzufügen
+                if((await emit_vm_functions.add_verify_key(public_key_declaration.value)) !== true) { close_by_error('emit_call', 'add_verify_key', 'invalid script'); return false; }
+
+                // Die anzahl der benötigten Signaturen wird neu festgelegt
+                states.needs_sigs = BigInt(allowed_public_key_array.length);
+                print('emit_call', 'set_needed_sigs', states.needs_sigs.toString());
+
+                // Die Daten werden zurückgegeben
+                return { hex_str_list:copyed_item };
+            }
+            // Fügt erst einen Öffentlichen Schlüssel hinzu und führt dann eine Signatur prüffung durch
+            else if(current_item === op_codes.op_add_pk_sverify) {
+                // Es wird geprüft ob bereits ein Öffentlicher Schlüssel auf dem PublicKey Stack liegt
+                if(allowed_public_key_array.length !== 0) { close_by_error('emit_call', 'add_pk_sverify', 'invalid script'); return false; }
+
+                /* Die Öffentlichen Schlüssel werden hinzugefügt */
+
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                current_item = copyed_item.shift();
+
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('emit_call', 'add_pk_sverify', 'invalid script'); return false; }
+
+                // Die Gesamtzahl aller Parameter wird abgerufen
+                let total_items = parseInt(copyed_item.shift(), 16);
+
+                // Es wird geprüft ob 1 Argumente vorhanden sind
+                if(total_items !== 1) { close_by_error('emit_call', 'add_pk_sverify', 'invalid script'); return false; }
+
+                // Es wird geprüft ob als nächsts ein Öffentlicher Schlüssel kommt
+                let public_key_declaration = await next_read_public_key_defination(copyed_item, script_type);
+                if(public_key_declaration === false){
+                    // Es wird geprüft ob es sich um eine Adresse handelt
+                    public_key_declaration = await next_read_altchain_address(copyed_item, script_type);
+                    if(public_key_declaration === false) { close_by_error('emit_call', 'add_pk_sverify', 'invalid script'); return false; }
+                }
+
+                // Die neue Stackliste wird geschrieben
+                copyed_item = public_key_declaration.hex_str_lst;
+
+                // Es wird versucht den Öffentlichen Schlüssel hinzuzufügen
+                if((await emit_vm_functions.add_verify_key(public_key_declaration.value)) !== true) { close_by_error('emit_call', 'add_pk_sverify', 'invalid script'); return false; }
+
+                // Es wird Signalisiert dass genau 1ne Signatur vorhadnen sein muus
+                states.needs_sigs = BigInt(1);
+                print('emit_call', 'set_needed_sigs', states.needs_sigs.toString());
+
+                /* Die Signaturen werden geprüft */
+
+                // Es wird geprüft ob die Signaturen korrekt sind
+                if((await validate_unlockscript_sig()) !== true) { close_by_error('emit_call', 'add_pk_sverify', 'invalid script'); return false; }
+
+                // Es wird versucht die Ein / Ausgabe zu entsperrent
+                if(emit_vm_functions.unlock_script() !== true) { close_by_error('emit_call', 'add_pk_sverify', 'invalid script'); return false; }
+
+                // Das Skript ist erfolgreich durchgeführt wurden
+                return { hex_str_list:copyed_item };
+            }
+            // Setzt die Anzahl der Mindestens benötigten Signaturen an
+            else if(current_item === op_codes.op_set_n_of_m) {
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                current_item = copyed_item.shift();
+
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('emit_call', 'set_n_of_m', 'invalid script'); return false; }
+
+                // Die Gesamtzahl aller Parameter wird abgerufen
+                let total_items = parseInt(copyed_item.shift(), 16);
+
+                // Es wird geprüft ob 1 Argument vorhanden ist
+                if(total_items !== 1) { close_by_error('emit_call', 'set_n_of_m', 'invalid script'); return false; }
+
+                // Es wird geprüft ob nachfolgend eine Nummer kommt
+                let number_read_result = await next_read_number(copyed_item);
+                if(number_read_result === false) { close_by_error('emit_call', 'set_n_of_m', 'invalid script'); return false; }
+                copyed_item = number_read_result.hex_str_list;
+
+                // Es wird geprüft ob die Zahl größer oder gleich 0 ist
+                if(BigInt(0) >= number_read_result.int_value.value) { close_by_error('emit_call', 'set_n_of_m', 'invalid script'); return false; }
+
+                // Es wird geprüft ob die Anzahl der Verfügabren PublicKeys größer ist als die Anzahl der Zulässigen
+                if(BigInt(allowed_public_key_array.length) < number_read_result.int_value.value) { close_by_error('emit_call', 'set_n_of_m', 'invalid script'); return false; }
+
+                // Die Zahl der benötigten Signaturen wird festgelegt
+                print('emit_call', 'set_needed_sigs', number_read_result.int_value.value.toString());
+                states.needs_sigs = number_read_result.int_value.value;
+
+                // Die Daten werden zurückgegeben
+                return { hex_str_list:copyed_item };
+            }
+            // Beendet die ausführung des gesamten Skriptes
+            else if(current_item === op_codes.op_exit) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('emit_call', 'exit', 'invalid script'); return false; }
+
+                // Es wird geprüft ob 0 Daten angegeben wurden
+                current_item = copyed_item.shift();
+                if(current_item !== '00') { close_by_error('emit_call', 'exit', 'invalid script'); return false; }
+
+                // Es wird Signalisiert dass das Skript beendet werden soll
+                print('emit_call', 'exit_script');
+                states.exit = true;
+
+                // Das Skript ist erfolgreich durchgeführt wurden
+                return { hex_str_list:[] };
+            }
+            // Wird ausgeführt wenn das Skript fehlerhaft abgebrochen werden soll
+            else if(current_item === op_codes.op_script_abort) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) { close_by_error('emit_call', 'script_abort', 'invalid script'); return false; }
+
+                // Es wird geprüft ob 0 Daten angegeben wurden
+                current_item = copyed_item.shift();
+                if(current_item !== '00') { close_by_error('emit_call', 'script_abort', 'invalid script'); return false; }
+
+                // Es wird Signalisiert dass das Skript abgebrochen werden soll
+                print('emit_call', 'abort_script');
+                abort_script();
+
+                // Das Skript ist erfolgreich durchgeführt wurden
+                return { hex_str_list:[] };
+            }
+            // Wird ausgeführt um einen Wert auf das Skript zu legen
+            else if(current_item === op_codes.op_push_to_y) {
+                // Es wird versucht die ParrenCube werte auszulesen
+                let push_function_parren = await next_read_parren_cube(copyed_item, script_type, true);
+                if(push_function_parren === false) { close_by_error('emit_call', 'push_to_y', 'invalid script'); return false; }
+                if(push_function_parren.items < 1) { close_by_error('emit_call', 'push_to_y', 'invalid script'); return false; }
+
+                // Es wird versucht dein Eintrag auf das Stack zu legen
+                for(let citem of push_function_parren.items) y_stack_array.push(citem);
+                print('emit_call', 'add_to_y_stack', push_function_parren.items.length, 'items');
+
+                // Die Daten werden zurückgegeben
+                return { hex_str_list:push_function_parren.hex_str_list };
+            }
+            // Wird ausführt um zu Überprüfen ob die Angegebene Sperrzeit erreicht wurde
+            else if(current_item == op_codes.op_check_locktimeverify) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) {
+                    close_by_error('emit_call', 'check_locktimeverify', 'invalid script');
+                    return false; 
+                }
+
+                // Die Gesamtzahl aller Parameter wird abgerufen
+                let total_items = parseInt(copyed_item.shift(), 16);
+
+                // Es wird geprüft ob 1 Argument vorhanden ist
+                if(total_items !== 1) { 
+                    close_by_error('emit_call', 'check_locktimeverify', 'invalid script');
+                    return false;
+                }
+
+                // Es wird geprüft ob nachfolgend eine Nummer kommt
+                let number_read_result = await next_read_number(copyed_item);
+                if(number_read_result === false) {
+                    close_by_error('emit_call', 'check_locktimeverify', 'invalid script');
+                    return false;
+                }
+
+                // Es wird geprüft ob es sich um einen Zulässigen Typen von Nummer handelt
+                if([NumberType.bit8, NumberType.bit16, NumberType.bit32, NumberType.bit64, NumberType.bit128].includes(number_read_result.int_value.n_type) !== true) {
+                    close_by_error('emit_call', 'check_locktimeverify', 'invalid script');
+                    return false; 
+                }
+
+                // Die Neue List wird zwischengespeichert
+                copyed_item = number_read_result.hex_str_list;
+    
+                // Es wird geprüft ob die Benötigte Zeit erreicht wurde
+                let timestamp = number_read_result.int_value.value;
+                if(current_timest.toNumber() >= timestamp) {
+                    print('emit_call', 'check_locktimeverify', true);
+                    return { hex_str_list:copyed_item };
+                }
+
+                // Die Daten werden zurückgegeben
+                print('emit_call', 'check_locktimeverify', false);
+                abort_script();
+                return false;
+            }
+            // Wird ausgeführt um zu überprüfen ob die angegebene Sperrzeit in Form der Blockzeit erreicht wurde
+            else if(current_item == op_codes.op_check_blockblockverify) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) {
+                    close_by_error('emit_call', 'check_blockblockverify', 'invalid script');
+                    return false; 
+                }
+
+                // Die Gesamtzahl aller Parameter wird abgerufen
+                let total_items = parseInt(copyed_item.shift(), 16);
+
+                // Es wird geprüft ob 1 Argument vorhanden ist
+                if(total_items !== 1) { 
+                    close_by_error('emit_call', 'check_blockblockverify', 'invalid script');
+                    return false;
+                }
+
+                // Es wird geprüft ob nachfolgend eine Nummer kommt
+                let number_read_result = await next_read_number(copyed_item);
+                if(number_read_result === false) {
+                    close_by_error('emit_call', 'check_blockblockverify', 'invalid script');
+                    return false;
+                }
+
+                // Es wird geprüft ob es sich um einen Zulässigen Typen von Nummer handelt
+                if([NumberType.bit8, NumberType.bit16, NumberType.bit32, NumberType.bit64].includes(number_read_result.int_value.n_type) !== true) {
+                    close_by_error('emit_call', 'check_blockblockverify', 'invalid script');
+                    return false; 
+                }
+
+                // Die Neue List wird zwischengespeichert
+                copyed_item = number_read_result.hex_str_list;
+
+                // Es wird geprüft ob der Benötigte Block erreicht oder überschritten wurde
+                let unlock_hight = number_read_result.int_value.value + unlocking_data.wr_block_hight;
+                if(c_block_hight >= unlock_hight) {
+                    print('emit_call', 'check_blockblockverify', true);
+                    return { hex_str_list:copyed_item };
+                }
+
+                // Die Daten werden zurückgegeben
+                print('emit_call', 'check_blockblockverify', false);
+                abort_script();
+                return false;
+            }
+            // Wird ausgeführt wenn ein Commitment geprüft werden soll
+            else if(current_item == op_codes.op_check_commitment) {
+                // Es wird Geprüft ob es sich um ein Locking Script handelt, wenn nein wird das Skript abgebrochen
+                if(script_type !== script_types.LOCKING) {
+                    close_by_error('emit_call', 'check_commitment', 'invalid script');
+                    return false;
+                }
+
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) {
+                    close_by_error('emit_call', 'check_commitment', 'invalid script');
+                    return false; 
+                }
+
+                // Die Gesamtzahl aller Parameter wird abgerufen
+                let total_items = parseInt(copyed_item.shift(), 16);
+
+                // Es wird geprüft ob 1 Argument vorhanden ist
+                if(total_items !== 1) { 
+                    close_by_error('emit_call', 'check_commitment', 'invalid script');
+                    return false;
+                }
+
+                // Es wird geprüft ob als nächstes ein 96 Byte (192 Hex) Langer Hexwert vorhanden ist
+                let readed_hex_str = await next_is_inter_hex_str(copyed_item, script_type);
+                if(readed_hex_str === false) {
+                    close_by_error('emit_call', 'check_commitment', 'invalid script');
+                    return false;
+                }
+
+                // Es wird geprüft ob der Hexwert die Länge von 192 Zeichen erfüllt
+                copyed_item = readed_hex_str.hex_str_list;
+                if(readed_hex_str.value.value.length !== 192) {
+                    close_by_error('emit_call', 'check_commitment', 'invalid script');
+                    return false;
+                }
+
+                // Es wird geprüft ob ein Commitment vorhanden ist
+                if(commitment_data === null) {
+                    close_by_error('emit_call', 'check_commitment', 'invalid script');
+                    return false;
+                }
+
+                // Es wird ein SHA3_SHA2_256 Bit Hash aus dem Commitment erstellt
+                let commitment_fully_hash = blockchain_crypto.sha2(256, blockchain_crypto.sha3(256, commitment_data.toFullyString()));
+
+                // Es wird geprüft ob bereits Commitment Daten geprüft wurden
+                if(commitment_was_succs !== false) {
+                    close_by_error('emit_call', 'check_commitment', commitment_fully_hash, false, 'double check abort');
+                    return false;
+                }
+
+                // Es wird geprüft ob das Commitment passend ist
+                if((await blockchain_crypto.ecc.bls1231.verifySignature(commitment_data.pkey, readed_hex_str.value.value, commitment_fully_hash)) !== true) {
+                    close_by_error('emit_call', 'check_commitment', commitment_fully_hash, false);
+                    return false;
+                }
+
+                // Es wird Signalisiert, dass es sich um ein gültiges Commitment handelt
+                emit_vm_functions.signalCommitmentValidate();
+
+                // Die Daten werden zurückgegeben
+                print('emit_call', 'check_commitment', commitment_fully_hash, true);
+                return { hex_str_list:readed_hex_str.hex_str_list };
+            }
+            // Wird verwendet um zu überprüfen ob die Sequenz Prüfung korrekt ist
+            else if(current_item == op_codes.op_checksequenceverify) {
+
+            }
+            // Es konnte kein gültiger Befehler gefunden werden
+            else {
+                close_by_error('emit_call', 'unkown function call');
+                return false;
+            }
+        }
+        catch(e) {
+            // Es ist ein Schwerwiegender Fehler aufgetreten, dass Skript wird abgebrochen
+            close_by_error('emit_call', 'exception'); print(e);
             return false;
-        }
-        // Wird ausgeführt wenn ein Commitment geprüft werden soll
-        else if(current_item == op_codes.op_check_commitment) {
-            // Es wird Geprüft ob es sich um ein Locking Script handelt, wenn nein wird das Skript abgebrochen
-            if(script_type !== script_types.LOCKING) {
-                close_by_error('Function not availavle outside of locking scripts');
-                return false;
-            }
-
-            // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
-            current_item = copyed_item.shift();
-            if(current_item !== op_codes.op_parren_fnc_cube) {
-                print('emit_call', 'check_blockblockverify', 'invalid script');
-                close_by_error('INVALID_SCRIPT');
-                return false; 
-            }
-
-            // Die Gesamtzahl aller Parameter wird abgerufen
-            let total_items = parseInt(copyed_item.shift(), 16);
-
-            // Es wird geprüft ob 1 Argument vorhanden ist
-            if(total_items !== 1) { 
-                print('emit_call', 'check_blockblockverify', 'invalid script');
-                close_by_error('Invalid parameter length');
-                return false;
-            }
-
-            // Es wird geprüft ob als nächstes ein 96 Byte (192 Hex) Langer Hexwert vorhanden ist
-            let readed_hex_str = await next_is_inter_hex_str(copyed_item, script_type);
-        }
-        // Wird verwendet um zu überprüfen ob die Transaktion mit STARKS freigegeben wurde
-        else if(current_item == op_codes.op_check_unlock_starks) {
-
-        }
-        // Wird verwendet um zu überprüfen ob die Sequenz Prüfung korrekt ist
-        else if(current_item == op_codes.op_checksequenceverify) {
-
-        }
-        // Es konnte kein gültiger Befehler gefunden werden
-        else {
-            throw new Error('Invalid script');
         }
     };
 
     // Führt ein Hex String aus
-    async function interpr_hex_string(hex_string, sub_call=false, script_type=null) {
+    async function interpr_hex_string(hex_string, sub_call=0, script_type=null) {
         // Es wird geprüft ob es sich um einen String handelt
         if(typeof hex_string !== 'string') throw new Error('Invalid data');
         if(hex_string.length < 2) return { hex_str_list:[] };
@@ -1509,10 +1539,12 @@ const hexed_script_interpreter = async(locking_script, unlocking_data, c_block_h
     async function main_ioscript() {
         // DEBUG MAIN Informationen
         print('--- SCRIPT_META_INFORMATION_START ---');
+        if(commitment_data !== null) print('Commitment Script hex:', commitment_data.toFullyString());
         print('Unlocking Script hex:', unlocking_data.getScript());
         print('Locking Script hex:', locking_script);
         print('Unlocking Script hash:', unlocking_script_hash);
         print('Locking Script hash:', locking_script_hash)
+        if(commitment_data !== null) print('Commitment Script hash:', blockchain_crypto.sha2(256, blockchain_crypto.sha3(256, commitment_data.toFullyString())))
         print('--- SCRIPT_META_INFORMATION_END ---');
         print();
 
