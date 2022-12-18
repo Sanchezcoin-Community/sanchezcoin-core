@@ -40,11 +40,12 @@ let avail_sigs = [
     // Die Daten welche für die Prüfung der Verwendeteten Inputs benötigt werden, werden zusammengefasst
     let tx_check_data = new TxScriptCheckData(p_locking_script, p_unlocking_script, BigInt(0), timestamp, '0xffff', avail_sigs);
 
-    // Die Skripte werden Interpretiert
-    let test_result = await interpreter(tx_check_data, block_hight, DateTimestamp.getCurrent(), null, false);
+    // Gibt an ob der Debug Modus verwendet werden soll
+    let use_debug_mode = false;
 
-    console.log();
+    // Die Skripte werden Interpretiert
+    let test_result = await interpreter(tx_check_data, block_hight, DateTimestamp.getCurrent(), null, use_debug_mode);
+    if(use_debug_mode === true) console.log()
     console.log(test_result);
-    console.log();
     console.log('Tx is finally true', test_result.isFinallyTrue());
 })();

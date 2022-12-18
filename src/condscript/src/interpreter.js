@@ -103,7 +103,7 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         print('Locking Script hash:', locking_script_hash)
         if(commitment_data !== null) print('Commitment Script hash:', blockchain_crypto.sha2(256, blockchain_crypto.sha3(256, commitment_data.toFullyString())))
         print('--- SCRIPT_META_INFORMATION_END ---');
-    }
+    };
 
     // Wird verwendet um zu überprüfen ob sich 2x True werte befinden
     function yStackIsFinallyTrue() {
@@ -207,7 +207,10 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
                 }
 
                 // Der Öffentliche Schlüssel für diese Signatur wird als verwendet Makiert
-                allowed_signature_public_keys.markAddressAsUsed(ssig.value) 
+                if(allowed_signature_public_keys.markAddressAsUsed(ssig.value) !== true) {
+                    close_by_error(script_result_obj, 'Invalid script, cant mark public key for using');
+                    return false;
+                }
     
                 //console.log(last_unlocking_script_hash_signature);
                 print('crypto_signature_verify', ssig.value, ssig.sig, true);
@@ -709,6 +712,9 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         // Es wird geprüft ob das Skript abgebrochen wurde
         if(script_result_obj.isClosedOrAborted() === true) return false;
 
+        // Es wird geprüft ob es sich um ein Array handelt
+        if(hex_str_list === undefined || hex_str_list === null || typeof hex_str_lst !== 'object' || Array.isArray(hex_str_lst) !== true) throw new Error('Hardcore internal error, invalid stack element');
+
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
         if(hex_str_list.length < 3) return false;
 
@@ -749,6 +755,9 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
 
         // Es wird geprüft ob das Skript abgebrochen wurde
         if(script_result_obj.isClosedOrAborted() === true) return false;
+
+        // Es wird geprüft ob es sich um ein Array handelt
+        if(hex_str_lst === undefined || hex_str_lst === null || typeof hex_str_lst !== 'object' || Array.isArray(hex_str_lst) !== true) throw new Error('Hardcore internal error, invalid stack element');
 
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
         if(hex_str_lst.length < 4) return false;
@@ -917,6 +926,9 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         // Es wird geprüft ob es sich um ein
         if(script_result_obj.isClosedOrAborted() === true) return false;
 
+        // Es wird geprüft ob es sich um ein Array handelt
+        if(hex_str_lst === undefined || hex_str_lst === null || typeof hex_str_lst !== 'object' || Array.isArray(hex_str_lst) !== true) throw new Error('Hardcore internal error, invalid stack element');
+
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
         if(hex_str_lst.length < 2) return false;
 
@@ -991,6 +1003,9 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         // Es wird geprüft ob es sich um ein
         if(script_result_obj.isClosedOrAborted() === true) return false;
 
+        // Es wird geprüft ob es sich um ein Array handelt
+        if(hex_str_lst === undefined || hex_str_lst === null || typeof hex_str_lst !== 'object' || Array.isArray(hex_str_lst) !== true) throw new Error('Hardcore internal error, invalid stack element');
+
         // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
         if(hex_str_lst.length < 2) return false;
 
@@ -1018,6 +1033,12 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
             // Die Adresse wird wiederhergestellt
             let recoded_address = bech32.encode('bc', Buffer.from(full_str, 'hex'));
 
+            // Es wird geprüft ob es sich um eine Zulässige Bitcoin Adresse handelt
+            if((await blockchain_crypto.altchain.isValidateBitcoinAddress(recoded_address)) !== true) {
+                close_by_error('bitcoin_pkh_address_readed', 'aborted invalid address');
+                return false;
+            }
+
             // Die Daten werden zurückgegeben
             print('bitcoin_pkh_address_readed', recoded_address);
             return { hex_str_lst:copyed_item, value:new AlternativeBlockchainAddressValue(recoded_address, 'btcadr', false) };
@@ -1035,7 +1056,7 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
             while(full_str.length !== 42) full_str = full_str + copyed_item.shift();
 
             // Es wird geprüft ob es sich um eine Ethereum Adresse handelt
-            if(web3.utils.isAddress(full_str) !== true) {
+            if((await blockchain_crypto.altchain.isValidateEthereumAddress(full_str)) !== true) {
                 close_by_error('web3_ethereum_address_reading', 'aborted invalid address');
                 return false;
             }
@@ -1255,7 +1276,7 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
                 if(BigInt(allowed_signature_public_keys.totalPublicKeys()) < number_read_result.int_value.value) { close_by_error(script_result_obj, 'emit_call', 'set_n_of_m', 'invalid script'); return false; }
 
                 // Die Zahl der benötigten Signaturen wird festgelegt
-                allowed_signature_public_keys.setNeededSignatures(number_read_result.int_value.value);
+                if(allowed_signature_public_keys.setNeededSignatures(number_read_result.int_value.value) !== true) { close_by_error(script_result_obj, 'emit_call', 'set_n_of_m', 'invalid script'); return false; }
                 print('emit_call', 'set_needed_sigs', number_read_result.int_value.value.toString());
 
                 // Die Daten werden zurückgegeben

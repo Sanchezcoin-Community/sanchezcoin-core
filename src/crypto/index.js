@@ -6,6 +6,7 @@
 // Die Bibliotheken werden Importiert
 const { sha3_256, sha3_384, sha3_512, keccak_256, keccak_384, keccak_512 } = require('@noble/hashes/sha3');
 const { is_validate_hex_string, is_validate_string } = require('./validate');
+const { validate, getAddressInfo } = require('bitcoin-address-validation');
 const { sha512, sha512_256, sha384 } = require('@noble/hashes/sha512');
 const { schnorr, utils } = require('@noble/secp256k1');
 const bitcoinMessage = require('bitcoinjs-message');
@@ -454,6 +455,35 @@ async function validateBitcoinSegwitMessageSignature(address, base64_signature, 
     }
 };
 
+// Wird verwendet um zu überprüfen ob es sich um eine Ethereum Adresse handelt
+async function isValidateEthereumAddress(eth_addr_str) {
+    // Es wird geprüft ob es sich um einen String handelt
+    if(eth_addr_str === undefined || eth_addr_str === null || typeof eth_addr_str !== 'string') return false;
+    try {
+        let w3_value = web3.utils.isAddress(eth_addr_str);
+        if(w3_value !== true) return false;
+        return true;
+    }
+    catch(e) {
+        return false;
+    }
+};
+
+// Wird verwendet um zu überprüfen ob es sich um eine Bitcoin Adresse handelt
+async function isValidateBitcoinAddress(btc_addr_str) {
+    // Es wird geprüft ob es sich um einen String handelt
+    if(btc_addr_str === undefined || btc_addr_str === null || typeof btc_addr_str !== 'string') return false;
+    try {
+        if(validate(btc_addr_str) !== true) return false;
+        let info = getAddressInfo(btc_addr_str);
+        if(info.type !== 'p2wpkh') return false;
+        return true;
+    }
+    catch(e) {
+        return false;
+    }
+};
+
 
 // Die Funktionen werden Exportiert
 module.exports = {
@@ -486,7 +516,9 @@ module.exports = {
     },
     altchain:{
         validateBitcoinSegwitMessageSignature:validateBitcoinSegwitMessageSignature,
-        validateWeb3EthereumMessageSignature:validateWeb3EthereumMessageSignature   
+        validateWeb3EthereumMessageSignature:validateWeb3EthereumMessageSignature,
+        isValidateEthereumAddress:isValidateEthereumAddress,
+        isValidateBitcoinAddress:isValidateBitcoinAddress
     }
 }
 

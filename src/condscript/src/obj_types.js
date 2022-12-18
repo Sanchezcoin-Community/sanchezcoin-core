@@ -206,19 +206,6 @@ class DateTimestamp extends ValueObject {
     };
 };
 
-// Wird verwendet um die Metadaten des Verwendeten Outputs anzugeben
-class TxOutputMetaData {
-    constructor(wr_block_hight, block_time, locking_script, n_lock_time, n_lock_block) {
-        this.locking_script = locking_script;
-        this.wr_block_hight = wr_block_hight;
-        this.block_time = block_time;
-    }
-
-    getScript() {
-        return this.locking_script;
-    }
-};
-
 // Wird verwender um Extrem Erweiterte Bedingunden an die Transaktion anzuhängen
 class CommitmentValue {
     constructor(pkey, commitment_script) {
@@ -235,6 +222,14 @@ class CommitmentValue {
 // Wird verwendet um die Daten der Transaktion an zu übergeben
 class TxScriptCheckData {
     constructor(locking_script, unlocking_script, input_tx_block_hight, input_tx_block_timestamp, input_seq, signatures) {
+        // Es wird geprüft ob es sich um gültige Parameter handelt
+        if(unlocking_script === undefined || unlocking_script === null || typeof unlocking_script !== 'string') throw new Error('Invalid unlocking script');
+        if(locking_script === undefined || locking_script == null || typeof locking_script !== 'string') throw new Error('Invalid locking script');
+        if(input_tx_block_hight === undefined || input_tx_block_hight == null || typeof input_tx_block_hight !== 'bigint') throw new Error('Invalid block tx hight');
+        if(input_tx_block_timestamp === undefined || input_tx_block_timestamp == null || typeof input_tx_block_timestamp !== 'object' || input_tx_block_timestamp.constructor.name !== 'DateTimestamp') throw new Error('Invalid block timestamp');
+        if(signatures === undefined || signatures == null || typeof signatures !== 'object' || Array.isArray(signatures) !== true) throw new Error('Invalid signatures data type');
+
+        // Die Daten werden zwischen gespeichert
         this.input_seq = input_seq;                                             // Gibt die Sequenz des Verwendeten Inputs an
         this.signatures = signatures;                                           // Speichert alle Verwendeten Signaturen ab
         this.locking_script = locking_script;                                   // Gibt das Locking Script an
@@ -268,39 +263,47 @@ class ScriptInstanceData {
         this.abort_by_error = false;
         this.has_commitment = false;
         this.commitment_validate = false;
-        this.allow_spend_by_extension_block = false;
-    }
+    };
 
     signalUnlock() {
+        if(this.unlocked === true) return false;
         this.unlocked = true;
         return true;
-    }
+    };
 
     singalCommitmentValidate() {
+        if(this.commitment_validate === true) return false;
         this.commitment_validate = true;
         return true;
-    }
+    };
 
     signalExtensionBlockTransfer() {
+        if(this.allow_spend_by_extension_block === true) return false;
         this.allow_spend_by_extension_block = true;
         return true;
-    }
+    };
 
     signalAbortScriptByError() {
+        if(this.abort_by_error === true) return false;
         this.abort_by_error = true;
-    }
+        return true;
+    };
 
     signalAbort() {
+        if(this.aborted == true) return false;
         this.aborted = true;
-    }
+        return true;
+    };
 
     signalExit() {
+        if(this.exit === true) return false;
         this.exit = true;
-    }
+        return true;
+    };
 
     isClosedOrAborted() {
         return this.aborted === true || this.exit === true || this.abort_by_error === true;
-    }
+    };
 };
 
 // Wird verwendet um Erlaubte Öffentliche Schlüssel zwischen zu speichern
@@ -313,8 +316,20 @@ class AllowedScriptSignerPublicKeys {
 
     // Fügt einen Öffentlichen Schlüssel auf der Liste hinzu
     addPkey(pkey_obj) {
+        // Es wird geprüft ob es sich um ein zulässiges Objekt handelt
+        if(pkey_obj === undefined || pkey_obj === null || typeof pkey_obj !== 'object') return false;
+        if(pkey_obj.constructor.name !== 'AlternativeBlockchainAddressValue' && pkey_obj.constructor.name !== 'PublicKeyValue') return false;
+
+        // Es wird geprüft ob der PublicKey bereits freigegeben wurde
+        if(Object.keys(this.pkeys).includes(pkey_obj.value.toLowerCase()) !== false) return false;
+
+        // Der Öffentliche Schlüssel wird hinzugefügt
         this.pkeys[pkey_obj.value.toLowerCase()] = pkey_obj;
+
+        // Die Mindestanzahl der Signaturen wird Aktualisiert
         this.setNeededSignatures(this.totalPublicKeys());
+
+        // Der Vorgang wurde erfolgreich druchgeführt
         return true;
     };
 
@@ -325,15 +340,28 @@ class AllowedScriptSignerPublicKeys {
 
     // Makiert eine Adresse als verwendet
     markAddressAsUsed(address) {
+        // Es wird geprüft ob es sich um eine gültige Adeesse handelt
+        if(address === undefined || address === null || typeof address !== 'string') return false;
+
+        // Es wird geprüft ob es sich um eine Adresse handelt
         if(this.isKnownPublicKey(address) === true) {
             if(Object.keys(this.market_as_used).includes(address.toLowerCase()) === false) {
                 this.market_as_used.push(address.toLowerCase());
+                return true;
             }
         }
+
+        // Es handelt es sich um eine unebaknnte Adresse
+        return false;
     };
 
     // Gibt an, ob es sich um einen Publickey handelt welcher bekannt ist
     isKnownPublicKey(pkey) {
+        // Es wird geprüft ob der Parameter korrekt ist
+        if(pkey === undefined || pkey === null) return false;
+        if(typeof pkey !== 'string') return false;
+
+        // Es wird geprüft ob es sich um einen bekannten Öffentlichen Schlüssel handelt
         return this.pkeys[pkey.toLowerCase()] !== undefined;
     };
 
@@ -353,13 +381,30 @@ class AllowedScriptSignerPublicKeys {
 
     // Legt fest weiviele Signaturen benötigt werden
     setNeededSignatures(am) {
+        // Es wird geprüft ob der Parameter korrekt ist
+        if(am === undefined || am === null) return false;
+        if(typeof am !== 'number') return false;
+
+        // Legt die Anzahl benötiger Signaturen fest
         this.needs_sigs = am;
+
+        // Der Vorgang wurde erfolgreich durchgeführt
+        return true;
     };
 };
 
 // Wird verwendet um die Ergebnisse der Skript Ausführung zusammenzufassen
 class SigScriptExecutionResults {
     constructor(unlocking_script, locking_script, unlocking_script_hash, locking_script_hash, is_validate_y_stack, used_pkey_signatures) {
+        // Es wird geprüft ob es sich um gültige Datentypen handelt
+        if(unlocking_script === undefined || unlocking_script === null || typeof unlocking_script !== 'object' || unlocking_script.constructor.name !== 'ScriptInstanceData') throw new Error('Invalid unlocking script data type');
+        if(locking_script === undefined || locking_script === null || typeof locking_script !== 'object' || locking_script.constructor.name !== 'ScriptInstanceData') throw new Error('Invalid locking script data type');
+        if(unlocking_script_hash === undefined || unlocking_script_hash === null || typeof unlocking_script_hash !== 'string') throw new Error('Invalid unlocking script hash data type');
+        if(locking_script_hash === undefined || locking_script_hash === null || typeof locking_script_hash !== 'string') throw new Error('Invalid locking script hash data type');
+        if(is_validate_y_stack === undefined || is_validate_y_stack === null || typeof is_validate_y_stack !== 'boolean') throw new Error('Invalid validate y stack state data type');
+        if(used_pkey_signatures === undefined || used_pkey_signatures === null || typeof used_pkey_signatures !== 'object' || Array.isArray(used_pkey_signatures) !== true) throw new Error('Invalid pkey signatures data type');
+
+        // Die Daten werden zwischengespeichert
         this.script_results = { unlocking:unlocking_script, locking:locking_script };
         this.unlocking_script_hash = unlocking_script_hash;
         this.used_pkey_signatures = used_pkey_signatures;
@@ -404,16 +449,26 @@ class SigScriptExecutionResults {
 // Wird verwendet um zu Signalisieren dass das Aktuelle Skript entwender gültig oder ungültig ist
 class SecureVMValue {
     constructor(name, value) {
+        // Es wird geprüft ob es sich um gültige Parameter handelt
+        if(name === undefined || name === null || typeof name !== 'string') throw new Error('Invalid name value data type');
+        if(value === undefined || value === null || typeof value !== 'string') throw new Error('Invalid value data type');
+
+        // Speichert die Parameter ab
         this.name = name;
         this.value = value;
     };
 
     equal(another_obj) {
+        // Es wird geprüft ob es sich um ein zulässiges Objekt handelt
         if(another_obj === undefined || another_obj === null) return false;
         if(typeof another_obj !== 'object') return false;
         if(another_obj.constructor.name !== 'SecureVMValue') return false;
-        if(this.name !== another_obj.name) return false;
-        if(this.value !== another_obj.value) return false;
+
+        // Es wird geprüft ob die Werte übereinstimmen
+        if(this.name.toLowerCase() !== another_obj.name.toLowerCase()) return false;
+        if(this.value.toLowerCase() !== another_obj.value.toLowerCase()) return false;
+
+        // Es handelt sich um die selben werte
         return true;
     };
 };
@@ -425,13 +480,11 @@ function compare(obj_a, obj_b) {
     return obj_a.value === obj_b.value;
 };
 
-
 // Speichert alle SecureVMValue Werte ab
 const secure_vm_value_operations = {
     true:new SecureVMValue('secure_bool', 'secure_true'),
     false:new SecureVMValue('secure_bool', 'secure_true'),
 };
-
 
 // Exportiert die Klassen
 module.exports = {
@@ -446,7 +499,6 @@ module.exports = {
     DateTimestamp:DateTimestamp,
     PublicKeyValue:PublicKeyValue,
     CommitmentValue:CommitmentValue,
-    TxOutputMetaData:TxOutputMetaData,
     TxScriptCheckData:TxScriptCheckData,
     securevm:secure_vm_value_operations,
     ScriptInstanceData:ScriptInstanceData,
