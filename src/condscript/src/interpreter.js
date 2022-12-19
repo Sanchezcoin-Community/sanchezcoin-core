@@ -1,7 +1,6 @@
 const blockchain_crypto = require('blckcrypto');
 const op_codes = require('./opcodes');
 let { bech32 } = require('bech32');
-const web3 = require('web3');
 const { 
     securevm,
     HexString,
@@ -124,6 +123,19 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         return true;
     };
 
+    // Wird verwendet um Zusammenhängende Daten zu Extrahieren
+    async function extract_n2_bytes(hex_str_lst, byte_size) {
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_lst.slice();
+
+        // Die Schleife wird ausgeführt
+        let array_sz = ``;
+        while(array_sz.length < byte_size) array_sz += copyed_item.shift();
+
+        // Die Daten werden zurückgegeben
+        return { hex_str_list:copyed_item, value:array_sz };
+    };
+
     // Wird verwendet um die Verwendeten Signaturen zu überprüfen
     async function validate_unlockscript_sig(script_result_obj=null) {
         // Es wird geprüft ob mehr Signaturen als PublicKeys vorhanden sind
@@ -227,6 +239,34 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
 
         // Es handelt sich um ein gültiges Skript
         return true;
+    };
+
+    // Diese Funktion wird verwendet um ein Bool einzulesen
+    async function next_read_bool(hex_str_list, script_result_obj=null) {
+        // Es wird geprüft ob das Skript abgebrochen wurde
+        if(script_result_obj.isClosedOrAborted() === true) return false;
+
+        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
+        if(hex_str_list.length < 2) return false;
+
+        // Das Item wird Kopiert
+        let copyed_item = hex_str_list.slice();
+
+        // Der Nächste Eintrag vom SkriptStack (S) genommen und ausgewertet
+        let script_stack_entry = copyed_item.shift();
+
+        // Es wird geprüft, um was für einen ChainState wert es sich handelt
+        if(script_stack_entry === op_codes.op_true) {
+            let reconstructed_bool = new BoolValue(true, false);
+            return { hex_str_list:copyed_item, bool_value:reconstructed_bool };
+        }
+        else if(script_stack_entry === op_codes.op_false) {
+            let reconstructed_bool = new BoolValue(false, false);
+            return { hex_str_list:copyed_item, bool_value:reconstructed_bool };
+        }
+        else {
+            return false;
+        }
     };
 
     // Diese Funktion wird verwendet um eine Zahl einzulesen
@@ -676,34 +716,6 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         }
     };
 
-    // Diese Funktion wird verwendet um ein Bool einzulesen
-    async function next_read_bool(hex_str_list, script_result_obj=null) {
-        // Es wird geprüft ob das Skript abgebrochen wurde
-        if(script_result_obj.isClosedOrAborted() === true) return false;
-
-        // Es wird geprüft ob der erste Eintrag auf der Liste vorhanden ist
-        if(hex_str_list.length < 2) return false;
-
-        // Das Item wird Kopiert
-        let copyed_item = hex_str_list.slice();
-
-        // Der Nächste Eintrag vom SkriptStack (S) genommen und ausgewertet
-        let script_stack_entry = copyed_item.shift();
-
-        // Es wird geprüft, um was für einen ChainState wert es sich handelt
-        if(script_stack_entry === op_codes.op_true) {
-            let reconstructed_bool = new BoolValue(true, false);
-            return { hex_str_list:copyed_item, bool_value:reconstructed_bool };
-        }
-        else if(script_stack_entry === op_codes.op_false) {
-            let reconstructed_bool = new BoolValue(false, false);
-            return { hex_str_list:copyed_item, bool_value:reconstructed_bool };
-        }
-        else {
-            return false;
-        }
-    };
-
     // Diese Funktion wird verwendet um ein ELSE Block auszulesen
     async function next_is_else_block(hex_str_list, script_type=null, erase=false, current_sub_call=0, script_result_obj=null) {
         // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
@@ -1068,19 +1080,6 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         else {
             throw new Error('Invalid script');
         }
-    };
-
-    // Wird verwendet um Zusammenhängende Daten zu Extrahieren
-    async function extract_n2_bytes(hex_str_lst, byte_size) {
-        // Das Item wird Kopiert
-        let copyed_item = hex_str_lst.slice();
-
-        // Die Schleife wird ausgeführt
-        let array_sz = ``;
-        while(array_sz.length < byte_size) array_sz += copyed_item.shift();
-
-        // Die Daten werden zurückgegeben
-        return { hex_str_list:copyed_item, value:array_sz };
     };
 
     // Wird ausgeführt um zu überprüfen ob als nächstes ein EMIT Call kommt
@@ -1506,8 +1505,6 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
                     close_by_error(script_result_obj, 'emit_call', 'hecksequenceverify', 'invalid script');
                     return false; 
                 }
-
-                
             }
             // Es wird geprüft ob ein Extension Block Transfer vorhanden ist
             else if(current_item === op_codes.op_extblock_transfer) {

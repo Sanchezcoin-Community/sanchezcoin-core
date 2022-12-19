@@ -11,6 +11,7 @@ const NumberType = {
 
 class ValueObject {
     constructor(value, type, acepted_d_types, is_vm_value=false) {
+        // Die Werte werden abgespeichert
         this.is_vm_value = is_vm_value;
         this.dtypes = acepted_d_types;
         this.value = value;
@@ -32,7 +33,7 @@ class HexString extends ValueObject {
 
         // Das Mutterobjekt wird gebaut
         super(value, "hxstr", ['cst', 'hxstr', 'num', 'hash'], is_vm_value);
-    }
+    };
 };
 
 // Wird verwendet wenn es sich um eine 
@@ -52,7 +53,7 @@ class NumberValue extends ValueObject {
 
         // Speichert den Typen der Nummer ab
         this.n_type = type;
-    }
+    };
 };
 
 // Wird verwendet wenn es sich um einen Bool Wert handelt
@@ -66,7 +67,7 @@ class BoolValue extends ValueObject {
 
         // Das Mutter Objekt wird erstellt
         super(value, "bool", ['cst', 'hxstr', 'num', 'bool'], is_vm_value);
-    }
+    };
 };
 
 // Wird verwendet wenn es sich um einen Hashwert handelt
@@ -84,14 +85,14 @@ class HashValue extends HexString {
         // Der Type wird angepasst
         this.type = 'hash';
         this.dtypes.push('hash');
-    }
+    };
 };
 
 // Wird verwendet wenn es sich um einen Leeren Wert handelt
 class NullValue extends ValueObject {
     constructor() {
         super(null, "null", ['null']);
-    }
+    };
 };
 
 // Wird verwendet wenn es sich um einen Öffentlichen Schlüssel handelt
@@ -112,11 +113,11 @@ class PublicKeyValue extends HexString {
         // Der Type wird angepasst
         this.type = 'pkey';
         this.dtypes.push('pkey');
-    }
+    };
 
     markAsUsed() {
         this.was_used_sig_check = true;
-    }
+    };
 };
 
 // Wird verwendet wenn es sich um eine Altchain Adresse handelt
@@ -133,29 +134,30 @@ class AlternativeBlockchainAddressValue extends ValueObject {
 
         // Der Hash Algo wird abgespeichert
         this.algo = algo;
-    }
+    };
 
     markAsUsed() {
         this.was_used_sig_check = true;
-    }
+    };
 };
 
 // Wird verwendet um zu Signalisieren dass es sich um eine Signle Signatur handelt
 class SingleSignatureValue {
     constructor(pubkey, algo, sig, msg_hash) {
+        // Speichert die Daten ab
         this.msg_hash = msg_hash;
         this.value = pubkey;
         this.type = algo;
         this.sig = sig;
-    }
+    };
 
     async fullSignatureCheck() {
         return true;
-    }
+    };
 
     quickCheck() {
         return true;
-    }
+    };
 };
 
 // Wird verwendet um einen Zeitstempel darzustellen
@@ -209,14 +211,19 @@ class DateTimestamp extends ValueObject {
 // Wird verwender um Extrem Erweiterte Bedingunden an die Transaktion anzuhängen
 class CommitmentValue {
     constructor(pkey, commitment_script) {
+        // Es wird geprüft ob es sich um Zulässige Parameter handelt
+        if(pkey === undefined || pkey === null || typeof pkey !== 'string') throw new Error('Invalid data type for public key');
+        if(commitment_script === undefined || commitment_script === null || typeof commitment_script !== 'string') throw new Error('Invalid data type for commitment script');
+
+        // Die Daten werden zwischengespeichert
         this.commitment_script = commitment_script;
         this.pkey = pkey;
-    }
+    };
 
     // Gibt einen Datensaz des Commitments aus welcher verwendet wird um einen Signaturhash aus dem Commitment zu erstellen
     toFullyString() {
         return `${this.pkey}${this.commitment_script}`.toLowerCase();
-    }
+    };
 };
 
 // Wird verwendet um die Daten der Transaktion an zu übergeben
@@ -251,7 +258,7 @@ class TxScriptCheckData {
     // Gibt den Lockingscript Sring aus
     getLockingScriptHexStr() {
         return this.locking_script.toLowerCase();
-    }
+    };
 };
 
 // Wird verwendet um die Daten des Ausgeführten Skriptes zu Notieren
@@ -406,8 +413,8 @@ class SigScriptExecutionResults {
 
         // Die Daten werden zwischengespeichert
         this.script_results = { unlocking:unlocking_script, locking:locking_script };
-        this.unlocking_script_hash = unlocking_script_hash;
         this.used_pkey_signatures = used_pkey_signatures;
+        this.unlocking_script_hash = unlocking_script_hash;
         this.locking_script_hash = locking_script_hash;
         this.is_validate_y_stack = is_validate_y_stack;
     };

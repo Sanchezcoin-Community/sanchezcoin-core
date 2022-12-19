@@ -47,5 +47,5 @@ let avail_sigs = [
     let test_result = await interpreter(tx_check_data, block_hight, DateTimestamp.getCurrent(), null, use_debug_mode);
     if(use_debug_mode === true) console.log()
     console.log(test_result);
-    console.log('Tx is finally true', test_result.isFinallyTrue());
+    console.log('Tx is finally', test_result.isFinallyTrue());
 })();
