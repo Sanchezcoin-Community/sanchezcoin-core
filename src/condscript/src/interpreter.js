@@ -475,7 +475,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
             }
 
             // Es wird geprüft ob es sich um einen Öffentlichen Schlüssel handelt
-            let read_public_key_declaration = await next_read_public_key_defination(copyed_item, script_type);
+            let read_public_key_declaration = await next_read_public_key_defination(copyed_item, script_type, script_result_obj);
             if(read_public_key_declaration !== false) {
                 copyed_item = read_public_key_declaration.hex_str_lst;
                 return read_public_key_declaration; 
@@ -684,7 +684,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
         // Wird verwendet um zu überprüfen ob ein oder mehrere bestimmte PublicKeys oder Adressen dieses Skript signiert haben
         else if(current_item === op_codes.op_eq_signers) {
             // Es wird geprüft ob Mindestens 1 Wert auf dem Parameterstack liegt
-            if(readed_parren_cube.items.length !== 0) {
+            if(readed_parren_cube.items.length < 1) {
                 close_by_error(script_result_obj, 'Invalid script, eq signers need minimum one parameter');
                 return false;
             }
@@ -692,7 +692,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
             // Es wird geprüft ob es sich um gültige Parameter handelt
             let is_ok = true;
             for(let otem of readed_parren_cube.items) {
-                let arrv = tx_check_data.signatures.map((r) => r.value);
+                let arrv = tx_check_data.signatures.map((r) => r.value.toLowerCase());
                 if(arrv.includes(otem.value.value) !== true) {
                     is_ok = false;
                     break;
@@ -943,7 +943,6 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
         // Es wird geprüft ob es sich bei dem ersten Eintrag um eine IF Anweisung handelt
         let extracted_item = copyed_item.shift();
         if(extracted_item !== op_codes.op_public_key_defination) return false;
-        print('public_key_reading');
 
         // Es wird geprüft ob danach ein zulässiger Alrorithmns kommt
         extracted_item = copyed_item.shift();
@@ -1526,7 +1525,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                     return false; 
                 }
 
-                // Es wird geprüft ob nachfolgend eine Nummer kommt
+                // Es wird geprüft ob nachfolgend ein Hexwert kommt
                 let hex_str_readed_result = await next_is_inter_hex_str(copyed_item, script_type, script_result_obj);
                 if(hex_str_readed_result === false) {
                     close_by_error(script_result_obj, 'emit_call', 'eq_unlock_script_hash', 'invalid script');
@@ -1549,6 +1548,38 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                 // Die Daten werden zurückgegeben
                 print('emit_call', 'unlocking script hash matching operation', unlocking_script_hash.toLowerCase(), hex_str_readed_result.value.value.toLowerCase(), true);
                 return { hex_str_list:copyed_item };
+            }
+            // Wird verwendet um zu überprüfen 1 Spizielle Public Key verwendet wurde um die Transaktion zu Signieren
+            else if(current_item === op_codes.op_eq_signers) {
+                // Es wird versucht die ParrenCube werte auszulesen
+                let push_function_parren = await next_read_parren_cube(copyed_item, script_type, true, script_result_obj);
+                if(push_function_parren === false) {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script');
+                    return false; 
+                }
+
+                // Es wird geprüft ob sich genau 1 Element auf dem Stack befindet
+                if(push_function_parren.items.length !== 1) {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script to parms');
+                    return false; 
+                }
+
+                // Es wird geprüft ob es sich um einen Öffentlichen Schlüssel oder um eine Adresse handelt
+                let parm_obj = push_function_parren.items.shift().value;
+                if(parm_obj.constructor.name !== 'PublicKeyValue' && parm_obj.constructor.name !== 'AlternativeBlockchainAddressValue') {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script key type');
+                    return false; 
+                }
+
+                // Es wird geprüft ob der Schlüssel verwendet wird
+                if(allowed_signature_public_keys.getUsedSignaturesPublicKeys().map((r) => r.value.toLowerCase()).includes(parm_obj.value) !== true) {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script key type');
+                    return false; 
+                }
+
+                // Die Daten werden zurückgegeben
+                print('emit_call', 'matching the signer', parm_obj.value, true);
+                return { hex_str_list:push_function_parren.hex_str_list };
             }
             // Es handelt sich um einen unbekannten emit OP_CODE
             else {

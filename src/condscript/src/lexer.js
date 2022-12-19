@@ -26,6 +26,7 @@ let key_words = {
 let def_functions = {
     "add_verify_key_and_eq_verfiy_signature": { type:"EMIT_FUNCTION", name:"ADD_PUBLIC_VERIFY_KEY_AND_VERIFY_SIGNATURES" },
     "equal_unlocking_script_hash": { type:"EMIT_FUNCTION", name:"EQ_UNLOCKING_SCRIPT_HASH" },
+    "equal_spefic_signature_pkey": { type:"EMIT_FUNCTION", name:"EQ_SPEFIC_SIG_PKEY" },
     "get_unlocking_script_hash": { type:"VALUE_OUTPUT", name:"UNLOCKING_SCRIPT_HASH" },
     "check_blocklock_verify": { type:"EMIT_FUNCTION", name:"CHECK_BLOCKBLOCKVERIFY" },
     "get_locking_script_hash": { type:"VALUE_OUTPUT", name:"LOCKING_SCRIPT_HASH" },

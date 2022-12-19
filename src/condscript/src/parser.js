@@ -35,6 +35,9 @@ let emit_functions = {
     CHECKLOCKTIMEVERIFY:[
         op_codes.op_check_locktimeverify
     ],
+    EQ_SPEFIC_SIG_PKEY:[
+        op_codes.op_eq_signers
+    ],
     PUSH_TO_Y_STACK:[
         op_codes.op_push_to_y
     ],
