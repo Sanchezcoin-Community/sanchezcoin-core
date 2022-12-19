@@ -9,7 +9,6 @@ const {
     NullValue,
     NumberType,
     NumberValue,
-    DateTimestamp,
     PublicKeyValue,
     ScriptInstanceData,
     SigScriptExecutionResults,
@@ -38,13 +37,10 @@ const extract_obj_values = (items) => items.map((value) => {
 });
 
 // Wird ausgeführt um ein einfaches Skript auszuführen
-const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_timest=new DateTimestamp("00000000000000000000000000000000"), commitment_data=null, debug=true) => {
-    // Es wird geprüft ob es sich um gültige Hexstrings handelt
+const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_data=null, debug=true) => {
+    // Es wird geprüft ob es sich um zulässige Parameter handelt welche überheben wurden
     if(tx_check_data.constructor.name !== 'TxScriptCheckData') throw new Error('Invalid unlocking script data');
-
-    // Es wird geprüft ob es sich um eine gültige Blocknummer handelt
-    if(c_block_hight === undefined || c_block_hight === null) throw new Error('No c_block_hight parameter found')
-    if(typeof c_block_hight !== 'bigint' || c_block_hight < 0n) throw new Error('Invalid c_block_hight value');
+    if(chain_data.constructor.name !== 'ChainScriptCheckData') throw new Error('Invalid unlocking script data');
 
     // Es wird ein Hash aus dem Eingabe, sowie ausgabe Skript erstellt
     let unlocking_script_hash = blockchain_crypto.sha3(256, tx_check_data.getUnlockScriptHexStr());
@@ -58,9 +54,6 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
 
     // Es wird ein Number Objekt aus der Aktuellen Schwierigkeit erzeugt
     let current_block_diff = new NumberValue(0n, true, NumberType.bit64);
-
-    // Es wird ein Hash Objekt des letzten Blocks erstetllt
-    let last_block_hash = new HashValue("", 'sha3_256', true);
 
     // Es wird geprüft ob die Einträge auf dem Script Sigs Array korrekt ist
     for await(let sig_item of tx_check_data.signatures) {
@@ -78,17 +71,18 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
     // Speichert das Aktuelle Data Stack ab
     let y_stack_array = [];
 
-    // Wird ausgeführt wenn das Skript aufgrund eines Fehlers abgebrochen werden soll
-    function close_by_error(script_result_obj, ...exception_text) {
-        if(script_result_obj === null || script_result_obj.constructor.name !== 'ScriptInstanceData') throw new Error('Invalid data type');
-        script_result_obj.signalAbortScriptByError();
-        console.log(...exception_text);
-    };
-
     // Wird ausgeführt um den DEBUG Text auszzgeben
     function print(...text) {
         if(debug === false) return;
         console.log(...text)
+    };
+
+    // Wird ausgeführt wenn das Skript aufgrund eines Fehlers abgebrochen werden soll
+    function close_by_error(script_result_obj, ...exception_text) {
+        if(script_result_obj === null || script_result_obj.constructor.name !== 'ScriptInstanceData') throw new Error('Invalid data type');
+        script_result_obj.signalAbortScriptByError();
+        print(...exception_text);
+        print('script aborted');
     };
 
     // Zeigt die Basis Informationen über die Skripte an
@@ -203,7 +197,7 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
                 }
                 // Es wird geprüft ob es sich um eine Bitcoin Signatur handelt
                 else if(ssig.type === 'btcadr') {
-                    let vresult = await blockchain_crypto.altchain.validateWeb3EthereumMessageSignature(ssig.value, ssig.sig, ssig.msg_hash);
+                    let vresult = await blockchain_crypto.altchain.validateBitcoinSegwitMessageSignature(ssig.value, ssig.sig, ssig.msg_hash);
                     if(vresult !== true) continue;
                 }
                 // Es wird geprüft ob es sich um eine Ethereum Signatur handelt
@@ -229,8 +223,7 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
             }
         }
         catch(e) {
-            print('crypto_signature_verify', ssig.value, ssig.sig, false, 'exception_called');
-            close_by_error(script_result_obj, e);
+            close_by_error(script_result_obj, 'crypto_signature_verify exception_called', e);
             return false;
         }
 
@@ -360,11 +353,11 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         }
         // Gibt die Aktuelle Blockhöhe an
         else if(script_stack_entry === op_codes.op_current_block_hight) {
-            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight, true, NumberType.bit256) };
+            return { hex_str_list:copyed_item, value:new NumberValue(chain_data.current_block_hight, true, NumberType.bit256) };
         }
         // Gibt den Hash des letzten Blocks aus
         else if(script_stack_entry === op_codes.op_last_block_hash) {
-            return { hex_str_list:copyed_item, value:last_block_hash };
+            return { hex_str_list:copyed_item, value:chain_data.last_block_hash };
         }
         // Gibt die Aktuelle Mining Schwierigkeit an
         else if(script_stack_entry === op_codes.op_current_block_diff) {
@@ -637,8 +630,8 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
             }
 
             // Die Daten werden zurückgegeben
-            print('value_function', 'last_block_hash', last_block_hash);
-            return { hex_str_list:copyed_item, value:last_block_hash };
+            print('value_function', 'last_block_hash', chain_data.last_block_hash);
+            return { hex_str_list:copyed_item, value:chain_data.last_block_hash };
         }
         // Wird verwendet um die Aktuelle Block Schwierigkeit auszugeben
         else if(current_item === op_codes.op_current_block_diff) {
@@ -685,8 +678,8 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
             }
 
             // Die Daten werden zurückgegeben
-            print('value_function', 'current_block_highgt', c_block_hight.toString());
-            return { hex_str_list:copyed_item, value:new NumberValue(c_block_hight, true, NumberType.bit256) };
+            print('value_function', 'current_block_highgt', chain_data.current_block_hight.toString());
+            return { hex_str_list:copyed_item, value:new NumberValue(chain_data.current_block_hight, true, NumberType.bit256) };
         }
         // Wird verwendet um zu überprüfen ob ein oder mehrere bestimmte PublicKeys oder Adressen dieses Skript signiert haben
         else if(current_item === op_codes.op_eq_signers) {
@@ -1365,7 +1358,7 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
     
                 // Es wird geprüft ob die Benötigte Zeit erreicht wurde
                 let timestamp = number_read_result.int_value.value;
-                if(current_timest.toNumber() >= timestamp) {
+                if(chain_data.current_block_time.toNumber() >= timestamp) {
                     print('emit_call', 'check_locktimeverify', true);
                     return { hex_str_list:copyed_item };
                 }
@@ -1411,7 +1404,7 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
 
                 // Es wird geprüft ob der Benötigte Block erreicht oder überschritten wurde
                 let unlock_hight = number_read_result.int_value.value + tx_check_data.input_tx_block_hight;
-                if(c_block_hight >= unlock_hight) {
+                if(chain_data.current_block_hight >= unlock_hight) {
                     print('emit_call', 'check_blockblockverify', true);
                     return { hex_str_list:copyed_item };
                 }
@@ -1481,30 +1474,11 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
                 }
 
                 // Es wird Signalisiert, dass es sich um ein gültiges Commitment handelt
-                if(script_result_obj.singalCommitmentValidate() !== true) {
-                    close_by_error(script_result_obj, 'emit_call', 'check_commitment', commitment_fully_hash, false);
-                    return false;
-                }
+                commitment_was_succs = true;
 
                 // Die Daten werden zurückgegeben
                 print('emit_call', 'check_commitment', commitment_fully_hash, true);
                 return { hex_str_list:readed_hex_str.hex_str_list };
-            }
-            // Wird verwendet um zu überprüfen ob die Sequenz Prüfung korrekt ist
-            else if(current_item === op_codes.op_checksequenceverify) {
-                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
-                current_item = copyed_item.shift();
-                if(current_item !== op_codes.op_parren_fnc_cube) {
-                    close_by_error(script_result_obj, 'emit_call', 'hecksequenceverify', 'invalid script');
-                    return false; 
-                }
-
-                // Es wird geprüft ob 0 Daten angegeben wurden
-                current_item = copyed_item.shift();
-                if(current_item !== '00') {
-                    close_by_error(script_result_obj, 'emit_call', 'hecksequenceverify', 'invalid script');
-                    return false; 
-                }
             }
             // Es wird geprüft ob ein Extension Block Transfer vorhanden ist
             else if(current_item === op_codes.op_extblock_transfer) {
@@ -1530,6 +1504,50 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
 
                 // Die Daten werden zurückgegeben
                 print('emit_call', 'extensionblock transfer enabled', true);
+                return { hex_str_list:copyed_item };
+            }
+            // Wird verwendet um zu überprüfen ob der Hash des Unlocking Skriptes mit dem Angegeben Hash übereinstimmt
+            else if(current_item === op_codes.op_eq_unlock_script_hash) {
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                current_item = copyed_item.shift();
+
+                // Es wird geprüft ob es sich um einen Parren Inner handelt
+                if(current_item !== op_codes.op_parren_fnc_cube) {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_unlock_script_hash', 'invalid script');
+                    return false; 
+                }
+
+                // Die Gesamtzahl aller Parameter wird abgerufen
+                let total_items = parseInt(copyed_item.shift(), 16);
+
+                // Es wird geprüft ob 1 Argument vorhanden ist
+                if(total_items !== 1) {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_unlock_script_hash', 'invalid script');
+                    return false; 
+                }
+
+                // Es wird geprüft ob nachfolgend eine Nummer kommt
+                let hex_str_readed_result = await next_is_inter_hex_str(copyed_item, script_type, script_result_obj);
+                if(hex_str_readed_result === false) {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_unlock_script_hash', 'invalid script');
+                    return false; 
+                }
+
+                // Es wird geprüft ob der Hash 64 Zeichen groß ist
+                copyed_item = hex_str_readed_result.hex_str_list;
+                if(hex_str_readed_result.value.value.length !== 64) {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_unlock_script_hash', 'invalid script');
+                    return false; 
+                }
+
+                // Der Hash des Unlocking Skriptes wird mit dem Angegebene Hash verglichen
+                if(unlocking_script_hash.toLowerCase() !== hex_str_readed_result.value.value.toLowerCase()) {
+                    close_by_error(script_result_obj, 'emit_call', 'unlocking script hash matching operation', unlocking_script_hash.toLowerCase(), hex_str_readed_result.value.value.toLowerCase(), false);
+                    return false; 
+                }
+
+                // Die Daten werden zurückgegeben
+                print('emit_call', 'unlocking script hash matching operation', unlocking_script_hash.toLowerCase(), hex_str_readed_result.value.value.toLowerCase(), true);
                 return { hex_str_list:copyed_item };
             }
             // Es handelt sich um einen unbekannten emit OP_CODE
@@ -1629,7 +1647,7 @@ const hexed_script_interpreter = async(tx_check_data, c_block_hight=0n, current_
         let locking_script_result = await run_locking_script();
 
         // Die Ergebnisse werden zusammengeführt
-        let final_value = new SigScriptExecutionResults(unlocking_script_result, locking_script_result, unlocking_script_hash, locking_script_hash, yStackIsFinallyTrue(), allowed_signature_public_keys.getUsedSignaturesPublicKeys());
+        let final_value = new SigScriptExecutionResults(unlocking_script_result, locking_script_result, unlocking_script_hash, locking_script_hash, yStackIsFinallyTrue(), allowed_signature_public_keys.getUsedSignaturesPublicKeys(), (commitment_data !== null), commitment_was_succs);
 
         // Das Finale Objekt wird zurückgegeben
         return final_value;

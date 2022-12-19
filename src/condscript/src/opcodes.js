@@ -1,5 +1,6 @@
 module.exports = {
     op_invalid_op_code:                     (255).toString(16).padStart(2, '0'),
+    op_eq_unlock_script_hash:               (79).toString(16).padStart(2, '0'),
     op_boolor:                              (78).toString(16).padStart(2, '0'),
     op_booland:                             (77).toString(16).padStart(2, '0'),
     op_sub:                                 (76).toString(16).padStart(2, '0'),

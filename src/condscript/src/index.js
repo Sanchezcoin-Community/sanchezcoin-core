@@ -9,3 +9,9 @@ module.exports.parseScript = async function(script_string) {
     let parsed_script = await script_token_parser(tokenized_script);
     return parsed_script.hex_script.toLowerCase();
 };
+
+// Wird verwendet um ein Script Auszuführen
+module.exports.runScript = async function(tx_check_data, chain_check_data, commitment_check_data, debug_mode=false) {
+    let result = await interpreter(tx_check_data, chain_check_data, commitment_check_data, debug_mode);
+    return result;
+};

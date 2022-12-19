@@ -29,6 +29,9 @@ let emit_functions = {
     CHECK_BLOCKBLOCKVERIFY:[
         op_codes.op_check_blockblockverify
     ],
+    EQ_UNLOCKING_SCRIPT_HASH:[
+        op_codes.op_eq_unlock_script_hash
+    ],
     CHECKLOCKTIMEVERIFY:[
         op_codes.op_check_locktimeverify
     ],

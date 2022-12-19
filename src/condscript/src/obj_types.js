@@ -268,19 +268,11 @@ class ScriptInstanceData {
         this.aborted = false;
         this.unlocked = false;
         this.abort_by_error = false;
-        this.has_commitment = false;
-        this.commitment_validate = false;
     };
 
     signalUnlock() {
         if(this.unlocked === true) return false;
         this.unlocked = true;
-        return true;
-    };
-
-    singalCommitmentValidate() {
-        if(this.commitment_validate === true) return false;
-        this.commitment_validate = true;
         return true;
     };
 
@@ -402,7 +394,7 @@ class AllowedScriptSignerPublicKeys {
 
 // Wird verwendet um die Ergebnisse der Skript Ausführung zusammenzufassen
 class SigScriptExecutionResults {
-    constructor(unlocking_script, locking_script, unlocking_script_hash, locking_script_hash, is_validate_y_stack, used_pkey_signatures) {
+    constructor(unlocking_script, locking_script, unlocking_script_hash, locking_script_hash, is_validate_y_stack, used_pkey_signatures, has_commitment, commitment_is_checked) {
         // Es wird geprüft ob es sich um gültige Datentypen handelt
         if(unlocking_script === undefined || unlocking_script === null || typeof unlocking_script !== 'object' || unlocking_script.constructor.name !== 'ScriptInstanceData') throw new Error('Invalid unlocking script data type');
         if(locking_script === undefined || locking_script === null || typeof locking_script !== 'object' || locking_script.constructor.name !== 'ScriptInstanceData') throw new Error('Invalid locking script data type');
@@ -410,13 +402,17 @@ class SigScriptExecutionResults {
         if(locking_script_hash === undefined || locking_script_hash === null || typeof locking_script_hash !== 'string') throw new Error('Invalid locking script hash data type');
         if(is_validate_y_stack === undefined || is_validate_y_stack === null || typeof is_validate_y_stack !== 'boolean') throw new Error('Invalid validate y stack state data type');
         if(used_pkey_signatures === undefined || used_pkey_signatures === null || typeof used_pkey_signatures !== 'object' || Array.isArray(used_pkey_signatures) !== true) throw new Error('Invalid pkey signatures data type');
+        if(has_commitment === undefined || has_commitment === null || typeof has_commitment !== 'boolean') throw new Error('Invalid has commitment data type');
+        if(commitment_is_checked === undefined || commitment_is_checked === null || typeof commitment_is_checked !== 'boolean') throw new Error('Invalid commitment is checked data type');
 
         // Die Daten werden zwischengespeichert
         this.script_results = { unlocking:unlocking_script, locking:locking_script };
         this.used_pkey_signatures = used_pkey_signatures;
         this.unlocking_script_hash = unlocking_script_hash;
         this.locking_script_hash = locking_script_hash;
+        this.commitment_is_checked = commitment_is_checked;
         this.is_validate_y_stack = is_validate_y_stack;
+        this.has_commitment = has_commitment;
     };
 
     // Gibt an ob das Unlocking + das Locking Skript erfolgreich und ohne fehler unlockt wurden
@@ -436,12 +432,8 @@ class SigScriptExecutionResults {
             // Es wird geprüft ob es das Y Stack Korrekt Validiert wurde
             if(this.is_validate_y_stack !== true) return false;
 
-            // Es wird geprüft ob die Commitment Regeln für das Locking Skript korrekt sind
-            if(this.script_results.locking.has_commitment === true && this.script_results.locking.commitment_validate !== true) return false;
-
-            // Es wird geprüft ob die Commitment Regeln für das Unlocking Skript korrekt sind
-            if(this.script_results.unlocking.has_commitment !== false) return false;
-            if(this.script_results.unlocking.commitment_validate !== false) return false;
+            // Es wird geprüft ob das Commitment geprüft wurde
+            if(this.has_commitment === true && this.commitment_is_checked !== true) return false;
 
             // Es handelt sich um ein gültiges Skript
             return true;
@@ -450,6 +442,15 @@ class SigScriptExecutionResults {
             // Es handelt sich um einen ungültigen Schlüssel
             return false;
         }
+    };
+
+    // Gibt ein JSON Objekt aus, welches zusammnfest ob die Ausführung der Skripte erfolgreich war
+    finallyObject() {
+        return {
+            commitment:{ has:this.has_commitment, validate:this.commitment_is_checked },
+            hashes:{ unlocking_script_hash:this.unlocking_script_hash, locking_script:this.locking_script_hash },
+            is_finally_true:this.isFinallyTrue(),
+        };
     };
 };
 
@@ -480,6 +481,18 @@ class SecureVMValue {
     };
 };
 
+// Wird verwendet um die Aktuellen Chainstate Daten sowie die Aktuelle Uhrzeit zu übergeben
+class ChainScriptCheckData {
+    constructor(current_block_hight, current_block_time, last_block_hash, current_block_diff) {
+        // Die Werte werden zwischengespeichert
+        this.current_block_hight = current_block_hight;
+        this.current_block_time = current_block_time;
+        this.current_block_diff = current_block_diff;
+        this.last_block_hash = last_block_hash;
+    };
+};
+
+
 
 // Wird verwendet um 2 Objekte miteinander zu vergleichen
 function compare(obj_a, obj_b) {
@@ -509,6 +522,7 @@ module.exports = {
     TxScriptCheckData:TxScriptCheckData,
     securevm:secure_vm_value_operations,
     ScriptInstanceData:ScriptInstanceData,
+    ChainScriptCheckData:ChainScriptCheckData,
     SingleSignatureValue:SingleSignatureValue,
     SigScriptExecutionResults:SigScriptExecutionResults,
     AllowedScriptSignerPublicKeys:AllowedScriptSignerPublicKeys,
