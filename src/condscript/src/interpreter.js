@@ -21,6 +21,9 @@ const {
 // Gibt an, weiviele Elemente sich Maximal auf dem Parren Cube Stack befunden dürfens
 const MAX_PARREN_ITEMS = 256;
 
+// Gibt die Maximale Skriptgröße an
+const MAX_SCRIPT_SIZE = 2048;
+
 // Speichert die Möglichen Skripttypen ab
 const script_types = {
     LOCKING:0,
@@ -1192,6 +1195,12 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                 if(script_type === script_types.LOCKING) locking_was_check_sigs = true
                 else if(script_type === script_types.UNLOCKING) unlocking_was_check_sigs = true;
 
+                // Es wird Signalisiert dass keine Weiteren änderungen an dem PublicKeyWhiteList Objekt zulässig sind
+                if(allowed_signature_public_keys.setAsFinallyAndLock() !== true) {
+                    abort_without_error(script_result_obj, 'emit_call', 'check_sig', 'internal error');
+                    return false; 
+                }
+
                 // Das Skript ist erfolgreich durchgeführt wurden
                 print('emit_call check_sig ok and unlocked');
                 return { hex_str_list:copyed_item };
@@ -1304,10 +1313,14 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                     return false; 
                 }
 
+                // Es wird Signalisiert dass keine Weiteren änderungen an dem PublicKeyWhiteList Objekt zulässig sind
+                if(allowed_signature_public_keys.setAsFinallyAndLock() !== true) {
+                    abort_without_error(script_result_obj, 'emit_call', 'check_sig', 'internal error');
+                    return false; 
+                }
+                
                 // Es wird ein VM True auf den Y Stack geschoben
                 y_stack_array.push(securevm.true);
-
-                // Das Skript ist erfolgreich durchgeführt wurden
                 return { hex_str_list:copyed_item };
             }
             // Setzt die Anzahl der Mindestens benötigten Signaturen an
@@ -1672,7 +1685,43 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                 print('emit_call', 'matching the signer', parm_obj.value, true);
                 return { hex_str_list:push_function_parren.hex_str_list };
             }
-            // Beendet die ausführung des gesamten Skriptes ohne es Ungpltig zu machen
+            // Wird verwendet um zu überprüfen ob die Signaturen erfolgreich geprüft wurden
+            // wenn nicht wird das Skript abgebrochen
+            else if(current_item === op_codes.op_unlock_when_sig_verify) {
+                // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
+                current_item = copyed_item.shift();
+                if(current_item !== op_codes.op_parren_fnc_cube) {
+                    close_by_error(script_result_obj, 'emit_call', 'unlock_when_sig_verify', 'invalid script');
+                    return false; 
+                }
+
+                // Es wird geprüft ob 0 Daten angegeben wurden
+                current_item = copyed_item.shift();
+                if(current_item !== '00') {
+                    close_by_error(script_result_obj, 'emit_call', 'unlock_when_sig_verify', 'invalid script'); 
+                    return false; 
+                }
+
+                // Es wird geprüft ob die Signatur Prüfung erfolgreich abgeschlossen wurde
+                if(allowed_signature_public_keys.isFinallyTrueLocked() !== true) {
+                    close_by_error(script_result_obj, 'emit_call', 'unlock_when_sig_verify', 'invalid script'); 
+                    return false; 
+                }
+
+                // Es wird versucht die Ein / Ausgabe zu entsperrent
+                if(script_result_obj.signalUnlock() !== true) {
+                    abort_without_error(script_result_obj, 'emit_call', 'unlock_when_sig_verify', 'invalid script');
+                    return false; 
+                }
+
+                // Es wird ein VM True auf den Y Stack geschoben
+                y_stack_array.push(securevm.true);
+
+                // Die Daten werden zurückgegeben
+                print('emit_call', 'unlock_when_sig_verify', true);
+                return { hex_str_list:copyed_item };
+            }
+            // Beendet die ausführung des gesamten Skriptes ohne es Ungültig zu machen
             else if(current_item === op_codes.op_exit) {
                 // Es wird geprüft ob als nächstes Leere Parent Cubes kommen
                 current_item = copyed_item.shift();
@@ -1709,7 +1758,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
         if(hex_string.length < 2) return { hex_str_list:[] };
 
         // Es wird geprüft ob das Stack die Maximalgröße von 1024 Einträgen übersteigt
-        if(hex_string.length > 1024) throw new Error('Invalid data');
+        if(hex_string.length > MAX_SCRIPT_SIZE) throw new Error('Invalid data');
 
         // Der String wird in 2 Zeichen aufgedrennt
         let splited_hex_string = hex_string.toLowerCase().match(/.{2}/g);

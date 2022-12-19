@@ -310,6 +310,7 @@ class AllowedScriptSignerPublicKeys {
     constructor() {
         this.pkeys = {};
         this.needs_sigs = 0;
+        this.finally = false;
         this.market_as_used = [];
     };
 
@@ -337,7 +338,7 @@ class AllowedScriptSignerPublicKeys {
         return Object.keys(this.pkeys).length;
     };
 
-    // Makiert eine Adresse als verwendet
+    // Makiert eine Adresse als Verwendet für die Signaturen prüfung
     markAddressAsUsed(address) {
         // Es wird geprüft ob es sich um eine gültige Adeesse handelt
         if(address === undefined || address === null || typeof address !== 'string') return false;
@@ -364,7 +365,7 @@ class AllowedScriptSignerPublicKeys {
         return this.pkeys[pkey.toLowerCase()] !== undefined;
     };
 
-    // Gibt alle Publickeys aus, welcher verwendet wurden
+    // Gibt alle Publickeys aus, welcher verwendet wurden um zu überprüfen ob die Signaturen korrrekt sind
     getUsedSignaturesPublicKeys() {
         let reval_items = [];
         for(let otems of this.market_as_used) {
@@ -388,6 +389,18 @@ class AllowedScriptSignerPublicKeys {
         this.needs_sigs = am;
 
         // Der Vorgang wurde erfolgreich durchgeführt
+        return true;
+    };
+
+    // Legt fest dass keine weiteren Änderungen möglich sind, dass Objekt gillt als fertigestellt
+    setAsFinallyAndLock() {
+        if(this.finally !== false) return false;
+        this.finally = true;
+        return true;
+    };
+
+    // Gibt an ob die Bedinungen der Signaturprüfungen gültig sind
+    isFinallyTrueLocked() {
         return true;
     };
 };
