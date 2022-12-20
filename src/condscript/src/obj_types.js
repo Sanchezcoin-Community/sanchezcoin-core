@@ -401,7 +401,7 @@ class AllowedScriptSignerPublicKeys {
 
     // Gibt an ob die Bedinungen der Signaturprüfungen gültig sind
     isFinallyTrueLocked() {
-        return true;
+        return this.finally;
     };
 };
 

@@ -32,6 +32,9 @@ let emit_functions = {
     EQ_UNLOCKING_SCRIPT_HASH:[
         op_codes.op_eq_unlock_script_hash
     ],
+    UNLOCK_WHEN_SIG_VERIFY:[
+        op_codes.op_unlock_when_sig_verify
+    ],
     CHECKLOCKTIMEVERIFY:[
         op_codes.op_check_locktimeverify
     ],

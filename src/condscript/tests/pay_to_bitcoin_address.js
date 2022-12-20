@@ -8,7 +8,7 @@ async function btc_sig_true_test() {
     // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
     let btc_sig_locking_script = `
     equal_spefic_signature_pkey(BtcAddress(bc1qfp7fkf095pae5xlmf9u6pzh29mz9sgh6tvudm9));
-    unlock();
+    unlock_when_sig_verify();
     exit();
     `
 
@@ -59,7 +59,7 @@ async function btc_sig_false_test() {
     // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
     let btc_sig_locking_script = `
     equal_spefic_signature_pkey(BtcAddress(bc1qynsv0u0w73k95hgz4lpvqum0hmm2zdtahvj408));
-    unlock();
+    unlock_when_sig_verify();
     exit();
     `
 

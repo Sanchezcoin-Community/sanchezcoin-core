@@ -1657,7 +1657,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                 }
 
                 // Es wird geprüft ob sich mindestens 1 Element au dem Stack befindet
-                if(push_function_parren.items.length <= 1) {
+                if(push_function_parren.items.length < 1) {
                     close_by_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script to parms');
                     return false; 
                 }
@@ -1668,21 +1668,28 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                     return false; 
                 }
 
-                // Es wird geprüft ob es sich um einen Öffentlichen Schlüssel oder um eine Adresse handelt
-                let parm_obj = push_function_parren.items.shift().value;
-                if(parm_obj.constructor.name !== 'PublicKeyValue' && parm_obj.constructor.name !== 'AlternativeBlockchainAddressValue') {
-                    close_by_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script key type');
-                    return false; 
-                }
+                // Es werden alle Öffentlichen Schlüssel extrahiert welche verwendet wurden
+                let extracted_used_public_keys = allowed_signature_public_keys.getUsedSignaturesPublicKeys().map((r) => r.value.toLowerCase());
 
-                // Es wird geprüft ob der Schlüssel verwendet wird
-                if(allowed_signature_public_keys.getUsedSignaturesPublicKeys().map((r) => r.value.toLowerCase()).includes(parm_obj.value) !== true) {
-                    abort_without_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script key type');
-                    return false; 
+                // Die Items auf dem Stack werden abgearbeitet und geprüft
+                for(let obj of push_function_parren.items) {
+                    // Es wird geprüft ob es sich um einen Öffentlichen Schlüssel oder um eine Adresse handelt
+                    if(obj.value.constructor.name !== 'PublicKeyValue' && obj.value.constructor.name !== 'AlternativeBlockchainAddressValue') {
+                        close_by_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script key type');
+                        return false; 
+                    }
+
+                    // Es wird geprüft ob der Schlüssel verwendet wird
+                    if(extracted_used_public_keys.includes(obj.value.value) !== true) {
+                        abort_without_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script key type');
+                        return false; 
+                    }
+
+                    // Debug Log
+                    print('emit_call', 'matching the signer', obj.value.value, true);
                 }
 
                 // Die Daten werden zurückgegeben
-                print('emit_call', 'matching the signer', parm_obj.value, true);
                 return { hex_str_list:push_function_parren.hex_str_list };
             }
             // Wird verwendet um zu überprüfen ob die Signaturen erfolgreich geprüft wurden
@@ -1720,6 +1727,10 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                 // Die Daten werden zurückgegeben
                 print('emit_call', 'unlock_when_sig_verify', true);
                 return { hex_str_list:copyed_item };
+            }
+            // Es wird geprüft ob es sich um eine NOP Operation handelt
+            else if([].includes(current_item) === true) {
+                
             }
             // Beendet die ausführung des gesamten Skriptes ohne es Ungültig zu machen
             else if(current_item === op_codes.op_exit) {

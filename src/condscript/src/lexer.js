@@ -29,6 +29,7 @@ let def_functions = {
     "equal_spefic_signature_pkey": { type:"EMIT_FUNCTION", name:"EQ_SPEFIC_SIG_PKEY" },
     "get_unlocking_script_hash": { type:"VALUE_OUTPUT", name:"UNLOCKING_SCRIPT_HASH" },
     "check_blocklock_verify": { type:"EMIT_FUNCTION", name:"CHECK_BLOCKBLOCKVERIFY" },
+    "unlock_when_sig_verify": { type:"EMIT_FUNCTION", name:"UNLOCK_WHEN_SIG_VERIFY" },
     "get_locking_script_hash": { type:"VALUE_OUTPUT", name:"LOCKING_SCRIPT_HASH" },
     "get_last_block_hash": { type:"VALUE_OUTPUT", name:"CURRENT_LAST_BLOCK_HASH" },
     "get_current_block_hight": { type:"VALUE_OUTPUT", name:"CURRENT_BLOCK_HIGHT" },
