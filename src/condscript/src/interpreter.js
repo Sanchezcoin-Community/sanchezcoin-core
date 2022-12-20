@@ -24,6 +24,26 @@ const MAX_PARREN_ITEMS = 256;
 // Gibt die Maximale Skriptgröße an
 const MAX_SCRIPT_SIZE = 2048;
 
+// Speichert alle nicht verwendete NOP Funktion OP_CODES ab
+const NOP_FUNCTION_OP_CODES = [
+    op_codes.op_nop15,
+    op_codes.op_nop14,
+    op_codes.op_nop13,
+    op_codes.op_nop12,
+    op_codes.op_nop11,
+    op.codes.op_nop10,
+    op_codes.op_nop9,
+    op_codes.op_nop8,
+    op_codes.op_nop7,
+    op_codes.op_nop6,
+    op_codes.op_nop5,
+    op_codes.op_nop4,
+    op_codes.op_nop3,
+    op_codes.op_nop2,
+    op_codes.op_nop1,
+    op_codes.op_nop0
+];
+
 // Speichert die Möglichen Skripttypen ab
 const script_types = {
     LOCKING:0,
@@ -1729,7 +1749,8 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                 return { hex_str_list:copyed_item };
             }
             // Es wird geprüft ob es sich um eine NOP Operation handelt
-            else if([].includes(current_item) === true) {
+            else if(NOP_FUNCTION_OP_CODES.includes(current_item) === true) {
+                // Es werden alle Verfügabren Parameter abgerufen
                 
             }
             // Beendet die ausführung des gesamten Skriptes ohne es Ungültig zu machen
