@@ -44,6 +44,11 @@ const NOP_FUNCTION_OP_CODES = [
     op_codes.op_nop0
 ];
 
+// Speichert alle nicht verwendeten NOP OP_CODES ab
+const NOP_OP_CODES = [
+
+];
+
 // Speichert die Möglichen Skripttypen ab
 const script_types = {
     LOCKING:0,
@@ -754,11 +759,11 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
 
     // Diese Funktion wird verwendet um ein ELSE Block auszulesen
     async function next_is_else_block(hex_str_list, script_type=null, erase=false, current_sub_call=0, script_result_obj=null) {
-        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
-        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('It is an illegal data type, invalid script');
-
         // Es wird geprüft ob es sich um ein Array handelt
         if(hex_str_list === undefined || hex_str_list === null || typeof hex_str_list !== 'object' || Array.isArray(hex_str_list) !== true) throw new Error('Hardcore internal error, invalid stack element');
+
+        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
+        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING && script_type !== script_types.COMMITMENT) throw new Error('It is an illegal data type, invalid script');
 
         // Es wird geprüft ob das Skript abgebrochen wurde
         if(script_result_obj.isClosedOrAborted() === true) return false;
@@ -798,11 +803,11 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
 
     // Die Funktion wird ausgeführt wenn es sich um ein IF Statemant handelt
     async function next_inter_if_function(hex_str_lst, script_type=null, is_else_if=false, erase=false, current_sub_call=0, script_result_obj=null) {
-        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
-        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
-
         // Es wird geprüft ob es sich um ein Array handelt
         if(hex_str_lst === undefined || hex_str_lst === null || typeof hex_str_lst !== 'object' || Array.isArray(hex_str_lst) !== true) throw new Error('Hardcore internal error, invalid stack element');
+
+        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
+        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING && script_type !== script_types.COMMITMENT) throw new Error('Invalid script');
 
         // Es wird geprüft ob das Skript abgebrochen wurde
         if(script_result_obj.isClosedOrAborted() === true) return false;
@@ -968,11 +973,11 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
 
     // Diese Funktion wird ausgeführt um definerite Öffentliche Schlüssel einzuelesen
     async function next_read_public_key_defination(hex_str_lst, script_type=null, script_result_obj=null) {
-        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
-        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
-
         // Es wird geprüft ob es sich um ein Array handelt
         if(hex_str_lst === undefined || hex_str_lst === null || typeof hex_str_lst !== 'object' || Array.isArray(hex_str_lst) !== true) throw new Error('Hardcore internal error, invalid stack element');
+
+        // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
+        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING && script_type !== script_types.COMMITMENT) throw new Error('Invalid script');
 
         // Es wird geprüft ob es sich um ein
         if(script_result_obj.isClosedOrAborted() === true) return false;
@@ -1048,7 +1053,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
         if(hex_str_lst === undefined || hex_str_lst === null || typeof hex_str_lst !== 'object' || Array.isArray(hex_str_lst) !== true) throw new Error('Hardcore internal error, invalid stack element');
 
         // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
-        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
+        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING && script_type !== script_types.COMMITMENT) throw new Error('Invalid script');
 
         // Es wird geprüft ob es sich um ein
         if(script_result_obj.isClosedOrAborted() === true) return false;
@@ -1119,8 +1124,11 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
 
     // Wird ausgeführt um zu überprüfen ob als nächstes ein EMIT Call kommt
     async function next_inter_emit_call(hex_str_lst, script_type=null, script_result_obj=null) {
+        // Es wird geprüft ob es sich um ein Array handelt
+        if(hex_str_lst === undefined || hex_str_lst === null || typeof hex_str_lst !== 'object' || Array.isArray(hex_str_lst) !== true) throw new Error('Hardcore internal error, invalid stack element');
+
         // Es wird geprüft ob es sich um einen gültigen Skript typen handelt
-        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING) throw new Error('Invalid script');
+        if(script_type !== script_types.UNLOCKING && script_type !== script_types.LOCKING && script_type !== script_types.COMMITMENT) throw new Error('Invalid script');
 
         // Es wird geprüft ob das Skript beendet wurde
         if(script_result_obj.isClosedOrAborted() === true) return false;
@@ -1749,9 +1757,17 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
                 return { hex_str_list:copyed_item };
             }
             // Es wird geprüft ob es sich um eine NOP Operation handelt
+            // diese Operation haben keine Auswikung auf die Ausführung des Skriptes und machen es nicht ungültigt
             else if(NOP_FUNCTION_OP_CODES.includes(current_item) === true) {
-                // Es werden alle Verfügabren Parameter abgerufen
-                
+                // Es wird versucht die ParrenCube werte auszulesen
+                let push_function_parren = await next_read_parren_cube(copyed_item, script_type, true, script_result_obj);
+                if(push_function_parren === false) {
+                    close_by_error(script_result_obj, 'emit_call', 'eq_signers', 'invalid script');
+                    return false; 
+                }
+
+                // Die Daten werden zurückgegeben
+                return { hex_str_list:push_function_parren.hex_str_list };
             }
             // Beendet die ausführung des gesamten Skriptes ohne es Ungültig zu machen
             else if(current_item === op_codes.op_exit) {
@@ -1800,7 +1816,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
             while(splited_hex_string.length > 0) {
                 // Es wird geprüft ob das Skript beendet wurde
                 if(script_result_obj.isClosedOrAborted() === true) break;
-    
+
                 // Es wird geprüft ob es sich um einen EMIT Funktionsaufruf handelt
                 let sitc_intrpr = await next_inter_if_function(splited_hex_string, script_type, false, false, sub_call, script_result_obj);
                 if(sitc_intrpr !== false) {
@@ -1810,20 +1826,20 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, commitment_dat
 
                 // Es wird geprüft ob das Skript beendet wurde
                 if(script_result_obj.isClosedOrAborted() === true) break;
-    
+
                 // Es wird geprüft ob es sich um einen EMIT Call handelt
                 sitc_intrpr = await next_inter_emit_call(splited_hex_string, script_type, script_result_obj);
                 if(sitc_intrpr !== false) {
                     splited_hex_string = sitc_intrpr.hex_str_list;
                     continue;
                 }
-    
+
                 // Es wird geprüft ob das Skript beendet wurde
                 if(script_result_obj.isClosedOrAborted() === true) break;
 
                 // Es wird geprüft ob es sich um ein Commitment Skript handelt
                 //if(script_type === script_types.COMMITMENT) {}
-    
+
                 // Es handelt sich um ein ungültes Skript
                 close_by_error(script_result_obj, 'This is an invalid script, an unknown command was found on the script stack.');
                 return { hex_str_list:[] }; 
