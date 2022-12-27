@@ -12,6 +12,8 @@
     "bech32": "^2.0.0",
     "bitcoin-address-validation": "^2.2.1",
     "blckcrypto": "../crypto",
+    "cbor": "^8.1.0",
+    "crc-32": "^1.2.2",
     "web3": "^1.8.1"
   }
 }

@@ -50,9 +50,6 @@ let emit_functions = {
     UNLOCK_SCRIPT:[
         op_codes.op_unlock
     ],
-    VERF_COMMITMENT:[
-      op_codes.op_check_commitment  
-    ],
     EXIT_SCRIPT:[
         op_codes.op_exit
     ],

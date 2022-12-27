@@ -38,7 +38,6 @@ let def_functions = {
     "get_current_block_diff": { type:"VALUE_OUTPUT", name:"CURRENT_DIFF" },
     "verify_spfc_sig": { type:"VALUE_OUTPUT", name:"VERIFY_SIGNATURE_IS" },
     "get_total_signers": { type:"VALUE_OUTPUT", name:"GET_TOTAL_SIGNERS" },
-    "verify_commitment": { type:"EMIT_FUNCTION", name:"VERF_COMMITMENT" },
     "abort": { type:"EMIT_FUNCTION", name:"ABORT_SKRIPT_RETURN_FALSE" },
     "verify_sig": { type:"EMIT_FUNCTION", name:"VERIFY_SIGNATURES" },
     "use_one_signer": { type:"VALUE_OUTPUT", name:"USE_ONE_SIGNER" },

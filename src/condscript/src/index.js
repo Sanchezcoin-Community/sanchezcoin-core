@@ -1,5 +1,6 @@
 const script_token_parser = require('../src/parser');
 const interpreter = require('../src/interpreter');
+const blockchain_crypto = require('blckcrypto');
 const lexer = require('../src/lexer');
 
 
@@ -12,6 +13,33 @@ module.exports.parseScript = async function(script_string) {
 
 // Wird verwendet um ein Script Auszuführen
 module.exports.runScript = async function(tx_check_data, chain_check_data, commitment_check_data, debug_mode=false) {
-    let result = await interpreter(tx_check_data, chain_check_data, commitment_check_data, debug_mode);
+    let result = await interpreter(tx_check_data, chain_check_data, debug_mode);
     return result;
+};
+
+// Wird verwendet um eine Finale Adresse zu erstellen
+module.exports.getHashOfScript = async function(script_string) {
+    // Das Skript wird in Hex umgewandelt
+    let parsed_script = await module.exports.parseScript(script_string);
+
+    // Es wird ein Hash aus dem String erstellt
+    let script_hash = blockchain_crypto.sha3(256, converted_hash);
+
+    // Der Finale Hash wird ausgegeben
+    return script_hash.toLowerCase();
+};
+
+// Wird verwendet um aus einem Hash eine Pay2 To Hash Adresse zu erstellen
+module.exports.getPayToScriptHashOutput = async function(reciver_address) {
+    // Das Skript 
+    let pre_hard_str = `
+    equal_unlocking_script_hash(${reciver_address});
+    unlock_when_sig_verify();
+    exit();`;
+
+    // Das Skript wird geparst
+    let parsed_script = await module.exports.parseScript(pre_hard_str);
+
+    // Der Fertige String wird zurückgegeben
+    return parsed_script.toLowerCase();
 };
