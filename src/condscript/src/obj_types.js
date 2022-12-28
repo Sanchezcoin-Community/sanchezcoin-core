@@ -483,6 +483,21 @@ class SigScriptExecutionResults {
     };
 };
 
+// Wird verwendet um eine Tabelle aller OC_Codes zu erzeugen
+class OpCodeTable {
+    constructor() {
+        this.current_items = {};
+    };
+
+    registerNewOpCode(name, is_a_nop_value=true) {
+        this.current_items[name] = (Object.keys(this.current_items) + 1).length.toString(16).padStart(2,'0');
+    };
+
+    getFullJsonTable() {
+        return this.current_items;
+    };
+};
+
 
 // Wird verwendet um 2 Objekte miteinander zu vergleichen
 function compare(obj_a, obj_b) {
@@ -507,6 +522,7 @@ module.exports = {
     compareValues:compare,
     HexString:HexString,
     HashValue:HashValue,
+    OpCodeTable:OpCodeTable,
     SecureVMValue:SecureVMValue,
     DateTimestamp:DateTimestamp,
     PublicKeyValue:PublicKeyValue,

@@ -49,9 +49,9 @@ async function eth_sig_true_test() {
     let tx_check_data = new TxScriptCheckData(p_locking_script, p_unlocking_script, BigInt(0), timestamp, '0xffff', eth_sig_avail_sigs);
 
     // Die Skripte werden Interpretiert
-    let test_result = await runScript(tx_check_data, tx_chain_data, null, false);
+    let test_result = await runScript(tx_check_data, tx_chain_data, null, true);
     if(use_debug_mode === true) console.log()
-    console.log(test_result);
+    console.log(test_result.finallyObject());
 };
 
 

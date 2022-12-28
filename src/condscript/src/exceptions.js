@@ -106,6 +106,52 @@ module.exports.error_messages = {
             invalid_y_stack:"",
             invalid_if_stack:"",
             to_many_code_blocks:""
+        },
+        else:{
+            to_many_code_blocks:"",
+            code_block_run:"",
+            code_run_error:""
+        },
+        value_functions:{
+            parren_cube_interpreting_error:"",
+            op_is_one_signer:{
+                invalid_parameter:"",
+            },
+            sha256d:{
+                invalid_parameter:""
+            },
+            sha3_256:{
+                invalid_parameter:""
+            },
+            swifty_h_256:{
+                invalid_parameter:""
+            },
+            pop_from_y:{
+                invalid_parameter:""
+            },
+            total_sigs:{
+                invalid_parameter:""
+            },
+            last_block_hash:{
+                invalid_parameter:""
+            },
+            current_block_diff:{
+                invalid_parameter:""
+            },
+            op_lock_script:{
+                invalid_parameter:""
+            },
+            unlocking_script_hash:{
+                invalid_parameter:""
+            },
+            current_block_hight:{
+                invalid_parameter:""
+            },
+            eq_signers:{
+                invalid_parameter:""
+            },
+            unkown_function:"",
+            exception:""
         }
     }
 };

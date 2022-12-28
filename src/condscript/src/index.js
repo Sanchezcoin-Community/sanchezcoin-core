@@ -4,6 +4,7 @@ const blockchain_crypto = require('blckcrypto');
 const lexer = require('../src/lexer');
 
 
+
 // Wird verwendet um ein Script zu Parsen
 module.exports.parseScript = async function(script_string) {
     let tokenized_script = await lexer(script_string);
@@ -42,4 +43,84 @@ module.exports.getPayToScriptHashOutput = async function(reciver_address) {
 
     // Der Fertige String wird zurückgegeben
     return parsed_script.toLowerCase();
+};
+
+// Wird verwendet um ein Pay 2 Bitcoin Address Output zu erstellen
+module.exports.getPayToBitcoinAddress = async function(reciver_address) {
+    // Das Skript 
+    let pre_hard_str = `
+    equal_unlocking_script_hash(${reciver_address});
+    unlock_when_sig_verify();
+    exit();`;
+
+    // Das Skript wird geparst
+    let parsed_script = await module.exports.parseScript(pre_hard_str);
+
+    // Der Fertige String wird zurückgegeben
+    return parsed_script.toLowerCase();
+};
+
+// Wird verwendet um ein Pay 2 Ethereum Address Output zu erstellen
+module.exports.getPayToEthereumAddress = async function(reciver_address) {
+    // Das Skript 
+    let pre_hard_str = `
+    equal_unlocking_script_hash(${reciver_address});
+    unlock_when_sig_verify();
+    exit();`;
+
+    // Das Skript wird geparst
+    let parsed_script = await module.exports.parseScript(pre_hard_str);
+
+    // Der Fertige String wird zurückgegeben
+    return parsed_script.toLowerCase();
+};
+
+// Wird verwendet um ein Pay 2 Secp256k1 PublicKey Output zu erstellen
+module.exports.getPayToPKeySecp256k1 = async function(reciver_address) {
+    // Das Skript 
+    let pre_hard_str = `
+    equal_unlocking_script_hash(${reciver_address});
+    unlock_when_sig_verify();
+    exit();`;
+
+    // Das Skript wird geparst
+    let parsed_script = await module.exports.parseScript(pre_hard_str);
+
+    // Der Fertige String wird zurückgegeben
+    return parsed_script.toLowerCase();
+};
+
+// Wird verwendet um ein Pay 2 Curve25519 PublicKey Output zu erstellen
+module.exports.getPayToPKeyCurve25519 = async function(reciver_address) {
+    // Das Skript 
+    let pre_hard_str = `
+    equal_unlocking_script_hash(${reciver_address});
+    unlock_when_sig_verify();
+    exit();`;
+
+    // Das Skript wird geparst
+    let parsed_script = await module.exports.parseScript(pre_hard_str);
+
+    // Der Fertige String wird zurückgegeben
+    return parsed_script.toLowerCase();
+};
+
+// Wird verwendet um ein Pay 2 BLS12-381 PublicKey Output zu erstellen
+module.exports.getPayToPKeyBLS12381 = async function(reciver_address) {
+    // Das Skript 
+    let pre_hard_str = `
+    equal_unlocking_script_hash(${reciver_address});
+    unlock_when_sig_verify();
+    exit();`;
+
+    // Das Skript wird geparst
+    let parsed_script = await module.exports.parseScript(pre_hard_str);
+
+    // Der Fertige String wird zurückgegeben
+    return parsed_script.toLowerCase();
+};
+
+// Wird verwendet um den Typen eines Ausgangs anzugeben
+module.exports.getOutputAddressType = async function(output_hex_string) {
+
 };
