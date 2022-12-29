@@ -508,7 +508,7 @@ module.exports = {
             verifySignature:verfiyRistretto25519SchnorrSignatureF,
             signDigest:signDigestWithRistretto25519SchnorrF,
         },
-        bls1231:{
+        bls12381:{
             getKeyPairFromSeed:getBLS12381KeyPairFromSeedF,
             verifySignature:verifyBLS12381Signature,
             signDigest:signDigestWithBLS12381PrivateKey,

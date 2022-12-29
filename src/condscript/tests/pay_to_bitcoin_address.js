@@ -1,16 +1,12 @@
 const { SingleSignatureValue, DateTimestamp, TxScriptCheckData, ChainScriptCheckData, HashValue } = require('../src/obj_types');
-const { parseScript, runScript } = require('../src/index');
+const { parseScript, runScript, getPayToBitcoinAddress } = require('../src/index');
 
 
 
 // Wird verwendet um zu überprüfen ob Skripte welche eine Bitcoin Signatur verwenden korrekt sind
 async function btc_sig_true_test() {
     // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
-    let btc_sig_locking_script = `
-    equal_spefic_signature_pkey(BtcAddress(bc1qfp7fkf095pae5xlmf9u6pzh29mz9sgh6tvudm9));
-    unlock_when_sig_verify();
-    exit();
-    `
+    let p_locking_script = await getPayToBitcoinAddress('bc1qfp7fkf095pae5xlmf9u6pzh29mz9sgh6tvudm9');
 
     // Wird verwendet um eine Ausgabe zu Entsperren und nachzuweisen dass man die Benötigen Bediungen erfüllt
     let btc_sig_unlocking_script = `
@@ -28,14 +24,9 @@ async function btc_sig_true_test() {
 
     // Die Skripte werden in Hexcode umgewandelt
     let p_unlocking_script = await parseScript(btc_sig_unlocking_script);
-    let p_locking_script = await parseScript(btc_sig_locking_script);
 
     // Die Aktuelle Blockhöhe wird abgespeichert
     let block_hight = BigInt(1);
-
-    // Gibt an ob der Debug Modus verwendet werden soll
-    let use_debug_mode = false;
-
     // Die Uhrzeit wann die Transaktion in dem Block abgespeichert wurde wird abgespeichert
     let timestamp = new DateTimestamp('00000000000000000000018521093f4f', true);
 
@@ -50,7 +41,6 @@ async function btc_sig_true_test() {
 
     // Die Skripte werden Interpretiert
     let test_result = await runScript(tx_check_data, tx_chain_data, null, true);
-    if(use_debug_mode === true) console.log()
     console.log(test_result.finallyObject());
     console.log('Check validate btc signature:', test_result.isFinallyTrue());
 };

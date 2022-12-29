@@ -338,39 +338,5 @@ module.exports = {
 
 // Es wird geprüft ob die Datei direkt gestartet wird, wenn ja wird die Funktion ausgeführt
 if (require.main === module) (() => {
-    // Das Transaktionsobjekt wird Imporitert
-    let { UnsignatedTransaction } = require('./transaction');
 
-    // Coinbase Transaction
-    let test_coinbase_input = new CoinbaseInput();
-    let test_unspent_output = new UnspentOutput("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", bigInt("10000000"), bigInt("0"), bigInt("0"));
-    let test_pkey_utxo = new UnspentPKeyOutput(1, "574e22e8bf71e1a888f38ec31bf477a8a674906123a9037385c9d2bab6981902", bigInt("10000000"), bigInt("0"), bigInt("0"), false);
-
-    // Nft Minting
-    let test_nft_mint = new MintNftInput("1248712441dbbf43bb37f91d626a020e7e0f4486f050142034b8a267b06a2f0c", 1, { name:"first morty nft", url:"abcdefgssdfsfsd" });
-    let nft_input = new NftTxInput("35669191c32a9cfb532e5d79b09f2b0926c0faf27e7543f1fbe433bd94ae78d7", 0, test_nft_mint.getCommitmentImage());
-    let unspent_nft = new NftUnspentOutput(nft_input.getCommitmentImage(), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", bigInt("1"), bigInt("0"), bigInt("0"));
-    let burn_nft = new BurnNftOutput(unspent_nft.getCommitmentImage(), bigInt("1"));
-
-    // Es wird ein nicht Signiertes Objekt erzeugt
-    let test_usig = new UnsignatedTransaction();
-
-    // Not Spendlabel Outputs
-    let message_input = new NotSpendlabelMessageOutput(Buffer.from("November 13, 2022 This coin has no claim to money, I like Rick And Morty and that's why I created it.", 'ascii'));
-
-    // Coinbase Input
-    console.log(test_coinbase_input.getRawData());
-    console.log('000000000000000000000000000000000000000000000000000000000000000000ffffffff')
-
-    // Infotext
-    console.log()
-    console.log('Coinbase input :      ',test_coinbase_input.getRawData());
-    console.log('Unspent output :      ',test_unspent_output.getRawData());
-    console.log('Unspent pkey output : ',test_pkey_utxo.getRawData());
-    console.log('Nft minting input :   ',test_nft_mint.getRawData());
-    console.log('Nft input :           ',nft_input.getRawData())
-    console.log('Unspent nft output :  ',unspent_nft.getRawData());
-    console.log('Burn nft output :     ',burn_nft.getRawData());
-    console.log('Message output :      ',message_input.getRawData());
-    console.log()
 })();

@@ -49,7 +49,7 @@ module.exports.getPayToScriptHashOutput = async function(reciver_address) {
 module.exports.getPayToBitcoinAddress = async function(reciver_address) {
     // Das Skript 
     let pre_hard_str = `
-    equal_unlocking_script_hash(${reciver_address});
+    equal_spefic_signature_pkey(BtcAddress(${reciver_address}));
     unlock_when_sig_verify();
     exit();`;
 
@@ -64,8 +64,8 @@ module.exports.getPayToBitcoinAddress = async function(reciver_address) {
 module.exports.getPayToEthereumAddress = async function(reciver_address) {
     // Das Skript 
     let pre_hard_str = `
-    equal_unlocking_script_hash(${reciver_address});
-    unlock_when_sig_verify();
+    equal_spefic_signature_pkey(EthAddress(${reciver_address}));
+    unlock();
     exit();`;
 
     // Das Skript wird geparst
@@ -79,8 +79,8 @@ module.exports.getPayToEthereumAddress = async function(reciver_address) {
 module.exports.getPayToPKeySecp256k1 = async function(reciver_address) {
     // Das Skript 
     let pre_hard_str = `
-    equal_unlocking_script_hash(${reciver_address});
-    unlock_when_sig_verify();
+    equal_spefic_signature_pkey(PublicKey(secp256k1, ${reciver_address}));
+    unlock();
     exit();`;
 
     // Das Skript wird geparst
@@ -94,8 +94,8 @@ module.exports.getPayToPKeySecp256k1 = async function(reciver_address) {
 module.exports.getPayToPKeyCurve25519 = async function(reciver_address) {
     // Das Skript 
     let pre_hard_str = `
-    equal_unlocking_script_hash(${reciver_address});
-    unlock_when_sig_verify();
+    equal_spefic_signature_pkey(PublicKey(curve25519, ${reciver_address}));
+    unlock();
     exit();`;
 
     // Das Skript wird geparst
@@ -109,8 +109,8 @@ module.exports.getPayToPKeyCurve25519 = async function(reciver_address) {
 module.exports.getPayToPKeyBLS12381 = async function(reciver_address) {
     // Das Skript 
     let pre_hard_str = `
-    equal_unlocking_script_hash(${reciver_address});
-    unlock_when_sig_verify();
+    equal_spefic_signature_pkey(PublicKey(bls12381, ${reciver_address}));
+    unlock();
     exit();`;
 
     // Das Skript wird geparst
@@ -118,9 +118,4 @@ module.exports.getPayToPKeyBLS12381 = async function(reciver_address) {
 
     // Der Fertige String wird zurückgegeben
     return parsed_script.toLowerCase();
-};
-
-// Wird verwendet um den Typen eines Ausgangs anzugeben
-module.exports.getOutputAddressType = async function(output_hex_string) {
-
 };

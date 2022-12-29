@@ -1,5 +1,8 @@
 module.exports = {
     op_invalid_op_code:                     (255).toString(16).padStart(2, '0'),
+    op_unlock_equal_crv25519_brf:           (193).toString(16).padStart(2, '0'),        // <-- Gibt an ob ein Bulletproof ausreichend ist um die Transaktion zu entsperren
+    op_equal_tx_has_nunitx_time:            (192).toString(16).padStart(2, '0'),        // <-- Gibt an ob die Transaktion eine nUnixTime Angabe enthält
+    op_equal_tx_has_nblock_time:            (191).toString(16).padStart(2, '0'),        // <-- Gibt an ob die Transaktion eine nBlock Angabe enthält
     op_unlock_scriptsig_pubkey:             (190).toString(16).padStart(2, '0'),
     op_unlock_when_sig_verify:              (189).toString(16).padStart(2, '0'),
     op_check_blockblockverify:              (188).toString(16).padStart(2, '0'),
@@ -144,7 +147,7 @@ module.exports = {
     op_sha256d:                             (49).toString(16).padStart(2, '0'),
     op_ibigger:                             (48).toString(16).padStart(2, '0'),
     op_uint_32:                             (47).toString(16).padStart(2, '0'),
-    op_hash160:                             (46).toString(16).padStart(2, '0'),
+    op_hash160:                             (46).toString(16).padStart(2, '0'),     // <-- Erzeugt einen RIPMED160(SHA256()) Hash
     op_uint_16:                             (45).toString(16).padStart(2, '0'),
     op_booland:                             (44).toString(16).padStart(2, '0'),
     op_uint_8:                              (43).toString(16).padStart(2, '0'),
@@ -170,12 +173,12 @@ module.exports = {
     op_nop3:                                (23).toString(16).padStart(2, '0'),
     op_nop2:                                (22).toString(16).padStart(2, '0'),
     op_nop1:                                (21).toString(16).padStart(2, '0'),
-    op_nop0:                                (20).toString(16).padStart(2, '0'),
+    op_nop0:                                (20).toString(16).padStart(2, '0'),     // <-- Gibt an dass es sich um einen Extended Wert handelt (EXPERIMENTAL)
     op_sha3:                                (19).toString(16).padStart(2, '0'),
-    op_null:                                (18).toString(16).padStart(2, '0'),
+    op_null:                                (18).toString(16).padStart(2, '0'),     // <-- Gibt einen Null / 0 Wert zurück
     op_tuck:                                (17).toString(16).padStart(2, '0'),
-    op_swap:                                (16).toString(16).padStart(2, '0'),
-    op_drop:                                (15).toString(16).padStart(2, '0'),
+    op_swap:                                (16).toString(16).padStart(2, '0'),     // <-- Vertrauscht X Zeichen auf dem Stack
+    op_drop:                                (15).toString(16).padStart(2, '0'), 
     op_roll:                                (14).toString(16).padStart(2, '0'),
     op_pick:                                (13).toString(16).padStart(2, '0'),
     op_over:                                (12).toString(16).padStart(2, '0'),

@@ -169,10 +169,11 @@ class DateTimestamp extends ValueObject {
     constructor(value, is_vm_value=false) {
         if(value === undefined || value === null) throw new Error('Invalid timestamp value');
         if(typeof value !== 'string') throw new Error('Invalid timestamp data type');
-        if(value.length !== 32) throw new Error('Invalid timestamp length');
+        if(value.length > 32) throw new Error('Invalid timestamp length');
 
         // Der Hexstring wird in eine Zahl umgewandelt
-        let converted_timestamp = BigInt(`0x${value}`);
+        let plained = `${value}`.padStart(32, '0');
+        let converted_timestamp = BigInt(`0x${plained}`);
         super(converted_timestamp, "dts", ['cst', 'hxstr', 'num', 'dts'], is_vm_value);
     };
 
@@ -209,13 +210,14 @@ class DateTimestamp extends ValueObject {
 
 // Wird verwendet um die Daten der Transaktion an zu übergeben
 class TxScriptCheckData {
-    constructor(locking_script, unlocking_script, input_tx_block_hight, input_tx_block_timestamp, input_seq, signatures) {
+    constructor(locking_script, unlocking_script, input_tx_block_hight, input_tx_block_timestamp, input_seq, signatures, nblock_lock_hight=0, nime_lock=0) {
         // Es wird geprüft ob es sich um gültige Parameter handelt
         if(unlocking_script === undefined || unlocking_script === null || typeof unlocking_script !== 'string') throw new Error('Invalid unlocking script');
         if(locking_script === undefined || locking_script == null || typeof locking_script !== 'string') throw new Error('Invalid locking script');
         if(input_tx_block_hight === undefined || input_tx_block_hight == null || typeof input_tx_block_hight !== 'bigint') throw new Error('Invalid block tx hight');
         if(input_tx_block_timestamp === undefined || input_tx_block_timestamp == null || typeof input_tx_block_timestamp !== 'object' || input_tx_block_timestamp.constructor.name !== 'DateTimestamp') throw new Error('Invalid block timestamp');
         if(signatures === undefined || signatures == null || typeof signatures !== 'object' || Array.isArray(signatures) !== true) throw new Error('Invalid signatures data type');
+        if(nblock_lock_hight !== 0 && nime_lock !== 0) throw new Error('Invalid transaction, only block or unix time lock allowed');
 
         // Die Daten werden zwischen gespeichert
         this.input_seq = input_seq;                                             // Gibt die Sequenz des Verwendeten Inputs an
@@ -224,6 +226,8 @@ class TxScriptCheckData {
         this.unlocking_script = unlocking_script;                               // Gibt das Unlocking Script an
         this.input_tx_block_hight = input_tx_block_hight;                       // Gibt die Blocköhe an, in welcher das Verwenete Input geschrieben wurde
         this.input_tx_block_timestamp = input_tx_block_timestamp                // Gibt die Blockzeit an, in welcher dass Verwendete Input gechrieben wurde
+        this.nblock_lock_hight = nblock_lock_hight;                             // Speichert die Blockzeit der Transaktion ab (Blockhöhe)
+        this.nime_lock = nime_lock;                                             // Speichert die Blockzeit der Transaktion ab (Unixtime)
     };
 
     // Gibt die Gesamtzahl der Verwendeten Signaturen an
@@ -239,6 +243,11 @@ class TxScriptCheckData {
     // Gibt den Lockingscript Sring aus
     getLockingScriptHexStr() {
         return this.locking_script.toLowerCase();
+    };
+
+    // Gibt an ob die Transaktion eine LockTime hat
+    hasLockTime() {
+        return (this.nblock_lock_hight !== null || this.nime_lock !== null);
     };
 };
 
@@ -384,6 +393,16 @@ class AllowedScriptSignerPublicKeys {
     isFinallyTrueLocked() {
         return this.finally;
     };
+
+    // Gibt an ob die Bedingungen der Signaturprüfung ungültig sind
+    isFinallyFalseLocked() {
+
+    };
+
+    // Gibt an ob die Signaturprüfung beendet wurde
+    isClosed() {
+        return false;
+    };
 };
 
 // Wird verwendet um zu Signalisieren dass das Aktuelle Skript entwender gültig oder ungültig ist
@@ -483,21 +502,6 @@ class SigScriptExecutionResults {
     };
 };
 
-// Wird verwendet um eine Tabelle aller OC_Codes zu erzeugen
-class OpCodeTable {
-    constructor() {
-        this.current_items = {};
-    };
-
-    registerNewOpCode(name, is_a_nop_value=true) {
-        this.current_items[name] = (Object.keys(this.current_items) + 1).length.toString(16).padStart(2,'0');
-    };
-
-    getFullJsonTable() {
-        return this.current_items;
-    };
-};
-
 
 // Wird verwendet um 2 Objekte miteinander zu vergleichen
 function compare(obj_a, obj_b) {
@@ -522,7 +526,6 @@ module.exports = {
     compareValues:compare,
     HexString:HexString,
     HashValue:HashValue,
-    OpCodeTable:OpCodeTable,
     SecureVMValue:SecureVMValue,
     DateTimestamp:DateTimestamp,
     PublicKeyValue:PublicKeyValue,

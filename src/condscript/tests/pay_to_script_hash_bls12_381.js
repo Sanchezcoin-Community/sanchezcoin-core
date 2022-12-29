@@ -1,43 +1,46 @@
 const { SingleSignatureValue, DateTimestamp, TxScriptCheckData, ChainScriptCheckData, HashValue } = require('../src/obj_types');
-const { parseScript, runScript } = require('../src/index');
+const { parseScript, runScript, getPayToScriptHashOutput } = require('../src/index');
+const blockchain_crypto = require('blckcrypto');
 
 
 
 // Wird verwendet um zu überprüfen ob Skripte welche eine Ethereum Signatur verwenden korrekt sind
 async function eth_sig_true_test() {
-    // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
-    let eth_sig_locking_script = `
-    equal_unlocking_script_hash(91429073f0c0fe3fb496b3a7d24e7c3b60b227446801308e578ddbab2309aa0a);
-    unlock_when_sig_verify();
-    exit();
-    `
+    // Es wird ein Mnemonic erzeugt
+    let mnic = blockchain_crypto.bip32.generateBip39Mnemonic();
+    let seed = blockchain_crypto.bip32.getSeedFromBip39Mnemonic(mnic);
+    let keypair = blockchain_crypto.ecc.bls12381.getKeyPairFromSeed(seed, '0/0/2');
+    let sigk = '654924d66101913f317fe6f965de8ea67b13e6be6b0c804e8098e86ccafbd502';
+    let fsig = await blockchain_crypto.ecc.bls12381.signDigest(keypair.private_key, sigk);
 
     // Wird verwendet um eine Ausgabe zu Entsperren und nachzuweisen dass man die Benötigen Bediungen erfüllt
-    let eth_sig_unlocking_script = `
-    add_verify_key(EthAddress(0x2a627c97c15c43Fa7692E9886EB805c8AfA70DfB));
+    let unlocking_plain_script = `
+    add_verify_key(PublicKey(bls12381, ${keypair.public_key}));
     verify_sig();
     exit();
     `
 
+    // Das Unlocking Skript wird geparsr
+    let p_unlocking_script = await parseScript(unlocking_plain_script);
+
+    // Wird verwendet um eine Ausgabe an bestimmte bedinungen zu knüpfen
+    let unlock_scrp_hash = blockchain_crypto.sha3(256, p_unlocking_script);
+
     // Speichert die Verfügbaren Signaturen ab
     let eth_sig_avail_sigs = [
         new SingleSignatureValue(
-            '0x2a627c97c15c43Fa7692E9886EB805c8AfA70DfB', 'ethadr', '1fe929f3bf9402eb2701601b725890f64ff00882b33a44437c4d0de6cda9cce40509f7dd48a1f7f64da57a2412672855e424d5cace8f3986ab7093e562c0e9ea1b', '654924d66101913f317fe6f965de8ea67b13e6be6b0c804e8098e86ccafbd502'
+            keypair.public_key, 'bls12381', fsig, sigk
         ),
     ];
 
     // Die Skripte werden in Hexcode umgewandelt
-    let p_unlocking_script = await parseScript(eth_sig_unlocking_script);
-    let p_locking_script = await parseScript(eth_sig_locking_script);
+    let p_locking_script = await getPayToScriptHashOutput(unlock_scrp_hash);
 
     // Die Aktuelle Blockhöhe wird abgespeichert
     let block_hight = BigInt(1);
 
-    // Gibt an ob der Debug Modus verwendet werden soll
-    let use_debug_mode = false;
-
     // Die Uhrzeit wann die Transaktion in dem Block abgespeichert wurde wird abgespeichert
-    let timestamp = new DateTimestamp('00000000000000000000018521093f4f', true);
+    let timestamp = new DateTimestamp('18521093f4f', true);
 
     // Speichert den Hash des letzten Blocks ab
     let last_block_hash = new HashValue('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'sha3_256', true);
@@ -50,8 +53,7 @@ async function eth_sig_true_test() {
 
     // Die Skripte werden Interpretiert
     let test_result = await runScript(tx_check_data, tx_chain_data, null, true);
-    if(use_debug_mode === true) console.log()
-    console.log(test_result.finallyObject());
+    console.log(); console.log(test_result.finallyObject());
 };
 
 

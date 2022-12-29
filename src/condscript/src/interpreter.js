@@ -5,9 +5,6 @@ const op_codes = require('./opcodes');
 let { bech32 } = require('bech32');
 
 
-// Wird als Basis oder 0 Wert verwendet
-const BASE_VALUE = "0000000000000000000000000000000000000000000000000000000000000000";
-
 // Gibt an, weiviele Elemente sich Maximal auf dem Parren Cube Stack befunden dürfens
 const MAX_PARREN_ITEMS = 256;
 
@@ -67,7 +64,7 @@ const extract_obj_values = (items) => items.map((value) => {
 // Wird ausgeführt um ein einfaches Skript auszuführen
 const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) => {
     // Es wird geprüft ob es sich um zulässige Parameter handelt welche überheben wurden
-    if(tx_check_data.constructor.name !== 'TxScriptCheckData' && tx_check_data.constructor.name !== 'ExtentedTxScriptCheckData') throw new Error('Invalid unlocking script data');
+    if(tx_check_data.constructor.name !== 'TxScriptCheckData') throw new Error('Invalid unlocking script data');
     if(chain_data.constructor.name !== 'ChainScriptCheckData') throw new Error('Invalid unlocking script data');
 
     // Es wird ein Hash aus dem Unlocking Skript erstellt
@@ -191,9 +188,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
         if(BigInt(avail_pkey_signatures.length) !== BigInt(tx_check_data.signatures.length)) return false;
 
         // Es wird geprüft ob die Benötigte Anzahl von Signaturen vorhanden sind
-        if(BigInt(avail_pkey_signatures.length) < allowed_signature_public_keys.needed_sigs) {
-            return false;
-        }
+        if(BigInt(avail_pkey_signatures.length) < allowed_signature_public_keys.needed_sigs) return false;
 
         // Die Öffentlichen Schlüssel werden Sortiert
         let sorted_key_pairs = avail_pkey_signatures.sort((a, b) => {
@@ -209,7 +204,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
             for(let ssig of sorted_key_pairs) {
                 // Die Signatur wird geprüft
                 if((await ssig.fullSignatureCheck()) !== true) {
-                    print('crypto_signature_verify', ssig.value, ssig.sig, false);
+                    print('VerifyCryptoSign:', ssig.type, ssig.value, false);
                     return false;
                 }
 
@@ -220,12 +215,12 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                 }
                 // Es wird geprüft ob es sich um eine ristretto255 Signatur handelt
                 else if(ssig.type === 'curve25519') {
-                    let vresult = await blockchain_crypto.ecc.curve25519.verifySignature(ssig.value, ssig.sig, ssig.msg_hash);
+                    let vresult = await blockchain_crypto.ecc.curve25519.verifySignature(ssig.sig, ssig.value, ssig.msg_hash);
                     if(vresult !== true) continue;
                 }
                 // Es wird geprüft ob es sich um eine BLS Signatur handelt
                 else if(ssig.type === 'bls12381') {
-                    let vresult = await blockchain_crypto.ecc.bls1231.verifySignature(ssig.value, ssig.sig, ssig.msg_hash);
+                    let vresult = await blockchain_crypto.ecc.bls12381.verifySignature(ssig.value, ssig.sig, ssig.msg_hash);
                     if(vresult !== true) continue;
                 }
                 // Es wird geprüft ob es sich um eine Bitcoin Signatur handelt
@@ -250,9 +245,9 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                     close_by_error(script_result_obj, 'Invalid script, cant mark public key for using');
                     return false;
                 }
-    
+
                 //console.log(last_unlocking_script_hash_signature);
-                print('crypto_signature_verify', ssig.value, ssig.sig, true);
+                print('VerifyCryptoSign:', ssig.type, ssig.value, true);
             }
         }
         catch(e) {
@@ -1336,7 +1331,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                 // Es wird geprüft ob die Signaturen korrekt sind
                 if((await validate_unlockscript_sig(script_result_obj)) !== true) {
                     abort_without_error(script_result_obj, 'EmitCall:', 'op_check_sig', excpetions.error_messages.interpreter.emit_functions.check_sig.sig_result_not_correct);
-                    return { hex_str_list:[] }; 
+                    return false;
                 }
 
                 // Es wird versucht die Ein / Ausgabe zu entsperrent
@@ -1359,7 +1354,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                 }
 
                 // Das Skript ist erfolgreich durchgeführt wurden
-                print('EmitCall:', 'op_unlock #', true, '&', 'and unlock');
+                print( 'EmitCall:', 'op_check_sig', true);
                 return { hex_str_list:copyed_item };
             }
             // Fügt einen neuen Berechtigen Schlüssel in die Verifyer liste hinzu
@@ -1390,7 +1385,6 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                 }
 
                 // Die anzahl der benötigten Signaturen wird neu festgelegt
-                print('EmitCall:', 'op_add_verify_key', allowed_signature_public_keys.needs_sigs.toString());
                 return { hex_str_list:copyed_item };
             }
             // Fügt erst einen Öffentlichen Schlüssel hinzu und führt dann eine Signatur prüffung durch
@@ -1552,17 +1546,18 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                 // Es wird geprüft ob es sich um einen Zulässigen Typen von Nummer handelt
                 if([NumberType.bit8, NumberType.bit16, NumberType.bit32, NumberType.bit64].includes(number_read_result.value.n_type) !== true) {
                     close_by_error(script_result_obj, 'EmitCall:', 'op_check_locktimeverify', excpetions.error_messages.interpreter.emit_functions.check_lock_verify_time.invalid_number_type);
-                    return false; 
+                    return false;
                 }
 
-                // Es wird geprüft ob die Benötigte Zeit erreicht wurde
+                // Es wird geprüft ob die Benötigte Zeit erreicht wurde,
+                // hierfür wird geprüft ob die in der Funktion Angegebene Zeit größer oder gleich mit der Aktuellen Transaktionszeit (Blockzeit) ist
                 let timestamp = number_read_result.value;
                 if(chain_data.current_block_time.toNumber() >= timestamp) {
                     print('EmitCall:', 'op_check_locktimeverify', true, timestamp.toNumber());
                     return { hex_str_list:copyed_item };
                 }
 
-                // Das Skript wird abgebrochen
+                // Die Benötigte Zeit wurde nicht erreicht, das Skript wird abgebrochen
                 print('EmitCall:', 'op_check_locktimeverify', false, timestamp.toNumber());
                 script_result_obj.signalAbort();
                 return false;
@@ -1589,14 +1584,15 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                     return false; 
                 }
 
-                // Es wird geprüft ob die Benötigte Blockzeit erreicht wurde
-                let unlock_hight = number_read_result.value + tx_check_data.input_tx_block_hight;
+                // Es wird geprüft ob die Benötigte Block Höhe erreicht wurde,
+                // hierfür wird geprüft ob die in der Funktion Angegebene Blockhöhe größer oder gleich mit der Aktuellen Blockhöhe ist
+                let unlock_hight = (number_read_result.value + tx_check_data.input_tx_block_hight);
                 if(chain_data.current_block_hight >= unlock_hight) {
                     print('EmitCall:', 'op_check_blockblockverify', true, unlock_hight.toNumber());
                     return { hex_str_list:copyed_item };
                 }
 
-                // Die Daten werden zurückgegeben
+                // Die Benötigte Blockzeit wurde nicht erreicht, der Vorgang wird abgebrochen
                 print('EmitCall:', 'op_check_blockblockverify', false, unlock_hight.toNumber());
                 script_result_obj.signalAbort();
                 return false;
@@ -1629,7 +1625,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                     return false; 
                 }
 
-                // Die Daten werden zurückgegeben
+                // Das Skript wird abgebrochen
                 print('EmitCall:', 'op_eq_unlock_script_hash', unlocking_script_hash.toLowerCase(), hex_str_readed_result.value.toLowerCase(), true);
                 return { hex_str_list:copyed_item };
             }
@@ -1667,7 +1663,7 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
                 }
 
                 // Die Daten werden zurückgegeben
-                print('EmitCall:', 'op_eq_signers', obj.value, true);
+                print('EmitCall:', 'op_eq_signers', true);
                 return { hex_str_list:readed_parren_cube.hex_str_list };
             }
             // Wird verwendet um zu überprüfen ob die Signaturen erfolgreich geprüft wurden
@@ -1725,7 +1721,6 @@ const hexed_script_interpreter = async(tx_check_data, chain_data, debug=true) =>
             }
         }
         catch(e) {
-            // Es ist ein Schwerwiegender Fehler aufgetreten, dass Skript wird abgebrochen
             close_by_error(script_result_obj, 'EmitCall:', 'Exception ->', e);
             return false;
         }
