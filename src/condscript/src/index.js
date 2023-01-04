@@ -1,3 +1,4 @@
+const { SingleSignatureValue, DateTimestamp, TxScriptCheckData, ChainScriptCheckData, HashValue } = require('../src/obj_types');
 const script_token_parser = require('../src/parser');
 const interpreter = require('../src/interpreter');
 const blockchain_crypto = require('blckcrypto');
@@ -118,4 +119,32 @@ module.exports.getPayToPKeyBLS12381 = async function(reciver_address) {
 
     // Der Fertige String wird zurückgegeben
     return parsed_script.toLowerCase();
+};
+
+// Gibt die Verfügbaren Hash Algos an
+module.exports.cryptoHashAlgos = {
+    sha3_256:'sha3_256'
+};
+
+// Wird verwendet um eine Script Prüfung durchzuführen
+module.exports.validateTransactionScript = async function(current_block_hight, current_block_hash, current_block_hash_algo, current_block_diff, current_block_timestamp, input_tx_block_hight, input_tx_timestamp, tx_signatures, locking_script, unlocking_script, debug=false) {
+    // Die Daten welche für die Überprüfung der Blockchain Benötigt werden, werden zusammengefasst
+    let current_block_timestamp_obj = new DateTimestamp(current_block_timestamp);
+    let last_block_hash = new HashValue(current_block_hash, current_block_hash_algo, true);
+    let tx_chain_data = new ChainScriptCheckData(current_block_hight, current_block_timestamp_obj, last_block_hash, current_block_diff);
+
+    // Die Daten welche für die Prüfung der Verwendeteten Inputs benötigt werden, werden zusammengefasst
+    let input_tx_uts = new DateTimestamp(input_tx_timestamp, true);
+    let tx_check_data = new TxScriptCheckData(locking_script, unlocking_script, input_tx_block_hight, input_tx_uts, '0xffff', tx_signatures);
+
+    // Die Skripte werden Interpretiert
+    let script_validation_result = await module.exports.runScript(tx_check_data, tx_chain_data, null, debug);
+
+    // Das Objekt wird zurückgegeben
+    return script_validation_result.finallyObject();
+};
+
+// Erstellt einen Signatur wert
+module.exports.buildSignatureBox = function(public_key, type, signature, sign_digest) {
+    return new SingleSignatureValue(public_key, type, signature, sign_digest);
 };

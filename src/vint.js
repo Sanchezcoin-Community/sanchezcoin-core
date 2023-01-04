@@ -1,5 +1,6 @@
 // Gibt an ob es sich um einen BigInteger handelt
 function isBigInt(obj_data) {
+    if(typeof obj_data === 'bigint') return true;
     if(typeof obj_data !== 'object') return false;
     if(obj_data.constructor === undefined) return false;
     if(obj_data.constructor.name === undefined) return false;

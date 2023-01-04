@@ -1,6 +1,5 @@
 module.exports = {
     op_invalid_op_code:                     (255).toString(16).padStart(2, '0'),
-    op_unlock_equal_crv25519_brf:           (193).toString(16).padStart(2, '0'),        // <-- Gibt an ob ein Bulletproof ausreichend ist um die Transaktion zu entsperren
     op_equal_tx_has_nunitx_time:            (192).toString(16).padStart(2, '0'),        // <-- Gibt an ob die Transaktion eine nUnixTime Angabe enthält
     op_equal_tx_has_nblock_time:            (191).toString(16).padStart(2, '0'),        // <-- Gibt an ob die Transaktion eine nBlock Angabe enthält
     op_unlock_scriptsig_pubkey:             (190).toString(16).padStart(2, '0'),
