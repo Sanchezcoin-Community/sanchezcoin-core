@@ -5,10 +5,10 @@
 
 // Die Bibliotheken werden Importiert
 const { sha3_256, sha3_384, sha3_512, keccak_256, keccak_384, keccak_512 } = require('@noble/hashes/sha3');
+const { schnorr, utils, getPublicKey, Point, CURVE } = require('@noble/secp256k1');
 const { is_validate_hex_string, is_validate_string } = require('./validate');
 const { validate, getAddressInfo } = require('bitcoin-address-validation');
 const { sha512, sha512_256, sha384 } = require('@noble/hashes/sha512');
-const { schnorr, utils } = require('@noble/secp256k1');
 const bitcoinMessage = require('bitcoinjs-message');
 const { sha256 } = require('@noble/hashes/sha256');
 const { pbkdf2 } = require('@noble/hashes/pbkdf2');
@@ -484,6 +484,75 @@ async function isValidateBitcoinAddress(btc_addr_str) {
     }
 };
 
+// Prüft ob es sich um einen gültigen Privaten Schlüssel handelt
+// Quelle: https://github.com/paulmillr/noble-secp256k1/blob/main/index.ts :: isWithinCurveOrder
+function isWithinCurveOrderSecp256k1P(num) {
+    return 0n < num && num < CURVE.n;
+};
+
+// Führt eine Modulo Rechnug durch
+// Quelle: https://github.com/paulmillr/noble-secp256k1/blob/main/index.ts
+function mod(a, b = CURVE.P) {
+    const result = a % b;
+    return result >= 0n ? result : b + result;
+};
+
+// Achtung: Ich habe keine Ahnung ob dass sicher ist, nicht verwenden !!! EXPERIMENTAL !!!!
+// Wird verwendet um einen Öffentlichen Phantom Public Key zu erzeugen
+// Quelle: https://steemit.com/monero/@luigi1111/understanding-monero-cryptography-privacy-part-2-stealth-addresses
+async function computePublicPhantomKeyForRecivingSecp256k1F(origin_reciver_pk) {
+    // Es wird ein Einmaliges Schlüsselpaar erzeugt
+    let one_time_priv_key = utils.randomPrivateKey();
+    let one_time_priv_key_int = BigInt('0x' + Buffer.from(one_time_priv_key).toString('hex'));
+    let one_time_pub_key = Point.fromPrivateKey(one_time_priv_key);
+
+    // Der Öffentliche Schlüssel wird eingelesen
+    let readed_reciver_pkey = Point.fromHex(origin_reciver_pk);
+
+    // Der DH Schlüssel wird erzeugt
+    let dh_secret = readed_reciver_pkey.multiply(one_time_priv_key_int);
+
+    // Es wird ein Hash aus dem DH Schlüssel erzeugt
+    let dh_hash = BigInt('0x' + sha3F(256, dh_secret.toRawBytes(true).toString('hex')));
+    let dh_hash_modulo = mod(BigInt('0x' + dh_hash), CURVE.n - 1n)
+
+    // Die Empfänger Adresse wird erzeugt
+    let phantom_pkey = Point.BASE.multiply(dh_hash_modulo).add(readed_reciver_pkey).toHexX(true);
+
+    // Die neue Adresse sowie der Öffentliche Schlüssel werden verwendet
+    return { phantom_pkey:phantom_pkey, pair_pkey:one_time_pub_key.toHex(true), orig_reciver:origin_reciver_pk };
+};
+
+// Achtung: Ich habe keine Ahnung ob dass sicher ist, nicht verwenden !!! EXPERIMENTAL !!!!
+// Wird verwendet um den Private Key für einen Enstperechenden Phantom Key zu erzeugen
+// Quelle: https://steemit.com/monero/@luigi1111/understanding-monero-cryptography-privacy-part-2-stealth-addresses
+async function computePublicPhantomKeyForSendingSecp256k1F(local_priv_key, one_time_pky) {
+    // Der Private Schlüssel wird eingelesen
+    let local_priv_key_int = BigInt('0x' + local_priv_key);
+
+    // Der Einmalige Öffentliche Paarungs Schlüssel wird eingelesen
+    let one_time_pair_key_points = Point.fromHex(one_time_pky)
+
+    // Der DH Schlüssel wird nachgebaut
+    let dh_secret = one_time_pair_key_points.multiply(local_priv_key_int);
+
+    // Es wird ein Hash aus dem DH Schlüssel erzeugt
+    let dh_hash = BigInt('0x' + sha3F(256, dh_secret.toRawBytes(true).toString('hex')));
+    let dh_hash_modulo = mod(BigInt('0x' + dh_hash), CURVE.n - 1n)
+
+    // Der Private Phantom Schlüssel wird erzeugt
+    let phantom_pr_key_int = mod(local_priv_key_int + dh_hash_modulo, CURVE.n);
+    let phantom_pr_key_bytes = utils.hexToBytes(phantom_pr_key_int.toString(16).padStart(64, 0));
+
+    // Es wird geprüft ob es sich um einen Gültigen Privaten Schlüssel handelt
+    if(isWithinCurveOrderSecp256k1P(phantom_pr_key_int) !== true) throw new Error('Invalid constructed private key');
+
+    // Der Öffentliche Schnorr Schlüssel wird erstellt
+    let public_schnorr_key = schnorr.getPublicKey(phantom_pr_key_bytes, true);
+
+    // Die Daten werden zurückgegen
+    return { pub_key:utils.bytesToHex(public_schnorr_key), prv_key:utils.bytesToHex(phantom_pr_key_bytes) }
+};
 
 // Die Funktionen werden Exportiert
 module.exports = {
@@ -522,6 +591,14 @@ module.exports = {
     }
 }
 
+
+const test = async() =>  {
+    for(let _i in Array.apply(null, Array(10)).map(function (_, i) {return i;})) {
+        let pkey = await computePublicPhantomKeyForRecivingSecp256k1F('033fb42483a675573af856131330dc77f4dc4d28dfecc42add86a6a35f25ccb4d9');
+        let prkey = await computePublicPhantomKeyForSendingSecp256k1F('79e99d579d0abe9d16a1a45fa59995ca2f9393307a969fdc7a475d06700e75ba', pkey.pair_pkey);
+        console.log(pkey.phantom_pkey === prkey.pub_key, pkey.phantom_pkey);
+    }
+}; test().then();
 
 /*
 (async () => {

@@ -6,6 +6,16 @@ const base32 = require('base32');
 const utxos = require('./utxos');
 
 
+// Legen die Parameter für alle Transaktionen fest
+const tx_parms = {
+    max_inputs:1000,
+    max_outputs:1000,
+    max_signatures:32,
+    max_unlocking_scripts:1000,
+    unlocking_script_max_size:32000,
+    locking_script_max_size:32000
+};
+
 
 // Stellt eine Coinbase Transaktion dar
 // diese Transaktion wird verwendet um die Gebühren sowie den Reward an den Block ersteller zu übergeben
@@ -111,7 +121,7 @@ class UnsignatedTransaction {
         // Es werden alle UnlockingScripts extrahiert
         let total_unlocking_scripts_str = '';
         let total_unlocking_scripts_total = this.unlocking_scripts.length.toString(16).padStart(4, 0).toLowerCase();
-        for(let otem of this.unlocking_scripts) { total_unlocking_scripts_str += otem.toRaw(); }
+        for(let otem of this.unlocking_scripts) total_unlocking_scripts_str += otem.toRaw();
 
         // Die Daten werden zusammengeführt
         return`02000000${total_inputs_hex_len}${totalInputHexStringed}${total_output_hex_len}${totalRawHexString}${total_unlocking_scripts_total}${total_unlocking_scripts_str}`.toLowerCase();
@@ -157,7 +167,8 @@ class SignatureObject {
         let public_key_len = recon_address.length.toString(16).padStart(4, 0);
         let sig_len = recon_signated.length.toString(16).padStart(4, 0);
 
-        return `${type}${public_key_len}${recon_address}${sig_len}${recon_signated}`.toLowerCase();
+        let a = `${type}${public_key_len}${recon_address}${sig_len}${recon_signated}`.toLowerCase();
+        return a;
     };
 };
 
@@ -218,7 +229,7 @@ class SignatedTransaction extends UnsignatedTransaction {
         for(let otem of this.signatures) total_hex_str += otem.toRaw();
 
         // Der String wird zusammengebaut
-        return `${raw_tx_data}${total_signatures_hex_int}${total_hex_str}`.toLowerCase();
+        return `${raw_tx_data}${total_signatures_hex_int}${total_hex_str}`
     };
 
     // Gibt Paarweise alle Eingänge, Ausgänge mit den Zugehörigen Signaturen aus
@@ -279,7 +290,7 @@ class SignatedTransaction extends UnsignatedTransaction {
 };
 
 // Wird verwendet um eine Transaktion in Hexform einzulesen
-function readFromHexString(tx_hex_str) {
+async function readFromHexString(tx_hex_str) {
     // Es wird geprüft ob es sich um eine Coinbase Transaktion handelt
     if(tx_hex_str.toLowerCase().startsWith('01000000') !== true && tx_hex_str.toLowerCase().startsWith('02000000') !== true) throw new Error('Invalid transaction type');
     let header = tx_hex_str.substring(0, 8);
@@ -293,7 +304,7 @@ function readFromHexString(tx_hex_str) {
 
     // Die Einzelnen Eingänge werden eingelesen
     let tx_inputs = [];
-    while(tx_inputs.length < total_inputs) {
+    while(tx_inputs.length < total_inputs && cleared_tx_hex_str.length > 0) {
         // Der Typ des UTXOS wird eingelesen
         let type = cleared_tx_hex_str.substring(0, 2);
         cleared_tx_hex_str = cleared_tx_hex_str.substring(2);
@@ -340,7 +351,7 @@ function readFromHexString(tx_hex_str) {
 
     // Die Einzelnen Ausgänge werden eingelesen
     let tx_outputs = [];
-    while(tx_outputs.length < total_outputs) {
+    while(tx_outputs.length < total_outputs && cleared_tx_hex_str.length > 0) {
         // Es wird geprüft ob es sich um einen Zulässigen Typen handelt
         if(cleared_tx_hex_str.substring(0, 2) !== '01') throw new Error('Invalid tx output');
         cleared_tx_hex_str = cleared_tx_hex_str.substring(2);
@@ -351,18 +362,6 @@ function readFromHexString(tx_hex_str) {
         let amount = BigInt(`0x${cleared_tx_hex_str.substring(0, amount_size)}`, 16);
         cleared_tx_hex_str = cleared_tx_hex_str.substring(amount_size);
 
-        // Die Sperrzeit in form der Blockhöhe wird eingelesen
-        let block_hight_size = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
-        let block_lock_hight = BigInt(`0x${cleared_tx_hex_str.substring(0, block_hight_size)}`, 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(block_hight_size);
-
-        // Die Sperrzeit in form der UnixTime wird eingelesen
-        let n_lock_time_size = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
-        let n_lock_time = BigInt(`0x${cleared_tx_hex_str.substring(0, n_lock_time_size)}`, 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(n_lock_time_size);
-
         // Das Locking Skript wird eingelesen
         let locking_script_size = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
         cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
@@ -372,7 +371,7 @@ function readFromHexString(tx_hex_str) {
         cleared_tx_hex_str = cleared_tx_hex_str.substring(script_size);
 
         // Das Ausgangsobjekt wird erstellt
-        let output_obj = new UnspentOutput(locking_script, amount, block_lock_hight, n_lock_time);
+        let output_obj = new UnspentOutput(locking_script, amount);
         tx_outputs.push(output_obj);
     }
 
@@ -398,27 +397,99 @@ function readFromHexString(tx_hex_str) {
     let total_unlocking_scripts = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
     cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
 
-    // Die Unlocking Skripte werden eingelesen
-    let recovered_unlocking_scripts = [];
-    while(recovered_unlocking_scripts.length < total_unlocking_scripts) {
-        // Die Anzahl der Verlinkten Eingänge wird ermittelt
+    // Es werden alle Unlocking Skripte eingelesen
+    let readed_unlocking_scripts = [];
+    while(readed_unlocking_scripts.length < total_unlocking_scripts && cleared_tx_hex_str.length > 0) {
+        // Die Anzahl der Insgesamt verwendeten Eingänge wird automatisch ermittelt
         let total_linked_inputs = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
         cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
 
-        // Die Eingänge werden eingelesen
-        let readed_inputs = [];
-        while(readed_inputs.length < total_linked_inputs) {
-            let readed_input_hight = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+        // Die Einzelnen Eingänge werden eingelesen
+        let readed_links = [];
+        while(readed_links.length < total_linked_inputs) {
+            readed_links.push(parseInt(cleared_tx_hex_str.substring(0, 4), 16));
             cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
-            readed_inputs.push(readed_input_hight);
         }
 
         // Die Länge des Skriptes wird eingelesen
-        let vint_script_len = parseInt(cleared_tx_hex_str.substring(0, 2), 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(2);
+        let base_script_len_vint = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+        cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+        let script_size_int = parseInt(cleared_tx_hex_str.substring(0, base_script_len_vint), 16);
+        cleared_tx_hex_str = cleared_tx_hex_str.substring(base_script_len_vint);
 
-        
+        // Das Skript wird eingelesen
+        let readed_script = cleared_tx_hex_str.substring(0, script_size_int);
+        cleared_tx_hex_str = cleared_tx_hex_str.substring(script_size_int);
+
+        // Der Unlocking Skript Link wird erstellt
+        readed_unlocking_scripts.push(new UnlockingScriptLink(readed_links, readed_script));
     }
+
+    // Die Block oder UnixTime Sperrzeiten werden eingelesen
+
+    // Die Anzahl der Verfügbaren Signaturen wird ermittelt
+    let total_signatures = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+    cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+
+    // Die Einzelnen Signaturen werden eingelesen
+    let readed_signatures = [];
+    while(readed_signatures.length < total_signatures && cleared_tx_hex_str.length > 0) {
+        // Die Anzahl der Verlinkten Unlocking Skripte wird ermittelt
+        let total_linked_unlocking_scripts = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+        cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+
+        // Die Verwendeten Skriptlinks werden eingelesen
+        let unlocking_script_links = [];
+        while(unlocking_script_links.length < total_linked_unlocking_scripts && cleared_tx_hex_str.length > 0) {
+            let readed_number = parseInt(cleared_tx_hex_str.substring(0, 4));
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+            unlocking_script_links.push(readed_number);
+        }
+
+        // Die Anzahl der Verfügbaren Signaturen wird ermittelt
+        let total_signatures_available = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+        cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+
+        // Die Verfügbaren Signaturen werden eingelesen
+        let r_sigs = [];
+        while(r_sigs.length < total_signatures_available && cleared_tx_hex_str.length > 0) {
+            // Das Verwendete Verfahren wird ermittelt
+            let td_mode = cleared_tx_hex_str.substring(0, 2);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(2);
+
+            // Die Länge des Öffentlichen Schlüssel wird ermittelt
+            let pkey_len = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+
+            // Der Öffentliche Schlüssel wird eingelesen
+            let readed_pkey = cleared_tx_hex_str.substring(0, pkey_len);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(pkey_len);
+
+            // Die Länge der Signatur wird ermittelt
+            let readed_sig_size = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+
+            // Die Signatur wird eingelesen
+            let readed_sig = cleared_tx_hex_str.substring(0, readed_sig_size);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(readed_sig_size);
+
+            // Das Signatur Objekt wird erstellt
+            if(td_mode == '00') r_sigs.push(new SignatureObject('ethadr', `0x${readed_pkey}`, readed_sig));
+            else throw new Error('Unkwon crypto');
+        }
+
+        // Das SignaturBox Objekt wird erzeugt
+        readed_signatures.push(new SignatureBox(unlocking_script_links, r_sigs));
+    }
+
+    // Das Transaktionsobjekt wird erstellt
+    let final_tx_object = new SignatedTransaction(tx_inputs, tx_outputs, readed_unlocking_scripts, readed_signatures);
+
+    // Es wird geprüft ob die Daten der Eingelesenen Transaktion übereinstimmen
+    if(final_tx_object.getRawData() !== tx_hex_str) throw new Error('Unkown tx reading error');
+
+    // Das Finale Objekt wird zurückgegeben
+    return { new_hex_str:cleared_tx_hex_str, tx_obj:final_tx_object};
 };
 
 // Wird verwendet um ScriptSig in zusammenhang mit dem Locking Skript zu überprüfen
@@ -451,14 +522,14 @@ module.exports = {
 // Es wird geprüft ob die Datei direkt gestartet wird, wenn ja wird die Funktion ausgeführt
 if (require.main === module) (() => {
     // Es wird eiene Test Coinbase Transaktion zu bauen
-    scriptvm.getPayToEthereumAddress('0x2a627c97c15c43Fa7692E9886EB805c8AfA70DfB').then((locking_script) => {
+    scriptvm.getPayToEthereumAddress('0x93d4AD008F1Ad8432F6Ea8944A2cebF3A0954CA7').then((locking_script) => {
         let cb_input = new utxos.CoinbaseInput();
         let cb_output = new utxos.UnspentOutput(locking_script, 100000000n, 0n, 0n)
         let coinbase_transaction = new CoinbaseTransaction(0n, [cb_input], [cb_output]);
 
         // Das Unlocking Test Skript wird erzeugt
         let eth_sig_unlocking_script = `
-        add_verify_key(EthAddress(0x2a627c97c15c43Fa7692E9886EB805c8AfA70DfB));
+        add_verify_key(EthAddress(0x93d4AD008F1Ad8432F6Ea8944A2cebF3A0954CA7));
         verify_sig();
         exit();
         `
@@ -469,8 +540,8 @@ if (require.main === module) (() => {
             let script_input = new utxos.TxInput(coinbase_transaction.computeTxId(), 0);
 
             // Die Outputs werden erzeugt
-            let script_output = new utxos.UnspentOutput(locking_script, 40000000n, 0n, 0n);
-            let script_output1 = new utxos.UnspentOutput(locking_script, 50000000n, 0n, 0n);
+            let script_output = new utxos.UnspentOutput(locking_script, 40000000n);
+            let script_output1 = new utxos.UnspentOutput(locking_script, 50000000n);
 
             // Die Unlocking Skripte für die Verwendeten Transaktionen werden erzeugt
             let unlocking_script_link = new UnlockingScriptLink([0], parsed_unlocking_script);
@@ -479,7 +550,7 @@ if (require.main === module) (() => {
             let unsignated_transaction = new UnsignatedTransaction([script_input], [script_output, script_output1], [unlocking_script_link]);
 
             // Die Signatur für die Transaktion wird erzeugt
-            let tx_signature = new SignatureObject('ethadr', '0x2a627c97c15c43Fa7692E9886EB805c8AfA70DfB', '5ad2a9b34297664ed07aba559219ff5f9f19f6e2fb08033b8b30e2a6e8208b7c51634784f66dfb6b631c2c7d8d044ac4d06c48aba2adbeb0919e2035419f8b571c');
+            let tx_signature = new SignatureObject('ethadr', '0x93d4AD008F1Ad8432F6Ea8944A2cebF3A0954CA7', '9563592894205e43611ee5c00350bf3b78d01b575831afeb2fdcf82e05850d5c2d7dc5961f1645a51c3537f23782d96137e6ac15af9cd0bae69fcd9dc722e65e1b');
             let signature_box = new SignatureBox([0], [tx_signature]);
 
             // Die Signatur wird hinzugefügt
@@ -498,6 +569,7 @@ if (require.main === module) (() => {
             console.log('Signated tx hex   :', final_transaction.getRawData());
             console.log();
 
+            // Die Signaturen der Transaktion werden geprüft
             for(let otem of final_transaction.getScriptSigPairs()) {
                 let rvar = await validateSigScriptBundle(otem, locking_script, 1n, 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'sha3_256', '', '1672342440', 1n, '1672322440');
                 if(rvar !== true) {
@@ -508,7 +580,13 @@ if (require.main === module) (() => {
                 }
             }
 
-            readFromHexString(final_transaction.getRawData());
+            // Es wird versucht die Transaktionen einzulesen
+            let readed_coinbase_tx = await readFromHexString(coinbase_transaction.getRawData());
+            let readed_signated_tx = await readFromHexString(final_transaction.getRawData());
+
+            // Es wird geprüft ob die Hashes der Eingelesenen Transaktionen korrekt sind
+            if(readed_coinbase_tx.tx_obj.computeHash() !== coinbase_transaction.computeHash()) throw new Error('Invalid coinabse tx returned');
+            if(readed_signated_tx.tx_obj.computeHash() !== final_transaction.computeHash()) throw new Error('Invalid coinabse tx returned');
         });
     });
 })();
