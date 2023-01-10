@@ -1,19 +1,59 @@
-const { TxInput, CoinbaseInput, UnspentOutput } = require('./utxos');
+const { TxInput, CoinbaseInput, UnspentOutput } = require('./utxos')
 const blockchain_crypto = require('sanchez-crypto');
 const { intToVInt, isBigInt } = require('./vint');
+const { tx_parms } = require('./constants');
 const scriptvm = require('./condscript');
-const base32 = require('base32');
 const utxos = require('./utxos');
 
 
-// Legen die Parameter für alle Transaktionen fest
-const tx_parms = {
-    max_inputs:1000,
-    max_outputs:1000,
-    max_signatures:32,
-    max_unlocking_scripts:1000,
-    unlocking_script_max_size:32000,
-    locking_script_max_size:32000
+// Wird verwendet um die Eingänge einer Transaktion zu überprüfen
+function validateTxInputs(tx_inputs, coinabse=false) {
+    let checked_objects = [], has_alw_coinbase_input = false;
+    for(let input_item of tx_inputs) {
+        if(typeof input_item !== 'object') return false;
+        if(input_item.constructor.name !== 'CoinbaseInput' && input_item.constructor.name !== 'TxInput') return false;
+        if(input_item.constructor.name === 'CoinbaseInput') {
+            if(has_alw_coinbase_input === true) {
+                return false;
+            }
+            has_alw_coinbase_input = true;
+        }
+        checked_objects.push(input_item);
+    }
+    if(coinabse === true && has_alw_coinbase_input !== true) return false;
+    return tx_inputs.length === checked_objects.length;
+};
+
+// Wird verwendet um die Ausgänge einer Transaktion zu überprüfen
+function validateTxOutput(tx_outputs, coinbase=false) {
+    let checked_output = [];
+    for(let output_item of tx_outputs) {
+        if(typeof output_item !== 'object') throw new Error('Invalid tx input type');
+        if(output_item.constructor.name === 'UnspentOutput' || output_item.constructor.name === 'UnspentPhantomOutput') {
+            if(coinbase === false) {
+                if(output_item.amount < 1n) return false;
+            }
+            else {
+                if(output_item.amount < 0n) return false;
+            }
+        }
+        else {
+            throw new Error('Invalid tx input object');
+        }
+        checked_output.push(output_item);
+    }
+    return checked_output.length !== tx_outputs;
+};
+
+// Wird verwendet um die Unlocking Skripte einer Transaktion zu überprüfen
+function validateTxScripts(tx_scripts, coinabse=false) {
+    let unlocking_script_tx_checked = [];
+    for(let otem of tx_scripts) {
+        if(typeof otem !== 'object') return false;
+        if(otem.constructor.name !== 'UnlockingScriptLink') return false;
+        unlocking_script_tx_checked.push(otem);
+    }
+    return unlocking_script_tx_checked.length === tx_scripts.length;
 };
 
 
@@ -24,10 +64,37 @@ class CoinbaseTransaction {
         // Es wird geprüft ob es sich bei der Angabe um die Blockhöhe um eine Korrekte angabe handelt
         if(isBigInt(blockHight) !== true) throw Error('Invalid current block hight');
 
+        // Es wird geprüft ob es sich um einen Zulässigen Input Parameter handelt
+        if(typeof inputs !== 'object' || Array.isArray(inputs) !== true) throw new Error('Invalid Input parameter data type');
+
+        // Es wird geprüft ob es sich um einen Zulässigen Output Parameter handelt
+        if(typeof outputs !== 'object' || Array.isArray(outputs) !== true) throw new Error('Invalid Output parameter data type');
+
+        // Es wird geprüft ob die Eingänge für eine Coinbase Transaktion korrekt sind
+        if(validateTxInputs(inputs, true) !== true) throw new Error('Invalid transaction inputs');
+
+        // Es wird geprüft ob die Ausgänge für eine Coinbase Transaktion korrekt sind
+        if(validateTxOutput(outputs, true) !== true) throw new Error('Invalid transaction outputs');
+
+        // Wird geprüft ob die Anzahl der Erlaubten Eingänge überschritten wurde
+        if(inputs.length > tx_parms.max_inputs) throw new Error('To many inputs for transaction');
+
+        // Wird geprüft ob die Anzahl der Erlaubten Ausgänge überschritten wurde
+        if(outputs.length > tx_parms.max_outputs) throw new Error('To many outputs for transaction');
+
+        // Es wird geprüft ob die Mindestanzahl an Eingängen vorhanden ist
+        if(inputs.length < 1n) throw new Error('To low inputs for transaction');
+
+        // Es wird geprüft ob die Mindestanzahl an Ausgängen vorhanden ist
+        if(outputs.length < 1n) throw new Error('To low outputs for transaction');
+
+        // Es wird geprüft ob der Block größer oder gleich 0 ist
+        if(blockHight < 0n) throw new Error('Invalid block hight');
+
         // Speichert die Daten zwischen
-        this.blockHight = blockHight;
-        this.inputs = inputs;
-        this.outputs = outputs;
+        this.blockHight = blockHight;           // <-- Gibt die Aktuelle Blockhöhe an
+        this.outputs = outputs;                 // <-- Gibt alle Ausgänge an, die Verwendet wurden
+        this.inputs = inputs;                   // <-- Gibt alle Eingänge an, die Verwendet wurden
     };
 
     // Gibt die Transaktion als RAW Bytes aus
@@ -59,10 +126,12 @@ class CoinbaseTransaction {
         return imageh.toLowerCase();
     };
 
+    // Gibt die Vollständige TransaktionsID aus
     computeTxId() {
         return blockchain_crypto.sha3(384, this.computeHash());
     };
 
+    // Gibt die Insgesamte Menge an ausgängen aus
     getTotalOutputAmount() {
         let total_amount = 0n;
         for(let otem of this.outputs) total_amount += otem.amount;
@@ -73,8 +142,22 @@ class CoinbaseTransaction {
 // Stellt eine Signatur in Kombination mit einem Skript bereit
 class UnlockingScriptLink {
     constructor(input_no, unlocking_script) {
-        this.unlocking_script = unlocking_script;
-        this.input_nos = input_no;
+        // Es wird geprüft ob es sich um einen Gültigen Input Array Parameter handelt
+        if(typeof input_no !== 'object' || Array.isArray(input_no) !== true) throw new Error('Invalid inputs parameter data type');
+
+        // Die Einzelnen Verlinkungen werden geprüft
+        for(let otem of input_no) {
+            if(typeof otem !== 'number') throw new Error('Invalid input hight data type');
+            if(otem < 0) throw new Error('Invalid number hight')
+            if(otem > BigInt(tx_parms.max_inputs)) throw new Error('Invalid tx item');
+        }
+
+        // Es wird geprüft ob die größe des Unlocking Skriptes
+        if(unlocking_script.length > tx_parms.unlocking_script_max_size) throw new Error('Invalid unlocking script size');
+
+        // Speichert das Unlocking Skript sowie die verwendeten Inputs Höhen ab
+        this.unlocking_script = unlocking_script;           // <-- Speichert das Locking Skript ab, welches verwendet werden soll
+        this.input_nos = input_no;                          // <-- Speichert die Höhe des Inputs ab
     };
 
     toRaw() {
@@ -95,11 +178,50 @@ class UnlockingScriptLink {
 
 // Stellt eine nicht Signierte Transaktion dar
 class UnsignatedTransaction {
-    constructor(inputs, outputs, sig_scripts) {
+    constructor(inputs, outputs, unlockig_scripts) {
+        // Es wird geprüft ob es sich um einen Zulässigen Input Parameter handelt
+        if(typeof inputs !== 'object' || Array.isArray(inputs) !== true) throw new Error('Invalid Input parameter data type');
+
+        // Es wird geprüft ob es sich um einen Zulässigen Output Parameter handelt
+        if(typeof outputs !== 'object' || Array.isArray(outputs) !== true) throw new Error('Invalid Output parameter data type');
+
+        // Es wird geprüft ob es sich um einen Zulässigen Skript Parameter handelt
+        if(typeof unlockig_scripts !== 'object' || Array.isArray(unlockig_scripts) !== true) throw new Error('Invalid script transactions');
+
+        // Es wird geprüft ob die Eingänge für eine Coinbase Transaktion korrekt sind
+        if(validateTxInputs(inputs, false) !== true) throw new Error('Invalid transaction inputs');
+
+        // Es wird geprüft ob die Ausgänge für eine Coinbase Transaktion korrekt sind
+        if(validateTxOutput(outputs, false) !== true) throw new Error('Invalid transaction outputs');
+
+        // Es wird geprüft ob es sich um gültige Unlocking Skripte handelt
+        if(validateTxScripts(unlockig_scripts, false) !== true) throw new Error('Invalid unlocking scripts');
+
+        // Wird geprüft ob die Anzahl der Erlaubten Eingänge überschritten wurde
+        if(inputs.length > tx_parms.max_inputs) throw new Error('To many inputs for transaction');
+
+        // Wird geprüft ob die Anzahl der Erlaubten Ausgänge überschritten wurde
+        if(outputs.length > tx_parms.max_outputs) throw new Error('To many outputs for transaction');
+
+        // Es wird geprüft ob die Anzahl der Erlaubten Skripte überschritten wurde
+        if(unlockig_scripts.length > tx_parms.max_unlocking_scripts) throw new Error('To many unlocking scripts for transaction');
+
+        // Es wird geprüft ob die Mindestanzahl an Eingängen vorhanden ist
+        if(inputs.length < 1n) throw new Error('To low inputs for transaction');
+
+        // Es wird geprüft ob die Mindestanzahl an Ausgängen vorhanden ist
+        if(outputs.length < 1n) throw new Error('To low outputs for transaction');
+
+        // Es wird geprüft ob die Mindestanzahl der Skripte vorhanden sind
+        if(unlockig_scripts.length < 1n) throw new Error('To low unlocking scripts');
+
+        // Es wird geprüft ob Midnestens 1 Eingang sowie 1 Ausgang vorhanden ist
+        if(inputs.length < 1 || outputs.length < 1) throw new Error('Invalid transaction, need minimum one input or output');
+
         // Speichert die Daten zwischen
-        this.unlocking_scripts = sig_scripts;
-        this.outputs = outputs;
-        this.inputs = inputs;
+        this.unlocking_scripts = unlockig_scripts;                                          // <-- Speichert die Verfügbaren Unlocking Skripte der Transaktion ab
+        this.outputs = outputs;                                                             // <-- Speichert die Verfügbaren Eingänge der Transaktion ab
+        this.inputs = inputs;                                                               // <-- Speichert die Verfügbaren Ausgänge der Transaktion ab
     };
 
     // Gibt die Transaktion als RAW Bytes aus
@@ -148,9 +270,35 @@ class UnsignatedTransaction {
 // Stellt eine Signatur dar
 class SignatureObject {
     constructor(type, public_key, signature) {
-        this.public_key = public_key;
-        this.signature = signature;
-        this.type = type;
+        // Es wird geprüft ob es sich um einen gültigen Datentypen der Type angabe handelt
+        if(typeof type !== 'string') throw new Error('Invalid type parameter data type');
+
+        // Es wird geprüft ob es sich um einen gültigen Datentypen des Öffentlichen Schlüssels handelt
+        if(typeof public_key !== 'string') throw new Error('Invalid public key parameter data type');
+
+        // Es wird geprüft ob es sich um einen einen gültigen Datentypen der Signatur handelt
+        if(typeof signature !== 'string') throw new Error('Invalid signature data type');
+
+        // Es wird geprüft ob es sich um eine gültige Type angabe der Transaktion handelt
+        if(typeof type !== 'ethadr') {
+            if(public_key.length === 40) {
+                if(blockchain_crypto.alt_coin_crypto.isValidateEthereumAddressSync(`0x${public_key}`) !== true) throw new Error('Invalid ')
+            }
+            else if(public_key.length === 42) {
+                if(blockchain_crypto.alt_coin_crypto.isValidateEthereumAddressSync(public_key) !== true) throw new Error('Invalid ')
+            }
+            else {
+                throw new Error('Invalid Web3 Ethereum Address');
+            }
+        }
+        else {
+            throw new Error('Invalid signature type');
+        }
+
+        // Speichert die Daten ab
+        this.public_key = public_key;                               // <-- Speichert den Öffentlichen Schlüssel / die Adresse ab, welche zum Signieren verwendet wurde
+        this.signature = signature;                                 // <-- Speichert die verwendete Signatur ab
+        this.type = type;                                           // <-- Speichert den Typen / Algorythmus des verwendeten Signaturverfahren ab
     };
 
     toRaw() {
@@ -174,9 +322,29 @@ class SignatureObject {
 
 // Stellt ein Kombination an Signaturen bereit
 class SignatureBox {
-    constructor(linked_unlock_script_sigs, signatures) {
-        this.linked_unlock_script_sigs = linked_unlock_script_sigs;
-        this.signatures = signatures;
+    constructor(linked_unlock_script, signatures) {
+        // Es wird geprüft ob es sich um einen gültigen Linked Unlocking Skript Link Parameter handelt
+        if(typeof linked_unlock_script !== 'object' || Array.isArray(linked_unlock_script) !== true) throw new Error('Invalid unlocking script link parameter');
+
+        // Es wird geprüft ob es sich um einen gültigen Signatur Parameter handelt
+        if(typeof signatures !== 'object' || Array.isArray(signatures) !== true) throw new Error('Invalid signatures parameter');
+
+        // Es wird geprüft ob es sich um zulässige Linked Unlocking Scripte handelt
+        for(let otem of linked_unlock_script) {
+            if(typeof otem !== 'number') throw new Error('Invalid script link data type');
+            if(otem < 0) throw new Error('Invalid script link data hight');
+            if(otem > BigInt(tx_parms.max_inputs)) throw new Error('Invalid tx item');
+        }
+
+        // Es wird geprüft ob es sich um zulässige Signaturen handelt
+        for(let otem of signatures) {
+            if(typeof otem !== 'object') throw new Error('Invalid data type for signature');
+            if(otem.constructor.name !== 'SignatureObject') throw new Error('Invalid data type, no signature object');
+        }
+
+        // Speichert die benötigten Objektdaten ab
+        this.linked_unlock_script_sigs = linked_unlock_script;          // <-- Speichert ab, welche Unlocking Skripte diese Signatur verwenden
+        this.signatures = signatures;                                   // <-- Speichert alle Signaturen ab, welche zu diesem Unlocking Skript gehören
     };
 
     toRaw() {
@@ -199,21 +367,68 @@ class SignatureBox {
     };
 };
 
-// Gibt alle Unlocking Skripte zusammen mit allen Signaturen und den verwendeten Eingängen aus
+// Speichert alle Zugehörigen Daten für eine Signatur überprüfung aus
 class ScriptSigBundle {
     constructor(tx_input_hash, tx_input_hight, unlocking_scripts, sig_msg_digest, signatures) {
+        // Es wird geprüft ob der TxInputHash Parameter die Bedingungen erfüllt
+        if(typeof tx_input_hash !== 'string') throw new Error('Invalid tx input hahs data type');
+        if(tx_input_hash.length !== 96) throw new Error('Invalid length for tx input hash');
+
+        // Es wird geprüft ob der TxInputHight Parameter die Bedingungen erfüllt
+        if(typeof tx_input_hight !== 'number') throw new Error('Invalid tx input hight data type');
+        if(tx_input_hight < 0) throw new Error('Invalid tx input hight');
+        if(tx_input_hight > tx_parms.max_inputs) throw new Error('Invalid to hight tx input hight');
+
+        // Es wird geprüft ob der Unlocking Script Parameter korrekt ist
+        if(typeof unlocking_scripts !== 'string') throw new Error('Invalid UnlockingScript data type');
+
+        // Es wird geprüft ob die Bedingungen für die Länge zutreffend sind
+        if(unlocking_scripts.length < 12 || unlocking_scripts.length > tx_parms.unlocking_script_max_size) throw new Error('Invalid UnlockingScript data type length');
+
+        // Es wird geprüft ob der SignMsgHash Parameter korrekt ist
+        if(typeof sig_msg_digest !== 'string' || sig_msg_digest.length !== 64) throw new Error('Invalid sign msg digest data type');
+
+        // Es wird geprüft ob der Signatur Parameter korrekt ist
+        if(typeof signatures !== 'object' || Array.isArray(signatures) !== true) throw new Error('Invalid signatures parameter');
+
+        // Es wird geprüft ob Mindestens 1 Signatur vorhaden ist
+        if(signatures.length < 1) throw new Error('Invalid signatures size, to low');
+
+        // Es wird geprüft ob die Maximale Anzahl von Signaturen erreicht wurden
+        if(signatures.length > tx_parms.max_signatures) throw new Error('Invalid signatues, to many');
+
+        // Es wird geprüft ob die Signatur Objekte korrekt sind
+        for(let otem of signatures) {
+            if(typeof otem !== 'object' || otem.constructor.name !== 'SignatureObject') throw new Error('Invalid signature object');
+        }
+
+        // Speichert die Objektdaten die zusammengehörig sind ab
+        this.unlocking_script = unlocking_scripts;                          // <-- Gibt das Verwendete Unlocking Skript ab
+        this.sig_msg_digest = sig_msg_digest;                               // <-- Speichert den Hash ab welcher zur überprüfung der Transaktion geprüft werden soll
+        this.tx_input_hash = tx_input_hash;                                 // <-- Gibt den Hash des verwendeten Inputs an welches geprüft werden soll
+        this.tx_input_hight = tx_input_hight;                               // <-- 
         this.signatures = signatures;
-        this.unlocking_script = unlocking_scripts;
-        this.sig_msg_digest = sig_msg_digest;
-        this.tx_input_hash = tx_input_hash;
-        this.tx_input_hight = tx_input_hight;
     };
 };
 
 // Gibt ein Signiertes Objekt aus
 class SignatedTransaction extends UnsignatedTransaction {
     constructor(inputs, outputs, sig_scripts, signatures) {
+        // Das Basis Objekt wird erstellt
         super(inputs, outputs, sig_scripts);
+
+        // Es wird geprüft ob der Signatur Parameter korrekt ist
+        if(typeof signatures !== 'object' || Array.isArray(signatures) !== true) throw new Error('Invalid signatures parameter');
+
+        // Es wird geprüft ob die Mindestanzahl von 1ner Signatur oder der Maximalen Anzahl von Signaturen korrekt ist
+        if(signatures.length < 1 || signatures.length > tx_parms.max_signatures) throw new Error('Invalid transaction, invalid signature field');
+
+        // Es wird geprüft ob die Signaturen korrekt sind
+        for(let otem of signatures) {
+            if(typeof otem !== 'object' || otem.constructor.name !== 'SignatureBox') throw new Error('Invalid signature object type');
+        }
+
+        // Speichert die Signaturen ab
         this.signatures = signatures;
     };
 
@@ -284,6 +499,7 @@ class SignatedTransaction extends UnsignatedTransaction {
         return rsval;
     };
 
+    // Gibt die Id der Transaktion aus
     computeTxId() {
         return blockchain_crypto.sha3(384, this.computeHash())
     };
@@ -494,7 +710,7 @@ async function readFromHexString(tx_hex_str) {
 
 // Wird verwendet um ScriptSig in zusammenhang mit dem Locking Skript zu überprüfen
 async function validateSigScriptBundle(sig_script_object, locking_script, current_block_hight, current_block_hash, current_block_hash_algo, current_block_diff, current_block_timestamp, tx_block_hight, tx_timestamp, debug=false) {
-    // Die Signaturen werden vorbereitet
+    // Die Signaturen werden für die Prüfung vorbereitet
     let pre_constructed_sigs = [];
     for(let tx_obj of sig_script_object.signatures) {
         let script_obj = scriptvm.buildSignatureBox(tx_obj.public_key, tx_obj.type, tx_obj.signature, sig_script_object.sig_msg_digest);
@@ -534,7 +750,7 @@ if (require.main === module) (() => {
         exit();
         `
 
-        // Das Skript wird geparsr
+        // Das Skript wird geparst
         scriptvm.parseScript(eth_sig_unlocking_script).then(async (parsed_unlocking_script) => {
             // Die Verwendete Transaktion wird angegeben
             let script_input = new utxos.TxInput(coinbase_transaction.computeTxId(), 0);
