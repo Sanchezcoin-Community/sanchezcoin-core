@@ -586,9 +586,7 @@ async function isValidateEthereumAddress(eth_addr_str) {
 /**
  * Wird verwendet um zu überprüfen ob es sich um eine Ethereum Adresse handelt (SYNC)
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {str} eth_addr_str The number to raise.
 */
 function isValidateEthereumAddressSync(eth_addr_str) {
     // Es wird geprüft ob es sich um einen String handelt
