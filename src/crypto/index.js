@@ -19,7 +19,12 @@ const bip39 = require('bip39');
 const web3 = require('ethers');
 
 
-// Wird verwendet um eingabe Werte zu einem String Block zu erstellen
+/**
+ * Creates a hash from a file
+ * 
+ * @param {...items} items Specifies the elements to be merged into a string.
+ * @return {string} Returns the full string.
+*/
 const inputs_to_string_block = (...items) => items.map((value) => {
     if(typeof value === 'bigint' || typeof value === 'number') {
         return value.toString(16).toLowerCase();
@@ -46,11 +51,11 @@ const inputs_to_string_block = (...items) => items.map((value) => {
 }).join('');
 
 /**
- * Wird verwendet um einen Hash aus einer Datei zu erzeugen
+ * Creates a hash from a file
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} hash_function Specifies the hash function to use to create the hash of the file.
+ * @param {string} file Specifies the path for the file to be hashed.
+ * @return {string} Returns the hash value of the file as a hex string.
 */
 async function getHashOfFileF(hash_function, file) {
     // Es wird ein Hash aus der Datei erzeugt
@@ -72,11 +77,11 @@ async function getHashOfFileF(hash_function, file) {
 };
 
 /**
- * Wird erstellt um einen einfachen SHA256 Hash zu erstellen
+ * Used to create a SHA2 hash.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {number} size Specifies the bit size of the hash. 256 | 384 | 523
+ * @param {item} items Specifies the items to be hashed.
+ * @return {string} Outputs the generated hash value as a hex string.
 */
 function sha2F(size, ...items) {
     // Es wird geprüft ob es sich um zulässige Parameter handelt
@@ -117,11 +122,11 @@ function sha2F(size, ...items) {
 };
 
 /**
- * Wird verwendet um einen Doppelten SHA256 Hash zu estellen (sha256d)
+ * Used to create a SHA2d hash.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {number} size Specifies the bit size of the hash. 256 | 384 | 523
+ * @param {item} items Specifies the items to be hashed.
+ * @return {string} Outputs the generated hash value as a hex string.
 */
 function sha2dF(size, ...items) {
     // Es wird geprüft ob es sich um zulässige Parameter handelt
@@ -149,11 +154,11 @@ function sha2dF(size, ...items) {
 };
 
 /**
- * Wird verwendet um einen SHA3 Hash zu erstellen
+ * Used to create a SHA3 hash.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {number} size Specifies the bit size of the hash. 256 | 384 | 523
+ * @param {item} items Specifies the items to be hashed.
+ * @return {string} Outputs the generated hash value as a hex string.
 */
 function sha3F(size, ...items) {
     // Es wird geprüft ob es sich um zulässige Parameter handelt
@@ -190,11 +195,11 @@ function sha3F(size, ...items) {
 };
 
 /**
- * Wird verwendet um einen Keccak Hash zu erstellen
+ * Used to create a Keccak hash.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {number} size Specifies the bit size of the hash. 256 | 384 | 523
+ * @param {item} items Specifies the items to be hashed.
+ * @return {string} Outputs the generated hash value as a hex string.
 */
 function keccakF(size, ...items) {
     // Es wird geprüft ob es sich um zulässige Parameter handelt
@@ -231,11 +236,12 @@ function keccakF(size, ...items) {
 };
 
 /**
- * Gibt ein RS25519 Schlüsselpaar aus dem Seed aus (Determenistisch)
+ * Used to derive a ristretto25519 schnorr key pair from a seed and a path.
+ * This is not an official procedure, it is not compatible with standardized procedures.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} seed_hex_str Specifies the seed to use to derive the keys.
+ * @param {string} path Specifies the path to use in combination with the seed to create a key pair.
+ * @return {number} Returns a key pair object, this object consists of a public key and a private key.
 */
 function getRistretto25519KeyPairFromSeedF(seed_hex_str, path) {
     // Es wird geprüft ob es sich um einen Zulässigen Hexstring handelt
@@ -260,11 +266,12 @@ function getRistretto25519KeyPairFromSeedF(seed_hex_str, path) {
 };
 
 /**
- * Wird verwendet um ein SECP256K1 Schnlüsselpaar abzuleiten (Determenistisch)
+ * Used to derive a secp256k1 schnorr key pair from a seed and a path.
+ * This is not an official procedure, it is not compatible with standardized procedures.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} seed_hex_str Specifies the seed to use to derive the keys.
+ * @param {string} path Specifies the path to use in combination with the seed to create a key pair.
+ * @return {number} Returns a key pair object, this object consists of a public key and a private key.
 */
 function getSecp256k1SchnorrKeyPairFromSeedF(seed_hex_str, path) {
     // Es wird geprüft ob es sich um einen Zulässigen Hexstring handelt
@@ -292,11 +299,12 @@ function getSecp256k1SchnorrKeyPairFromSeedF(seed_hex_str, path) {
 };
 
 /**
- * Wird verwendet um ein BLS12-381 Schlüsselpaar abzuleiten (Determenistisch)
+ * Used to derive a bls12-381 key pair from a seed and a path.
+ * This is not an official procedure, it is not compatible with standardized procedures.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} seed_hex_str Specifies the seed to use to derive the keys.
+ * @param {string} path Specifies the path to use in combination with the seed to create a key pair.
+ * @return {number} Returns a key pair object, this object consists of a public key and a private key.
 */
 function getBLS12381KeyPairFromSeedF(seed_hex_str, path) {
     // Es wird geprüft ob es sich um einen Zulässigen Hexstring handelt
@@ -324,11 +332,10 @@ function getBLS12381KeyPairFromSeedF(seed_hex_str, path) {
 };
 
 /**
- * Wird verwendet um aus einem Bip32 Mnemonic einen Seed zu erstellen
+ * Creates a cryptographic hex value, also known as a seed, from a mnemonic.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} bip_39_mnemonic Specifies the mnemonic to convert to the seed.
+ * @return {string} Outputs the seed in hex from.
 */
 function getSeedFromBip39MnemonicF(bip_39_mnemonic) {
     // Es wird geprüft ob es sich um den String handelt
@@ -343,22 +350,22 @@ function getSeedFromBip39MnemonicF(bip_39_mnemonic) {
 };
 
 /**
- * Wird verwendet um einen neuen BIP32 Mnemonic zu erstelen
+ * Used to create a 256-bit strong BIP32 mnemonic.
+ * https://en.bitcoin.it/wiki/Seed_phrase
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {array} wordlist Specifies an optional word list which can be used to construct the mnemonic, otherwise an English word list is used to construct the mnemonic.
+ * @return {string} Returns a 24-word string.
 */
 function generateBip39MnemonicF(wordlist=undefined) {
     return bip39.generateMnemonic(256, undefined, wordlist);
 };
 
 /**
- * Wird verwendet um eine secp256k1 Schnorr Signatur zu erstellen
+ * Used to create a secp256k1 Schnorr signature
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} private_key_hex Specifies the private key to be used for signing.
+ * @param {string} digest_value Specifies the hash value to be signed.
+ * @return {string} Outputs the signature in hex form.
 */
 async function signDigestWithSecp256k1SchnorrF(private_key_hex, digest_value) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
@@ -378,11 +385,12 @@ async function signDigestWithSecp256k1SchnorrF(private_key_hex, digest_value) {
 };
 
 /**
- * Wird verwendet um eine secp256k1 Schnorr Signatur zu überprüfen
+ * Used to verify a secp256k1 Schnorr signature
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} public_key_hex Specifies the public key to use for verification.
+ * @param {string} signature_hex Specifies the signature in hex form.
+ * @param {string} digest_value Indicates the value that was signed
+ * @return {bool} Returns True if the signature is correct, False otherwise.
 */
 async function verfiySecp256k1SchnorrSignatureF(public_key_hex, signature_hex, digest_value) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
@@ -412,11 +420,11 @@ async function verfiySecp256k1SchnorrSignatureF(public_key_hex, signature_hex, d
 };
 
 /**
- * Wird verwendet um eine Ristretto25519 Schnorr Signatur zu erstellen
+ * Used to create a Ristretto 25519 Schnorr signature
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} private_key_hex Specifies the private Ristretto 25519 key.
+ * @param {string} digest_value Specifies the hash value to be signed.
+ * @return {string} Returns the Ristretto 25519 signature.
 */
 async function signDigestWithRistretto25519SchnorrF(private_key_hex, digest_value) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
@@ -439,11 +447,12 @@ async function signDigestWithRistretto25519SchnorrF(private_key_hex, digest_valu
 };
 
 /**
- * Wird verwendet um eine Ristretto25519 Schnorr Signatur zu überprüfen
+ * Used to verify a Ristretto 25519 Schnorr signature
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} signature_hex Specifies the signature in hex format to be used for signature verification.
+ * @param {string} public_key_hex Specifies the public key to be used for verification.
+ * @param {string} digest_value Specifies the hash value to be used to verify the signature.
+ * @return {bool} Returns True if the signature is correct, False otherwise.
 */
 async function verfiyRistretto25519SchnorrSignatureF(signature_hex, public_key_hex, digest_value) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
@@ -467,11 +476,11 @@ async function verfiyRistretto25519SchnorrSignatureF(signature_hex, public_key_h
 };
 
 /**
- * Wird verwendet um eine BLS_Signatur zu erzeugen
+ * Used to generate a BLS12-381 signature.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} priv_key_hex Specifies the private BLS key to be used to create a signature.
+ * @param {string} digest_hex Specifies the hash value to be signed by the private key.
+ * @return {string} Returns the BLS12-381 signature as a hex value.
 */
 async function signDigestWithBLS12381PrivateKey(priv_key_hex, digest_hex) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
@@ -491,11 +500,12 @@ async function signDigestWithBLS12381PrivateKey(priv_key_hex, digest_hex) {
 };
 
 /**
- * Wird verwendet um eine BLS_Signatur zu überprüfen
+ * Used to verify BLS12-381 signatures.
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} public_key_hex Specifies the public BLS12-381 key to be used to verify the signature.
+ * @param {string} signature_hex Specifies the hex value to be used for signature verification.
+ * @param {string} digest_hex Specifies the hash value which was signed and should be used for the check.
+ * @return {bool} Returns True if the signature is valid, False otherwise.
 */
 async function verifyBLS12381Signature(public_key_hex, signature_hex, digest_hex) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
@@ -516,11 +526,12 @@ async function verifyBLS12381Signature(public_key_hex, signature_hex, digest_hex
 };
 
 /**
- * Wird verwendet um eine Ethereum Basierende Signatur zu überprüfen
+ * Used to verify an Ethereum based signature
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} address Specifies the Web3 Ethereum address to verify the signature.
+ * @param {string} signature_hex Specifies the signature in hex format.
+ * @param {string} digest_hex Specifies the hash value used for signing.
+ * @return {bool} Returns True if the signature is valid, False in any other case.
 */
 async function validateWeb3EthereumMessageSignature(address, signature_hex, digest_hex) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
@@ -541,11 +552,11 @@ async function validateWeb3EthereumMessageSignature(address, signature_hex, dige
 };
 
 /**
- * Wird verwendet um eine Bitcoin Basierende Signatur zu überprüfen
+ * Used to verify a Bitcoin based signature
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} address Specifies the bitcoin p2wpkh address to use.
+ * @param {string} base64_signature Specifies the signature as a Base64 string.
+ * @return {bool} If the signature is valid, a True is returned, otherwise a False is returned.
 */
 async function validateBitcoinSegwitMessageSignature(address, base64_signature, digest_hex) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
@@ -564,11 +575,10 @@ async function validateBitcoinSegwitMessageSignature(address, base64_signature, 
 };
 
 /**
- * Wird verwendet um zu überprüfen ob es sich um eine Ethereum Adresse handelt (ASYNC)
+ * Used to check if it is an Ethereum address (SYNC)
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} eth_addr_str Specifies the ethereum address to be checked.
+ * @return {bool} True if it is a ethereum address. False if it is not a ethereum address.
 */
 async function isValidateEthereumAddress(eth_addr_str) {
     // Es wird geprüft ob es sich um einen String handelt
@@ -584,9 +594,10 @@ async function isValidateEthereumAddress(eth_addr_str) {
 };
 
 /**
- * Wird verwendet um zu überprüfen ob es sich um eine Ethereum Adresse handelt (SYNC)
+ * Used to check if it is an Ethereum address (SYNC)
  * 
- * @param {str} eth_addr_str The number to raise.
+ * @param {string} eth_addr_str Specifies the ethereum address to be checked.
+ * @return {bool} True if it is a ethereum address. False if it is not a ethereum address.
 */
 function isValidateEthereumAddressSync(eth_addr_str) {
     // Es wird geprüft ob es sich um einen String handelt
@@ -602,12 +613,11 @@ function isValidateEthereumAddressSync(eth_addr_str) {
 };
 
 /**
- * Wird verwendet um zu überprüfen ob es sich um eine Bitcoin Adresse handelt
- * es muss sich um eine p2wpkh Adresse handeln, andernfalls ist sie ungültig
+ * Used to check if it is a bitcoin address
+ * it must be a p2wpkh address, otherwise it is invalid
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} btc_addr_str Specifies the p2wpkh bitcoin address to be checked.
+ * @return {bool} True if it is a bitcoin address. False if it is not a bitcoin address.
 */
 async function isValidateBitcoinAddress(btc_addr_str) {
     // Es wird geprüft ob es sich um einen String handelt
@@ -624,13 +634,12 @@ async function isValidateBitcoinAddress(btc_addr_str) {
 };
 
 /**
- * Achtung: Ich habe keine Ahnung ob dass sicher ist, nicht verwenden !!! EXPERIMENTAL !!!!
- * Wird verwendet um einen Public Phantom Key zu erzeugen (SECP256K1)
- * Quelle: https://qurasofficial.medium.com/what-are-stealth-address-and-how-do-they-work-334f155f16fc :: (ISAP)
+ * Warning: I have no idea if that is safe, do not use !!! EXPERIMENTAL!!!!
+ * Used to generate a public phantom key (SECP256K1)
+ * Source: https://qurasofficial.medium.com/what-are-stealth-address-and-how-do-they-work-334f155f16fc :: (ISAP)
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} origin_reciver_pk Specifies the recipient's public key in hex form.
+ * @return {number} If successful, returns an object with a one-time public key.
 */
 async function computePublicPhantomKeyForRecivingSecp256k1F(origin_reciver_pk) {
     // Es wird ein Einmaliges Schlüsselpaar erzeugt
@@ -658,13 +667,14 @@ async function computePublicPhantomKeyForRecivingSecp256k1F(origin_reciver_pk) {
 };
 
 /**
- * Achtung: Ich habe keine Ahnung ob dass sicher ist, nicht verwenden !!! EXPERIMENTAL !!!!
- * Wird verwendet um den Private Key für einen Enstperechenden Public Phantom Key zu erzeugen (SECP256K1)
- * Quelle: https://qurasofficial.medium.com/what-are-stealth-address-and-how-do-they-work-334f155f16fc :: (ISAP)
+ * Warning: I have no idea if that is safe, do not use !!! EXPERIMENTAL!!!!
+ * Used to generate the private key for a corresponding public phantom key (SECP256K1)
+ * Source: https://qurasofficial.medium.com/what-are-stealth-address-and-how-do-they-work-334f155f16fc :: (ISAP)
  * 
- * @param {number} x The number to raise.
- * @param {number} n The power, must be a natural number.
- * @return {number} x raised to the n-th power.
+ * @param {string} local_priv_key Local Private Key.
+ * @param {string} one_time_pky One-time public key.
+ * @param {string} compare_image_hash Specifies the comparison hash, this represents the actual address to which funds are paid.
+ * @return {object} If successful, returns an object with a private key { image:'', ot_pub_key:'', ot_prv_key:'' }
 */
 async function computePublicPrivatePhantomKeyForSendingSecp256k1F(local_priv_key, one_time_pky, compare_image_hash=null) {
     // Der Private Schlüssel wird eingelesen

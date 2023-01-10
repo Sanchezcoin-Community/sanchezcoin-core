@@ -569,26 +569,37 @@ async function readFromHexString(tx_hex_str) {
     let tx_outputs = [];
     while(tx_outputs.length < total_outputs && cleared_tx_hex_str.length > 0) {
         // Es wird geprüft ob es sich um einen Zulässigen Typen handelt
-        if(cleared_tx_hex_str.substring(0, 2) !== '01') throw new Error('Invalid tx output');
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(2);
+        let c_item = cleared_tx_hex_str.substring(0, 2);
+        if(c_item === '01') {
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(2);
 
-        // Der Ausgegebene Wert wird eingelesen
-        let amount_size = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
-        let amount = BigInt(`0x${cleared_tx_hex_str.substring(0, amount_size)}`, 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(amount_size);
+            // Der Ausgegebene Wert wird eingelesen
+            let amount_size = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+            let amount = BigInt(`0x${cleared_tx_hex_str.substring(0, amount_size)}`, 16);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(amount_size);
 
-        // Das Locking Skript wird eingelesen
-        let locking_script_size = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
-        let script_size = parseInt(cleared_tx_hex_str.substring(0, locking_script_size), 16);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(locking_script_size);
-        let locking_script = cleared_tx_hex_str.substring(0, script_size);
-        cleared_tx_hex_str = cleared_tx_hex_str.substring(script_size);
+            // Das Locking Skript wird eingelesen
+            let locking_script_size = parseInt(cleared_tx_hex_str.substring(0, 4), 16);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(4);
+            let script_size = parseInt(cleared_tx_hex_str.substring(0, locking_script_size), 16);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(locking_script_size);
+            let locking_script = cleared_tx_hex_str.substring(0, script_size);
+            cleared_tx_hex_str = cleared_tx_hex_str.substring(script_size);
 
-        // Das Ausgangsobjekt wird erstellt
-        let output_obj = new UnspentOutput(locking_script, amount);
-        tx_outputs.push(output_obj);
+            // Das Ausgangsobjekt wird erstellt
+            let output_obj = new UnspentOutput(locking_script, amount);
+            tx_outputs.push(output_obj);
+        }
+        else if(c_item === '02') {
+
+        }
+        else if(c_item === '03') {
+            
+        }
+        else {
+            throw new Error('Invalid tx output type');
+        }
     }
 
     // Die Transaktion wird endgültig zusammen gebaut
