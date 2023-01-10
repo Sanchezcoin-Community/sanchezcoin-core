@@ -46,7 +46,8 @@ function validateTxOutput(tx_outputs, coinbase=false) {
 };
 
 // Wird verwendet um die Unlocking Skripte einer Transaktion zu überprüfen
-function validateTxScripts(tx_scripts, coinabse=false) {
+function validateTxUnlockingScripts(tx_scripts, coinabse=false) {
+    if(coinabse === true) return false;
     let unlocking_script_tx_checked = [];
     for(let otem of tx_scripts) {
         if(typeof otem !== 'object') return false;
@@ -195,7 +196,7 @@ class UnsignatedTransaction {
         if(validateTxOutput(outputs, false) !== true) throw new Error('Invalid transaction outputs');
 
         // Es wird geprüft ob es sich um gültige Unlocking Skripte handelt
-        if(validateTxScripts(unlockig_scripts, false) !== true) throw new Error('Invalid unlocking scripts');
+        if(validateTxUnlockingScripts(unlockig_scripts, false) !== true) throw new Error('Invalid unlocking scripts');
 
         // Wird geprüft ob die Anzahl der Erlaubten Eingänge überschritten wurde
         if(inputs.length > tx_parms.max_inputs) throw new Error('To many inputs for transaction');
@@ -595,7 +596,7 @@ async function readFromHexString(tx_hex_str) {
 
         }
         else if(c_item === '03') {
-            
+
         }
         else {
             throw new Error('Invalid tx output type');
