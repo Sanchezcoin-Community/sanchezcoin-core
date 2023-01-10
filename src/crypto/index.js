@@ -45,7 +45,13 @@ const inputs_to_string_block = (...items) => items.map((value) => {
     }
 }).join('');
 
-// Wird verwendet um einen Hash aus einer Datei zu erzeugen
+/**
+ * Wird verwendet um einen Hash aus einer Datei zu erzeugen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function getHashOfFileF(hash_function, file) {
     // Es wird ein Hash aus der Datei erzeugt
     let result = await new Promise((resolveOuter, reject) => {
@@ -65,7 +71,13 @@ async function getHashOfFileF(hash_function, file) {
     return Buffer.from(result).reverse().toString('hex');
 };
 
-// Wird erstellt um einen einfachen SHA256 Hash zu erstellen
+/**
+ * Wird erstellt um einen einfachen SHA256 Hash zu erstellen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function sha2F(size, ...items) {
     // Es wird geprüft ob es sich um zulässige Parameter handelt
     if(size === undefined || size === null) throw new Error('Invalid size data type');
@@ -104,7 +116,13 @@ function sha2F(size, ...items) {
     }
 };
 
-// Wird verwendet um einen Doppelten SHA256 Hash zu estellen (sha256d)
+/**
+ * Wird verwendet um einen Doppelten SHA256 Hash zu estellen (sha256d)
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function sha2dF(size, ...items) {
     // Es wird geprüft ob es sich um zulässige Parameter handelt
     if(size === undefined || size === null) throw new Error('Invalid size data type');
@@ -130,7 +148,13 @@ function sha2dF(size, ...items) {
     }
 };
 
-// Wird verwendet um einen SHA3 Hash zu erstellen
+/**
+ * Wird verwendet um einen SHA3 Hash zu erstellen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function sha3F(size, ...items) {
     // Es wird geprüft ob es sich um zulässige Parameter handelt
     if(size === undefined || size === null) throw new Error('Invalid size data type');
@@ -165,7 +189,13 @@ function sha3F(size, ...items) {
     }
 };
 
-// Wird verwendet um einen Keccak Hash zu erstellen
+/**
+ * Wird verwendet um einen Keccak Hash zu erstellen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function keccakF(size, ...items) {
     // Es wird geprüft ob es sich um zulässige Parameter handelt
     if(size === undefined || size === null) throw new Error('Invalid size data type');
@@ -200,7 +230,13 @@ function keccakF(size, ...items) {
     }
 };
 
-// Gibt ein rs25519 Schlüsselpaar aus dem Seed aus (Determenistisch)
+/**
+ * Gibt ein RS25519 Schlüsselpaar aus dem Seed aus (Determenistisch)
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function getRistretto25519KeyPairFromSeedF(seed_hex_str, path) {
     // Es wird geprüft ob es sich um einen Zulässigen Hexstring handelt
     if(is_validate_hex_string(seed_hex_str) !== true) throw new Error('Invalid seed hex');
@@ -223,7 +259,13 @@ function getRistretto25519KeyPairFromSeedF(seed_hex_str, path) {
     }
 };
 
-// Wird verwendet um ein secp256k1 Schnlüsselpaar abzuleiten (Determenistisch)
+/**
+ * Wird verwendet um ein SECP256K1 Schnlüsselpaar abzuleiten (Determenistisch)
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function getSecp256k1SchnorrKeyPairFromSeedF(seed_hex_str, path) {
     // Es wird geprüft ob es sich um einen Zulässigen Hexstring handelt
     if(is_validate_hex_string(seed_hex_str) !== true) throw new Error('Invalid seed hex');
@@ -249,7 +291,13 @@ function getSecp256k1SchnorrKeyPairFromSeedF(seed_hex_str, path) {
     }
 };
 
-// Wird verwendet um ein bls12-381 Schlüsselpaar abzuleiten (Determenistisch)
+/**
+ * Wird verwendet um ein BLS12-381 Schlüsselpaar abzuleiten (Determenistisch)
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function getBLS12381KeyPairFromSeedF(seed_hex_str, path) {
     // Es wird geprüft ob es sich um einen Zulässigen Hexstring handelt
     if(is_validate_hex_string(seed_hex_str) !== true) throw new Error('Invalid seed hex');
@@ -275,7 +323,13 @@ function getBLS12381KeyPairFromSeedF(seed_hex_str, path) {
     }
 };
 
-// Wird verwendet um aus einem Bip32 Mnemonic einen Seed zu erstellen
+/**
+ * Wird verwendet um aus einem Bip32 Mnemonic einen Seed zu erstellen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function getSeedFromBip39MnemonicF(bip_39_mnemonic) {
     // Es wird geprüft ob es sich um den String handelt
     if(is_validate_string(bip_39_mnemonic) !== true) throw new Error('Invalid mnemonic');
@@ -288,12 +342,24 @@ function getSeedFromBip39MnemonicF(bip_39_mnemonic) {
     }
 };
 
-// Wird verwendet um einen neuen BIP32 Mnemonic zu erstelen
+/**
+ * Wird verwendet um einen neuen BIP32 Mnemonic zu erstelen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function generateBip39MnemonicF(wordlist=undefined) {
     return bip39.generateMnemonic(256, undefined, wordlist);
 };
 
-// Wird verwendet um eine secp256k1 Schnorr Signatur zu erstellen
+/**
+ * Wird verwendet um eine secp256k1 Schnorr Signatur zu erstellen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function signDigestWithSecp256k1SchnorrF(private_key_hex, digest_value) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
     if(is_validate_hex_string(private_key_hex, 64) !== true) throw new Error('Invalid public key');
@@ -311,7 +377,13 @@ async function signDigestWithSecp256k1SchnorrF(private_key_hex, digest_value) {
     }    
 };
 
-// Wird verwendet um eine secp256k1 Schnorr Signatur zu überprüfen
+/**
+ * Wird verwendet um eine secp256k1 Schnorr Signatur zu überprüfen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function verfiySecp256k1SchnorrSignatureF(public_key_hex, signature_hex, digest_value) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
     if(is_validate_hex_string(public_key_hex, 64) !== true) throw new Error('Invalid public key');
@@ -339,7 +411,13 @@ async function verfiySecp256k1SchnorrSignatureF(public_key_hex, signature_hex, d
     }
 };
 
-// Wird verwendet um eine Ristretto25519 Schnorr Signatur zu erstellen
+/**
+ * Wird verwendet um eine Ristretto25519 Schnorr Signatur zu erstellen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function signDigestWithRistretto25519SchnorrF(private_key_hex, digest_value) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
     if(is_validate_hex_string(private_key_hex, 128) !== true) throw new Error('Invalid private key');
@@ -360,7 +438,13 @@ async function signDigestWithRistretto25519SchnorrF(private_key_hex, digest_valu
     return async_result;
 };
 
-// Wird verwendet um eine Ristretto25519 Schnorr Signatur zu überprüfen
+/**
+ * Wird verwendet um eine Ristretto25519 Schnorr Signatur zu überprüfen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function verfiyRistretto25519SchnorrSignatureF(signature_hex, public_key_hex, digest_value) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
     if(is_validate_hex_string(public_key_hex, 64) !== true) throw new Error('Invalid public key');
@@ -382,7 +466,13 @@ async function verfiyRistretto25519SchnorrSignatureF(signature_hex, public_key_h
     return async_result;
 };
 
-// Wird verwendet um eine BLS_Signatur zu erzeugen
+/**
+ * Wird verwendet um eine BLS_Signatur zu erzeugen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function signDigestWithBLS12381PrivateKey(priv_key_hex, digest_hex) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
     if(is_validate_hex_string(priv_key_hex, 64) !== true) throw new Error('Invalid public key');
@@ -400,7 +490,13 @@ async function signDigestWithBLS12381PrivateKey(priv_key_hex, digest_hex) {
     }
 };
 
-// Wird verwendet um eine BLS_Signatur zu überprüfen
+/**
+ * Wird verwendet um eine BLS_Signatur zu überprüfen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function verifyBLS12381Signature(public_key_hex, signature_hex, digest_hex) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
     if(is_validate_hex_string(public_key_hex, 96) !== true) throw new Error('Invalid public key');
@@ -419,7 +515,13 @@ async function verifyBLS12381Signature(public_key_hex, signature_hex, digest_hex
     }
 };
 
-// Wird verwendet um eine Ethereum Basierende Signatur zu überprüfen
+/**
+ * Wird verwendet um eine Ethereum Basierende Signatur zu überprüfen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function validateWeb3EthereumMessageSignature(address, signature_hex, digest_hex) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
     if(is_validate_hex_string(digest_hex, 64) !== true) throw new Error('Invalid public key');
@@ -438,7 +540,13 @@ async function validateWeb3EthereumMessageSignature(address, signature_hex, dige
     }
 };
 
-// Wird verwendet um eine Bitcoin Basierende Signatur zu überprüfen
+/**
+ * Wird verwendet um eine Bitcoin Basierende Signatur zu überprüfen
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function validateBitcoinSegwitMessageSignature(address, base64_signature, digest_hex) {
     // Es wird geprüft ob die Verwendeten Parameter korrekt sind
     if(is_validate_hex_string(digest_hex, 64) !== true) throw new Error('Invalid public key');
@@ -455,7 +563,13 @@ async function validateBitcoinSegwitMessageSignature(address, base64_signature, 
     }
 };
 
-// Wird verwendet um zu überprüfen ob es sich um eine Ethereum Adresse handelt (UNSYNC)
+/**
+ * Wird verwendet um zu überprüfen ob es sich um eine Ethereum Adresse handelt (ASYNC)
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function isValidateEthereumAddress(eth_addr_str) {
     // Es wird geprüft ob es sich um einen String handelt
     if(eth_addr_str === undefined || eth_addr_str === null || typeof eth_addr_str !== 'string') return false;
@@ -469,7 +583,13 @@ async function isValidateEthereumAddress(eth_addr_str) {
     }
 };
 
-// Wird verwendet um zu überprüfen ob es sich um eine Ethereum Adresse handelt (SYNC)
+/**
+ * Wird verwendet um zu überprüfen ob es sich um eine Ethereum Adresse handelt (SYNC)
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 function isValidateEthereumAddressSync(eth_addr_str) {
     // Es wird geprüft ob es sich um einen String handelt
     if(eth_addr_str === undefined || eth_addr_str === null || typeof eth_addr_str !== 'string') return false;
@@ -483,8 +603,14 @@ function isValidateEthereumAddressSync(eth_addr_str) {
     }
 };
 
-// Wird verwendet um zu überprüfen ob es sich um eine Bitcoin Adresse handelt
-// es muss sich um eine p2wpkh Adresse handeln, andernfalls ist sie ungültig
+/**
+ * Wird verwendet um zu überprüfen ob es sich um eine Bitcoin Adresse handelt
+ * es muss sich um eine p2wpkh Adresse handeln, andernfalls ist sie ungültig
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function isValidateBitcoinAddress(btc_addr_str) {
     // Es wird geprüft ob es sich um einen String handelt
     if(btc_addr_str === undefined || btc_addr_str === null || typeof btc_addr_str !== 'string') return false;
@@ -499,9 +625,15 @@ async function isValidateBitcoinAddress(btc_addr_str) {
     }
 };
 
-// Achtung: Ich habe keine Ahnung ob dass sicher ist, nicht verwenden !!! EXPERIMENTAL !!!!
-// Wird verwendet um einen Public Phantom Key zu erzeugen (SECP256K1)
-// Quelle: https://qurasofficial.medium.com/what-are-stealth-address-and-how-do-they-work-334f155f16fc :: (ISAP)
+/**
+ * Achtung: Ich habe keine Ahnung ob dass sicher ist, nicht verwenden !!! EXPERIMENTAL !!!!
+ * Wird verwendet um einen Public Phantom Key zu erzeugen (SECP256K1)
+ * Quelle: https://qurasofficial.medium.com/what-are-stealth-address-and-how-do-they-work-334f155f16fc :: (ISAP)
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function computePublicPhantomKeyForRecivingSecp256k1F(origin_reciver_pk) {
     // Es wird ein Einmaliges Schlüsselpaar erzeugt
     let one_time_priv_key = utils.randomPrivateKey();
@@ -527,9 +659,15 @@ async function computePublicPhantomKeyForRecivingSecp256k1F(origin_reciver_pk) {
     return { image:image_hash, spnd_pkey:phantom_pkey.toHexX(), ot_pkey:one_time_pub_key.toHexX(true) };
 };
 
-// Achtung: Ich habe keine Ahnung ob dass sicher ist, nicht verwenden !!! EXPERIMENTAL !!!!
-// Wird verwendet um den Private Key für einen Enstperechenden Public Phantom Key zu erzeugen (SECP256K1)
-// Quelle: https://qurasofficial.medium.com/what-are-stealth-address-and-how-do-they-work-334f155f16fc :: (ISAP)
+/**
+ * Achtung: Ich habe keine Ahnung ob dass sicher ist, nicht verwenden !!! EXPERIMENTAL !!!!
+ * Wird verwendet um den Private Key für einen Enstperechenden Public Phantom Key zu erzeugen (SECP256K1)
+ * Quelle: https://qurasofficial.medium.com/what-are-stealth-address-and-how-do-they-work-334f155f16fc :: (ISAP)
+ * 
+ * @param {number} x The number to raise.
+ * @param {number} n The power, must be a natural number.
+ * @return {number} x raised to the n-th power.
+*/
 async function computePublicPrivatePhantomKeyForSendingSecp256k1F(local_priv_key, one_time_pky, compare_image_hash=null) {
     // Der Private Schlüssel wird eingelesen
     let local_priv_key_int = BigInt('0x' + local_priv_key);
