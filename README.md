@@ -13,7 +13,7 @@ Sanchezcoin is a community-driven cryptocurrency that was inspired by Rick Sanch
 
 ## General informations 🪙
 <b>Unit description:</b> 1 Sanchez = 1,000,000,000,000 Wubbalubba<br>
-<b>Genesis generated supply:</b> 2.500 Sanchez<br>
+<b>Genesis generated supply:</b> 2,500.00 Sanchez<br>
 <b>Consensus:</b> Proof of Work (PoW)<br>
 <b>Total supply:</b> 2.1 Mrd Sanchez<br>
 <b>PoW algorithm:</b> swiftyHash256<br>
